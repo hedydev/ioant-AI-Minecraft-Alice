@@ -1,0 +1,44 @@
+# Alice — Minecraft block-world understanding and action planning
+
+**Status: architectural contract / pending implementation**, 2026-10-20. This document is a user-requested direction, not a deployed navigation/digging/building capability. Current Bedrock 1.26.x Alice can read chunks and use some limited movement, doors and natural-wood dig adapters, but has no general action-based voxel planner. No automatic arbitrary digging or placing has been authorized or tested on the production world.
+
+## Product goal
+
+Alice must use general Minecraft rules to understand an **unknown, changing voxel world** without the operator explaining the house, staircase, cave, door or obstacle. Hard-code Minecraft physics and authorization invariants, **not user world layouts, fixed coordinates, pre-scripted room escapes or one-off terrain rules**.
+
+Example: a blocked route is not automatically `WAIT`/`noPath`. It means the world-model/planner may examine `WALK`, `JUMP_UP`, safe `STEP_DOWN`, `INTERACT`, `CLIMB`, `MINE` and `PLACE` transitions, with precise preconditions and costs. If no authorized feasible transition exists, explicitly return `blocked` with the missing observation/capability or permission; do not fabricate success.
+
+## Five-layer contract
+
+1. **Observed VoxelMap (read-only):** bounded Alice-centered snapshot keyed by dimension and block position. Every cell carries observed identity/state/properties/collision shapes, support/walkability, liquid/hazard/interactability, last observed epoch, and `unknown` for absent chunks. Inventory, tool tiers, health, oxygen, hunger, hostile positions and time are separate observations. Prefer the actual pinned Bedrock registry/block state over name regexes when describing collision, shape and tool requirements. Never assume unknown = air or that a door in the world is closed merely because its type is wooden.
+2. **Minecraft mechanics and action affordances:** general rules about the player envelope, jump height, safe drops, collision/support, mining hardness and tools, available inventory/placeable faces, gravity and hazard mechanics. Physics facts and special-case block mechanics are *legitimate engine knowledge*; named coordinates and exact room-specific routes are not. Absent reliable shape/metadata means `unverified`, not `safe`. For each observed obstacle, produce feasible, infeasible-with-reason, and potentially feasible-after-observation actions.
+3. **Bounded action-space graph:** directed edges `WALK`, `JUMP_UP`, `STEP_DOWN`, `INTERACT_DOOR`, `CLIMB`, `MINE_BLOCK`, `PLACE_BLOCK`, `BRIDGE`, `PILLAR` (the latter actions pending real adapters). Each edge has explicit preconditions, predicted voxel/inventory deltas, timing/material costs, health risk, irreversible world-mutation flag and validation observation. Search the **currently observed** cells (bounded node/height/action count); a partial route to a safe frontier should allow a new observation, but not crossing unloaded void by assumption.
+4. **Goal/strategy brain (Granite 4 through Ollama):** chooses between valid candidate plan IDs and semantic goals such as reach_player, reach_open_frontier, escape_hostile, obtain_resource, shelter or recover. It **cannot supply unobserved block positions or authorize edits**. The model receives concise differences from the last observation and prior failed action IDs instead of an unbounded stream of `phase` changes. Prefer a fixed-cost local path search for every step; ask the LLM on goal change, novel blocked plan, important new world evidence or repeated failures, within the existing model budget.
+5. **Action executor and verified outcome:** only this layer issues Bedrock movement, dig, interact or place operations after rechecking the actual blocks/health/target/inventory/owner permissions *immediately before* the action. Player STOP, player task, owner departure and emergency survival preempt lower priorities, canceling stale action epochs and releasing control. Verify mining/placing by fresh block state and inventory observations, consuming/drop collection by authoritative inventory; movement by server-origin evidence if available or independent BDS `querytarget` during acceptance. **Local Mineflayer position is never claimed as server proof.** Changed shape/inventory after an action invalidates affected graph edges and triggers incremental replanning.
+
+## World changes and building protection
+
+- `WALK`, safe jump and observation are reversible/nondestructive and are attempted before `MINE`/`PLACE` when costs permit.
+- Minecraft Bedrock `blockAt` does NOT prove who placed a block. Ownership cannot be inferred from a block name (e.g. cobblestone may be natural or player-built). Protect chest/containers, beds, redstone, claimed/world-spawn areas and likely human buildings by default; **do not enable general destructive excavation in production** until an explicit trusted editable-area/permission system and isolated-world tests exist.
+- A dig plan checks breakable registry state, required tool tier, hardness/time budget, inventory capacity, gravel/sand fall exposure, liquid release, roof/support integrity and exposed hazards. A place/bridge plan checks a valid inventory item and target, placement face, no intersecting players/entities, block support/gravity and intended exit path. Unknown risk fails closed.
+- One action at a time; no bulk mine/place, shell/OP commands, teleports, unrestricted JS or model-authored network packets. End every failed plan with a structured reason and future retry condition (new evidence, altered tool, safer route or explicit permission).
+
+## Why current Alice loops
+
+- `scout_routes.cjs` uses the `SAFE_SURFACE` name allowlist; it excludes many legitimate constructed floors even if the collision shape is fully solid. `escape_survey.cjs` treats stairs/slabs/ladders conservatively as unverified partials rather than computing a navigable surface. This is sensible fail-closed behavior in the current prototype, but it is not general voxel understanding.
+- `model_goals.cjs` only allows `observe/gather_wood/craft_wooden_sword/scout_safe`. `runtime.cjs` handles `observe` by returning `observation_only/no_world_action`; the LLM branch returns before the legacy `WAIT` door-path executor. A larger LLM alone cannot create a missing physical action.
+- User's 2026-10-20 ~11h log: repeated `observe`, day/night resource-vs-sleep goal flips, server-rejected beds and `no_verified_safe_tile` retreat failures. Treat these as blocked-plan/missing-world-affordance issues, not evidence of successful autonomy. See `docs/CURRENT_STATE.md`.
+
+## Implementation milestones and acceptance (not claimed done)
+
+**M0 — observability:** expose bounded local voxel evidence and observed block states with `unknown`, source and freshness; report rejected action and reason in control center/3D viewer. Preserve 4 KiB status and privacy limits. Test Bedrock registry variation and chunk unloads.
+
+**M1 — nondestructive actions:** graph search for `WALK`, verified `JUMP_UP` and bounded `STEP_DOWN` across natural and built full/partial collision shapes, then `INTERACT_DOOR` without closing an already-open door. Unit-test synthetic flat, one-block step, slab/stair, ladder, open/closed door, drop/void, fluid/lava and partial/unloaded chunks. Accept only after Mint Node24 tests and independent BDS server XYZ change in a controlled level; repeated `noPath` must explain the specific blocked precondition.
+
+**M2 — authorized voxel edits:** on isolated copy/lab world only, add guarded `MINE_BLOCK`, `PLACE_BLOCK`, `BRIDGE` and `PILLAR` with before/after Bedrock block and inventory checks; an action that cannot verify a change remains `unverified` and cannot chain further edits. Test player-built structures/containers as denials, falling gravel/liquid release, inventory missing, tool mismatch, interrupted STOP/threat, and restart persistence.
+
+**M3 — autonomous long-term behavior:** use candidate action plans for goals, execute a single safe edge then observe/replan. Save proven map deltas and failed routes with TTL/source. A stalled scene must not call Ollama every dawn/dusk, and repeated failed bed/safety actions need location- and evidence-based cooldowns. Test a genuinely unknown generated environment in multiple seeds and survival gear configurations; no coordinates from the test seeds in production logic.
+
+## Explicit safety and engineering boundary
+
+This plan **does not modify the BDS world, auth, backups, controller priorities or production dig/place permissions**. Preserve one Alice client, existing login/learning state and validated world backup process. A staged source implementation is not a verified game behavior. Next work must implement and test one reusable mechanics module and action-graph executor, not add more `if(room XYZ)` exceptions.
