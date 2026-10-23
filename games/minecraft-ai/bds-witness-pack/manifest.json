@@ -1,0 +1,45 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Alice Silent BDS Position Witness",
+    "description": "Passive BDS-only Alice location witness; no commands/world mutation",
+    "uuid": "e39b740e-fb97-47e5-b1e7-f61f5a8b87de",
+    "version": [
+      0,
+      1,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      20,
+      80
+    ]
+  },
+  "modules": [
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "49abe19c-5c2e-4cd4-b826-d8e935ed9932",
+      "version": [
+        0,
+        1,
+        0
+      ],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "2.0.0"
+    },
+    {
+      "module_name": "@minecraft/server-net",
+      "version": "1.0.0-beta"
+    },
+    {
+      "module_name": "@minecraft/server-admin",
+      "version": "1.0.0-beta"
+    }
+  ]
+}

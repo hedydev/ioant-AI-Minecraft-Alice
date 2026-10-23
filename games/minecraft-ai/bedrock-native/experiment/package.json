@@ -1,0 +1,28 @@
+{
+  "name": "alice-bedrock-mineflayer-autonomy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Opt-in native Bedrock autonomy: validated production backup or isolated lab",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "check": "node src/main.cjs --check",
+    "start": "node src/main.cjs --start",
+    "test": "node --test test/*.test.cjs ../test/*.test.cjs",
+    "production:check": "node src/main.cjs --production-check",
+    "production": "node src/main.cjs --production-start"
+  },
+  "dependencies": {
+    "mineflayer": "git+https://github.com/Pix3lPirat3/mineflayer.git#b24015aeeec68a5c94f54444f104f0e563595a30",
+    "mineflayer-pathfinder": "git+https://github.com/Pix3lPirat3/mineflayer-pathfinder.git#789d9146f7dabd7f7cae675308997ebbdba14c35",
+    "prismarine-physics": "git+https://github.com/Pix3lPirat3/prismarine-physics.git#e6181bf79c19db3eafc8a589e984f7ba623556f6",
+    "prismarine-chunk": "git+https://github.com/Pix3lPirat3/prismarine-chunk.git#02b4a4cc660d0ce6f8f08cbdb78926d7f7590ed3",
+    "bedrock-protocol": "3.60.1"
+  },
+  "overrides": {
+    "prismarine-physics": "$prismarine-physics",
+    "prismarine-chunk": "$prismarine-chunk",
+    "bedrock-protocol": "$bedrock-protocol"
+  }
+}
