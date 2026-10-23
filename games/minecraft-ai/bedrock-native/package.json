@@ -1,0 +1,15 @@
+{
+  "name": "aliceai-bedrock-native",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Separate native Bedrock AliceAI connector, chat/status phase only",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "ping": "node src/main.cjs --ping",
+    "start": "node src/main.cjs --connect",
+    "test": "node --test test/*.test.cjs"
+  },
+  "dependencies": {
+    "bedrock-protocol": "3.60.1"
+  }
+}
