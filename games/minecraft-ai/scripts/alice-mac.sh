@@ -4,15 +4,16 @@ set -euo pipefail
 usage() {
   cat <<'HELP'
 Usage: ALICE_SSH_TARGET=user@host bash alice-mac.sh ACTION [--dry-run]
-Actions: status diagnose check test start restart logs capture-config sync deploy
+Actions: status diagnose check test start restart logs capture-config sync deploy report
 sync: copy Git-tracked Alice files with backups, then run Mint tests; no restart.
 deploy: sync + tests + restart the existing Alice; requires an active client.
+report: 3-hour read-only sanitized status, diagnose, events and source hashes -> Mac Desktop ZIP.
 Other actions call the corresponding Mint CLI. --dry-run does no SSH or writes.
 Git is never pulled/reset/stashed automatically. See docs/OPERATIONS.md.
 HELP
 }
 action="${1:-}"
-case "$action" in -h|--help|'') usage; exit 0;; status|diagnose|check|test|start|restart|logs|capture-config|sync|deploy) ;; *) usage >&2; exit 2;; esac
+case "$action" in -h|--help|'') usage; exit 0;; status|diagnose|check|test|start|restart|logs|capture-config|sync|deploy|report) ;; *) usage >&2; exit 2;; esac
 [[ $# -le 2 && ( $# -eq 1 || "${2:-}" == --dry-run ) ]] || { usage >&2; exit 2; }
 target="${ALICE_SSH_TARGET:-}"
 [[ "$target" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.-]*@[a-zA-Z0-9][a-zA-Z0-9.:-]*$ ]] || {
@@ -28,6 +29,11 @@ if [[ "${2:-}" == --dry-run ]]; then
   fi
   [[ "$action" != deploy && "$action" != restart ]] || echo 'Validate old Alice, preserve its env, SIGINT only that client, verify BDS logout, start one replacement.'
   exit 0
+fi
+# Report collection is read-only: no Mint deploy, process restart or BDS change.
+if [[ "$action" == report ]]; then
+  ALICE_MINT_SSH="$target" bash "$scripts/collect-alice-acceptance-mac.sh"
+  exit $?
 fi
 for cmd in ssh git rsync python3; do command -v "$cmd" >/dev/null; done
 remote() { ssh -o BatchMode=yes "$target" "python3 \"\$HOME/minecraft-ai/scripts/alice-mint.py\" $1"; }

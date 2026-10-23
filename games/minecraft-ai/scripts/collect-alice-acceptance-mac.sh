@@ -25,7 +25,10 @@ if [[ -e "$dest" ]]; then
 fi
 tmp="$(mktemp "$desktop/.AliceAI-acceptance.XXXXXXXX")"
 remote_info="$(mktemp "$desktop/.AliceAI-deployment.XXXXXXXX")"
-cleanup(){ rm -f "$tmp" "$remote_info"; }
+status_capture="$(mktemp "$desktop/.AliceAI-status.XXXXXXXX")"
+diagnose_capture="$(mktemp "$desktop/.AliceAI-diagnose.XXXXXXXX")"
+chmod 600 "$tmp" "$remote_info" "$status_capture" "$diagnose_capture"
+cleanup(){ rm -f "$tmp" "$remote_info" "$status_capture" "$diagnose_capture"; }
 trap cleanup EXIT
 source_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../bedrock-native/experiment" && pwd)"
 # One read-only SSH operation checks the actual Mint sources on disk.
@@ -111,7 +114,23 @@ if freshness == "source_changed_after_last_spawn":
 if match_all and freshness == "source_not_newer_than_last_spawn":
     print("[Alice acceptance] Disk source hashes match; runtime restart order looks consistent.")
 PY
+# These CLI commands are observational and use the existing Alice ownership
+# checks. Their raw output is never put in the ZIP; the bundler uses a strict
+# allowlist to avoid private log paths, credentials, chat or arbitrary fields.
+if ! ssh -o BatchMode=no -o ConnectTimeout=10 "$remote" \
+  "python3 minecraft-ai/scripts/alice-mint.py status" > "$status_capture" 2>/dev/null; then
+  printf '{"_capture":"unavailable"}\n' > "$status_capture"
+  echo "[Alice report] Current status unavailable; marked unknown in ZIP." >&2
+fi
+if ! ssh -o BatchMode=no -o ConnectTimeout=10 "$remote" \
+  "python3 minecraft-ai/scripts/alice-mint.py diagnose" > "$diagnose_capture" 2>/dev/null; then
+  printf '{"_capture":"unavailable"}\n' > "$diagnose_capture"
+  echo "[Alice report] Current diagnose unavailable; marked unknown in ZIP." >&2
+fi
+python3 "$(dirname "$0")/alice-report-bundle.py" \
+  "$tmp" "$status_capture" "$diagnose_capture"
 mv "$tmp" "$dest"
 trap - EXIT
-echo "Saved: $dest"
-echo "Attach this ZIP directly to ChatGPT. No manual copy/paste required."
+cleanup
+echo "Saved to Mac Desktop: $dest"
+echo "Attach this one ZIP to ChatGPT; no terminal output needs copying."
