@@ -1,0 +1,5 @@
+name: AlicePositionFeed
+version: 0.1.0
+main: io.ioant.alice.bridge.AlicePositionFeed
+api-version: '1.21'
+description: Local, opt-in coordinate feed for a named Minecraft Alice companion.

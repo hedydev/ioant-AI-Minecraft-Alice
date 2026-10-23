@@ -1,0 +1,6 @@
+# Keep disabled until the server owner explicitly enables it.
+enabled: false
+# Absolute path readable by the local Mindcraft process.
+output-file: ''
+# Exact Java server player names; Floodgate may prefix names with a dot.
+players: []
