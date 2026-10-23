@@ -54,6 +54,9 @@ class LabPackTests(unittest.TestCase):
         self.patch = patch.multiple(PACK, PRODUCTION=prod, LAB=lab, SOURCE=source)
         self.patch.start()
         self.addCleanup(self.patch.stop)
+        self.proc_guard = patch.object(PACK, "require_lab_stopped", return_value=None)
+        self.proc_guard.start()
+        self.addCleanup(self.proc_guard.stop)
 
     def test_stage_adds_pack_only_to_lab_without_beta_or_secrets(self):
         production_marker = self.prod / "never-modify"
@@ -102,13 +105,24 @@ class LabPackTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "lab_server_properties_mismatch"):
             PACK.stage()
 
+    def test_running_or_unverifiable_lab_bds_blocks_all_writes(self):
+        for reason in ("lab_bds_is_running", "bds_cwd_unverified", "proc_unavailable"):
+            with self.subTest(reason=reason), patch.object(
+                PACK, "require_lab_stopped", side_effect=ValueError(reason)
+            ):
+                with self.assertRaisesRegex(ValueError, reason):
+                    PACK.stage()
+                self.assertFalse((self.lab / "behavior_packs" / PACK.PACK_NAME).exists())
+                self.assertFalse((self.lab / "worlds" / "Bedrock level" /
+                                  "world_behavior_packs.json").exists())
+
     def test_control_entry_and_mac_sanitized_contract(self):
         entry = (SCRIPTS / "alice-mac.sh").read_text()
         wrapper = (SCRIPTS / "alice-bds-lab-pack-mac.sh").read_text()
         self.assertIn("witness-lab-pack-stage", entry)
         self.assertIn("alice-bds-lab-pack-mac.sh", entry)
         self.assertIn('"productionModified":False', wrapper)
-        self.assertIn('"labBdsStarted":False', wrapper)
+        self.assertIn('"labBdsStartedByThisAction":False', wrapper)
         self.assertNotIn("systemctl", wrapper)
 
 

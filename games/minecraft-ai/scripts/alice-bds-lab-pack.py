@@ -6,7 +6,6 @@ production witness write. This cannot verify actual module loading by itself.
 """
 import json
 from pathlib import Path
-import shutil
 import sys
 import time
 
@@ -44,8 +43,36 @@ def read_json(path, limit=16384):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def require_lab_stopped():
+    # /proc identifies any lab BDS independently of MCSManager ownership.
+    # Do not modify a live lab world or conclude it is offline if a matching
+    # process exists or its working directory cannot be inspected.
+    proc = Path("/proc")
+    if not proc.is_dir():
+        raise ValueError("proc_unavailable")
+    try:
+        for item in proc.iterdir():
+            if not item.name.isdecimal():
+                continue
+            try:
+                name = (item / "comm").read_text(encoding="utf-8").strip()
+            except (OSError, UnicodeError):
+                continue
+            if name != "bedrock_server":
+                continue
+            try:
+                cwd = (item / "cwd").resolve(strict=True)
+            except (OSError, ValueError):
+                raise ValueError("bds_cwd_unverified")
+            if cwd == LAB.resolve(strict=True):
+                raise ValueError("lab_bds_is_running")
+    except OSError:
+        raise ValueError("proc_unavailable")
+
+
 def require_eligible():
     # Exact owner of the disposable lab; never accept arbitrary lab directories.
+    require_lab_stopped()
     if not directory(LAB) or not directory(PRODUCTION):
         raise ValueError("lab_or_production_directory_missing")
     if not directory(LAB / "worlds" / WORLD) or not directory(LAB / "worlds" / WORLD / "db"):
@@ -142,7 +169,7 @@ def report(mode, state):
             "betaApisExperiment": beta_api_experiment(LAB / "worlds" / WORLD / "level.dat"),
             "labOnly": True, "betaNbtModified": False, "secretsInstalled": False,
             "networkEnabled": False, "productionModified": False,
-            "productionBdsRestarted": False, "labBdsStarted": False,
+            "productionBdsRestarted": False, "labBdsStartedByThisAction": False,
             "serverModuleRuntimeVerified": False}
 
 

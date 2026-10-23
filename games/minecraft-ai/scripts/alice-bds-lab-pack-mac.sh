@@ -32,7 +32,7 @@ if (not isinstance(obj,dict) or obj.get("audit")!="ALICE_BDS_LAB_PACK_ONLY" or
     obj.get("schemaVersion")!=1 or obj.get("mode")!=mode or
     any(obj.get(k) is not False for k in
         ("betaNbtModified","secretsInstalled","networkEnabled",
-         "productionModified","productionBdsRestarted","labBdsStarted",
+         "productionModified","productionBdsRestarted","labBdsStartedByThisAction",
          "serverModuleRuntimeVerified")) or obj.get("labOnly") is not True):
     raise SystemExit("Unexpected lab-only safety contract; no export.")
 observed=obj.get("observedAtUnix")
@@ -48,7 +48,7 @@ safe={"audit":"ALICE_BDS_LAB_PACK_ONLY","schemaVersion":1,
       "observedAtUnix":observed,"mode":mode,"labOnly":True,
       "betaNbtModified":False,"secretsInstalled":False,"networkEnabled":False,
       "productionModified":False,"productionBdsRestarted":False,
-      "labBdsStarted":False,"serverModuleRuntimeVerified":False}
+      "labBdsStartedByThisAction":False,"serverModuleRuntimeVerified":False}
 for key, values in allowed.items():
     if obj.get(key) not in values:
         raise SystemExit("Unexpected lab status, no export.")

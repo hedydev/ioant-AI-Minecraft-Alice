@@ -1,3 +1,9 @@
+## 2026-10-24 — guard disposable lab pack staging against a running BDS (not yet live-tested)
+
+- This followup prevents world_behavior_packs.json edits while the cloned 17880 BDS is running: iterate Linux /proc bedrock_server process names and resolve their cwd; if a lab match, uninspectable BDS cwd or /proc unavailable, refuse to stage. The Mac unit tests mock the process guard; actual Mint state is checked only when the user invokes lab staging.
+- Report field labBdsStartedByThisAction=false means the operator action does not start BDS; it NEVER claims current BDS process state was verified by the report. No Beta API flag, token, HTTP service or live 17879 world is changed by staging.
+- The currently committed code is a candidate for Mac Python and Mint Node24 suite acceptance via maintained alice-mac.sh sync. Do not claim end-to-end success before the user's actual lab stage JSON.
+
 ## 2026-10-24 03:32 — Verified archived restore, disposable 17880 lab created; lab-only pack stage (not activated)
 
 - User Mac JSON AliceAI-BDS-Lab-prepare-20261024-033251.json: backupRestore=archive_sha256_isolated_restore_verified, labState=new_disposable_copy_created_not_started, reason=lab_ready_for_future_beta_test. World archive hash and temporary restore verified, new isolated lab directory created from prior backup. Production 17879 world and BDS process remained untouched, experimental server is not started. Historic backup may be stale relative to live BDS.
