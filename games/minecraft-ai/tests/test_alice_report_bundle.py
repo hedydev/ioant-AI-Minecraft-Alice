@@ -20,7 +20,7 @@ class ReportBundleTests(unittest.TestCase):
             z.writestr("manifest.json", json.dumps(
                 {"requestedHours": 3, "records": 7, "samples": 4, "events": 3}))
             z.writestr("events.jsonl", "{}\n")
-            z.writestr("deployment.json", "{}")
+            z.writestr("deployment.json", json.dumps({"runtimeProcessFreshness": "source_changed_after_process_start"}))
         return path
 
     def test_adds_readonly_report_and_strips_secret_fields_and_private_paths(self):
@@ -30,7 +30,8 @@ class ReportBundleTests(unittest.TestCase):
                       "heartbeatFresh": True, "bdsSamples": 0,
                       "state": "IDLE",
                       "clientFeet": {"x": 1.5, "y": 67, "z": 0, "secret": "TOPSECRET"},
-                      "deathRecovery": {"phase": "respawn_stalled", "rawToken": "TOPSECRET"},
+                      "deathRecovery": {"phase": "waiting_for_server_respawn", "rawToken": "TOPSECRET"},
+                      "processStartAtUnixMs": 1792768544000,
                       "idleHold": {"reason": "scout_bds_position_unavailable",
                                    "chat": "TOPSECRET"},
                       "credentials": "TOPSECRET", "job": {"playerChat": "TOPSECRET"}}
@@ -57,13 +58,16 @@ class ReportBundleTests(unittest.TestCase):
                 self.assertNotIn(b"TOPSECRET", text)
                 self.assertNotIn(b"/home/PRIVATE", text)
                 self.assertNotIn("job", s)
-                self.assertEqual(s["deathRecovery"], {"phase": "respawn_stalled"})
+                self.assertEqual(s["deathRecovery"], {"phase": "waiting_for_server_respawn"})
+                self.assertEqual(s["processStartAtUnixMs"], 1792768544000)
                 self.assertEqual(d["recentLifecycle"][0]["event"], "spawn_confirmed")
                 self.assertEqual(d["currentOperatorLogBasename"],
                                  "operator-alice-2026-10-24.log")
                 report = z.read("REPORT.md").decode("utf-8")
                 self.assertIn("AliceAI", report)
                 self.assertIn("独立 BDS 样本数: 0", report)
+                self.assertIn("死亡复活阶段: waiting_for_server_respawn", report)
+                self.assertIn("source_changed_after_process_start", report)
             with self.assertRaisesRegex(ValueError, "twice"):
                 REPORT.add_report(zip_path, status, diagnose)
 

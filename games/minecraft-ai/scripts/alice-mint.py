@@ -13,6 +13,31 @@ from alice_operator.process import AliceProcess
 from alice_operator.diagnostics import diagnose
 
 
+
+def verified_process_start_ms(birth_token, *, proc_stat=None, ticks_per_second=None, now_ms=None):
+    """Observed Linux process birth, never a respawn/game-time estimate.
+
+    The token is the already identity-checked /proc/PID/stat starttime; btime
+    is the kernel boot epoch. Only expose a plausible timestamp, no environ.
+    """
+    try:
+        ticks = int(birth_token)
+        hz = ticks_per_second if ticks_per_second is not None else os.sysconf('SC_CLK_TCK')
+        if str(ticks) != str(birth_token) or ticks < 0 or type(hz) is not int or hz <= 0:
+            return None
+        lines = (pathlib.Path('/proc/stat').read_text() if proc_stat is None else proc_stat).splitlines()
+        boot = [row.split() for row in lines if row.startswith('btime ')]
+        if len(boot) != 1 or len(boot[0]) != 2:
+            return None
+        epoch = int(boot[0][1])
+        start = epoch * 1000 + ticks * 1000 // hz
+        limit = int(time.time() * 1000) if now_ms is None else now_ms
+        return start if epoch > 0 and epoch * 1000 <= start <= limit + 1000 else None
+    except (ValueError, TypeError, OSError, OverflowError):
+        return None
+
+
+
 def status(app):
     owner = app.owner()
     inspected = app.inspect(owner) if owner else None
@@ -33,11 +58,13 @@ def status(app):
         'no_running_process' if owner is None else
         'awaiting_current_process_heartbeat'
     )
+    started = verified_process_start_ms(inspected[1]) if matching else None
     m = data.get('movementEvidence') or {}
     age = round(time.time() - file.stat().st_mtime, 1) if matching else None
     return {'pid': owner['pid'] if owner else None, 'processAlive': owner is not None,
             'statusSource': source,
             'statusFilePid': file_pid if type(file_pid) is int else None,
+            'processStartAtUnixMs': started,
             'heartbeatAgeSeconds': age, 'heartbeatFresh': age is not None and 0 <= age < 15,
             'reportedConnected': data.get('connected'),
             'sessionEstablished': data.get('sessionEstablished'),

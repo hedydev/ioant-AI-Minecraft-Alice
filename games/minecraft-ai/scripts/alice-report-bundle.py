@@ -17,8 +17,15 @@ STATUS_ENUMS = {
 BOOL_STATUS = ("processAlive", "heartbeatFresh", "reportedConnected", "sessionEstablished")
 INT_STATUS = ("pid", "statusFilePid", "bdsSamples")
 NUM_STATUS = ("heartbeatAgeSeconds", "health", "serverTravelBlocks")
-PHASES = {"alive", "dead", "respawn_stalled", "respawning", "server_ready", "respawn_verified",
-          "dead_waiting_ready", "dead_waiting_spawn", "not_dead", "unavailable"}
+PHASES = {
+    # Exact fixed phase values from src/respawn_recovery.cjs. No dynamic or
+    # arbitrary server response is ever exported through this field.
+    "idle", "waiting_for_server_respawn", "cannot_retry_without_player_runtime_id",
+    "respawn_ready_retried_waiting_for_server", "respawn_action_after_server_ready",
+    "respawn_action_retried_once", "respawn_retry_send_failed", "server_ready_seen",
+    "health_restored_awaiting_spawn", "spawn_without_positive_health",
+    "respawn_verified", "transport_closed_during_respawn", "respawn_stalled"
+}
 LIFECYCLE = {"session_lifecycle", "server_disconnect", "session_closed", "connection_ended",
              "server_kicked", "respawn_recovery", "death_observed", "spawn_confirmed",
              "shutdown_requested", "uncaught_runtime_error"}
@@ -71,6 +78,10 @@ def sanitize_status(raw):
     for key in INT_STATUS:
         if integer(raw.get(key)):
             result[key] = raw[key]
+    # PID birth timestamp is not a generic integer: milliseconds exceed 32 bits.
+    v = raw.get("processStartAtUnixMs")
+    if type(v) is int and 946684800000 <= v <= 4102444800000:
+        result["processStartAtUnixMs"] = v
     for key in NUM_STATUS:
         if finite(raw.get(key)):
             result[key] = raw[key]
@@ -189,6 +200,15 @@ def add_report(archive_path, status, diagnose, *, now=None):
         manifest = json.loads(z.read("manifest.json"))
         if not isinstance(manifest, dict):
             raise ValueError("Malformed acceptance manifest")
+        deployment = json.loads(z.read("deployment.json"))
+        source_state = deployment.get("runtimeProcessFreshness") if isinstance(deployment, dict) else None
+        allowed_source_states = {
+            "source_changed_after_process_start",
+            "source_not_newer_than_process_start",
+            "unknown_process_start"
+        }
+        if not isinstance(source_state, str) or source_state not in allowed_source_states:
+            source_state = "unknown_process_start"
         summary = [
             "# AliceAI 只读运行验收报告",
             "",
@@ -213,10 +233,12 @@ def add_report(archive_path, status, diagnose, *, now=None):
             f"- 死亡复活阶段: {_value(status.get('deathRecovery') or {}, 'phase')}",
             "",
             "## 单实例和部署信息",
+            f"- 验证的 Node 进程启动时间（Unix ms）: {_value(status, 'processStartAtUnixMs')}",
+            f"- 当前磁盘源码与 Node 启动先后关系: {source_state}",
             f"- 运维扫描可疑实例: {_value(diagnose, 'candidateCount')}",
             f"- 潜在重复进程: {_value(diagnose, 'possibleDuplicate')}",
             f"- 锁匹配: {_value(diagnose, 'ownerMatchesCandidate')}",
-            "- deployment.json 仅验证 Mac/Mint 磁盘哈希与源码修改时间，不能单独证明 Node 已重载。",
+            "- 若源码文件在已验证 PID 启动后修改，则当前 Node 未被证明加载新版代码。即使文件较旧，也不是模块已加载的绝对证明。",
             "- 本报告不执行部署、重启、世界修改、查询 BDS 控制台或创建新 Xbox 登录。",
             "- 客户端本地预测坐标与发送的数据包，不等于 BDS 服务器证实移动。",
             "",

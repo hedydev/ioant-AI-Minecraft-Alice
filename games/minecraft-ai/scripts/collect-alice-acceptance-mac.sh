@@ -38,7 +38,20 @@ ssh -o BatchMode=no -o ConnectTimeout=10 "$remote" \
 echo "[Alice acceptance] Exporting last $hours hour(s) from $remote ..."
 ssh -o BatchMode=no -o ConnectTimeout=10 "$remote" \
   "python3 minecraft-ai/scripts/export-alice-acceptance.py --hours $hours" > "$tmp"
-python3 - "$tmp" "$source_root" "$remote_info" <<'PY'
+# These CLI commands are observational and use the existing Alice ownership
+# checks. Their raw output is never put in the ZIP; the bundler uses a strict
+# allowlist to avoid private log paths, credentials, chat or arbitrary fields.
+if ! ssh -o BatchMode=no -o ConnectTimeout=10 "$remote" \
+  "python3 minecraft-ai/scripts/alice-mint.py status" > "$status_capture" 2>/dev/null; then
+  printf '{"_capture":"unavailable"}\n' > "$status_capture"
+  echo "[Alice report] Current status unavailable; marked unknown in ZIP." >&2
+fi
+if ! ssh -o BatchMode=no -o ConnectTimeout=10 "$remote" \
+  "python3 minecraft-ai/scripts/alice-mint.py diagnose" > "$diagnose_capture" 2>/dev/null; then
+  printf '{"_capture":"unavailable"}\n' > "$diagnose_capture"
+  echo "[Alice report] Current diagnose unavailable; marked unknown in ZIP." >&2
+fi
+python3 - "$tmp" "$source_root" "$remote_info" "$status_capture" <<'PY'
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -47,7 +60,7 @@ import re
 import sys
 import zipfile
 
-archive, local_root, remote_info = sys.argv[1:]
+archive, local_root, remote_info, status_capture = sys.argv[1:]
 filenames = ("runtime.cjs", "direct_flat_step.cjs",
              "escape_crossing.cjs", "acceptance_log.cjs")
 remote_hashes = {}
@@ -93,40 +106,42 @@ with zipfile.ZipFile(archive) as z:
     print("[Alice acceptance] {} records, {} status samples".format(
         info["records"], info["samples"]))
 match_all = all(item["matches"] for item in versions.values())
-freshness = "unknown_no_spawn_event"
-if last_spawn is not None:
-    freshness = ("source_changed_after_last_spawn"
-                 if runtime_mtime * 1000 > last_spawn + 1000
-                 else "source_not_newer_than_last_spawn")
+# A Bedrock spawn happens again after every death. It is never the Node
+# process creation time and must NOT be used to validate loaded source.
+try:
+    status = json.loads(Path(status_capture).read_text())
+except (ValueError, OSError):
+    status = {}
+process_start = status.get("processStartAtUnixMs")
+trusted_start = (
+    status.get("statusSource") == "current_process" and
+    type(status.get("pid")) is int and status["pid"] > 1 and
+    type(process_start) is int and process_start > 0
+)
+freshness = "unknown_process_start"
+if trusted_start:
+    freshness = ("source_changed_after_process_start"
+                 if runtime_mtime * 1000 > process_start + 1000
+                 else "source_not_newer_than_process_start")
 identity = {
     "checkedAtUTC": datetime.now(timezone.utc).isoformat(),
     "files": versions, "diskFilesMatchMac": match_all,
     "latestSpawnAt": last_spawn, "runtimeFileMtime": runtime_mtime,
+    "verifiedProcessStartAtUnixMs": process_start if trusted_start else None,
     "runtimeProcessFreshness": freshness,
-    "note": "On-disk hashes are not proof of loaded Node modules; last spawn is a heuristic.",
+    "note": "Uses verified Linux PID birth time, never Bedrock respawn time. Disk hash and file dates still cannot prove actual Node module reload.",
 }
 with zipfile.ZipFile(archive, "a", compression=zipfile.ZIP_DEFLATED) as z:
     z.writestr("deployment.json", json.dumps(identity, indent=2))
 if not match_all:
     print("[Alice acceptance] WARNING: Mint files differ from Mac. Update/sync before testing.")
-if freshness == "source_changed_after_last_spawn":
-    print("[Alice acceptance] WARNING: Runtime source changed after Alice last spawned. Restart Alice after tests.")
-if match_all and freshness == "source_not_newer_than_last_spawn":
-    print("[Alice acceptance] Disk source hashes match; runtime restart order looks consistent.")
+if freshness == "source_changed_after_process_start":
+    print("[Alice acceptance] WARNING: Runtime source changed after verified Node process start. Live process has not been proven to reload it; no restart performed.")
+if freshness == "unknown_process_start":
+    print("[Alice acceptance] WARNING: Verified Node process birth time unavailable. Runtime source freshness is unknown.")
+if match_all and freshness == "source_not_newer_than_process_start":
+    print("[Alice acceptance] Disk files match and are not newer than Node process; loaded modules remain unverified.")
 PY
-# These CLI commands are observational and use the existing Alice ownership
-# checks. Their raw output is never put in the ZIP; the bundler uses a strict
-# allowlist to avoid private log paths, credentials, chat or arbitrary fields.
-if ! ssh -o BatchMode=no -o ConnectTimeout=10 "$remote" \
-  "python3 minecraft-ai/scripts/alice-mint.py status" > "$status_capture" 2>/dev/null; then
-  printf '{"_capture":"unavailable"}\n' > "$status_capture"
-  echo "[Alice report] Current status unavailable; marked unknown in ZIP." >&2
-fi
-if ! ssh -o BatchMode=no -o ConnectTimeout=10 "$remote" \
-  "python3 minecraft-ai/scripts/alice-mint.py diagnose" > "$diagnose_capture" 2>/dev/null; then
-  printf '{"_capture":"unavailable"}\n' > "$diagnose_capture"
-  echo "[Alice report] Current diagnose unavailable; marked unknown in ZIP." >&2
-fi
 python3 "$(dirname "$0")/alice-report-bundle.py" \
   "$tmp" "$status_capture" "$diagnose_capture"
 mv "$tmp" "$dest"

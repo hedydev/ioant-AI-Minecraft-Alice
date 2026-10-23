@@ -49,7 +49,7 @@
       "icon": "📦",
       "group": "运维与可观测性",
       "status": "staged",
-      "detail": "日志页与3D页可将近三小时的结构化、匿名验收数据打包ZIP下载；沿用已有Mint allowlist exporter，通过Mac loopback Nginx限制访问。不导出Xbox令牌、原始认证日志和世界存档。 2026-10-24新增 Mac `alice-mac.sh report`，在原桌面 ZIP 中汇合白名单化状态、生命周期诊断与独立报告摘要，报告生成仍需用户在 Mac 执行，Mint 实机验收待做。"
+      "detail": "日志页与3D页可将近三小时的结构化、匿名验收数据打包ZIP下载；沿用已有Mint allowlist exporter，通过Mac loopback Nginx限制访问。不导出Xbox令牌、原始认证日志和世界存档。 2026-10-24新增 Mac `alice-mac.sh report`，在原桌面 ZIP 中汇合白名单化状态、生命周期诊断与独立报告摘要，报告生成仍需用户在 Mac 执行，Mint 实机验收待做。 2026-10-24实机一键包确证可用；随后修正复活阶段白名单及用Linux受核实PID的进程创建时间对比源码更新时间，防止游戏死亡后反复spawn冒充新版进程启动。新版判据尚待Mac/Mint实测。"
     },
     {
       "name": "BDS复活就绪后最终确认与受困自卫",
