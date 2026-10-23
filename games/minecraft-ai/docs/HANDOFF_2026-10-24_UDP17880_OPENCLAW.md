@@ -64,3 +64,18 @@
 - No inference that a missing process PID means an absent owner, that a read-only check proved BDS readiness, or that a launch-probe report from before the `isolationConfigReady` fix attests hardened clone state.
 - No unattended OpenClaw administrator-password auto-entry is implemented/accepted in the checked-in Mac repository. Do not assume the failed local development of a proposed credential bridge was committed.
 - This handoff preserves the user's last observed **628/628** Mint test evidence; tests for the **new elevated owner audit** and live Mint owner identification have not yet been provided by the operator.
+
+
+## Next-agent decision table — operator checkpoint (2026-10-24)
+
+This handoff has been reconfirmed against live user output and the current repository, not against a live Mint SSH session. The last ordinary `witness-lab-port-check` was already executed successfully; **do not request it repeatedly**. The next distinct evidence request is only `witness-lab-port-owner`, a maintained, bounded **read-only**, human-authenticated action. It is not an OpenClaw automatic privileged action.
+
+| Fresh `witness-lab-port-owner` result | Safe interpretation and immediate next action |
+| --- | --- |
+| `ipv4_17880=in_use`, `ownerVisible=true`, a PID/name is returned | A socket PID has been observed, but its service identity and whether it is protected still need independent read-only verification. Check ownership and exact process birth token before proposing any action; do not terminate it or assume a name alone identifies the 17879 server. |
+| `ipv4_17880=in_use`, `ownerVisible=false` | The port is still blocked and PID remains unknown. Do not guess or kill. Investigate whether Mint's elevated filtered `ss` actually ran and what read-only permission boundary persists; no 17880 startup retry. |
+| `socketOwners.status=unavailable` | The owner audit did not provide trusted socket evidence. Preserve the independent `ipv4_17880` bind result and report exactly which allowlisted audit path is unavailable; do not treat `unavailable` as a free port. |
+| `ipv4_17880=available` in a later independent sample | Availability is a **point-in-time observation only**. Before any experimental startup, separately review the prior one-shot attempt, lab backups/locks and production process identities; require a fresh explicit scoped approval. |
+| `ownerAuditRequested=false` | The operator did not perform the elevated owner audit, so the response must not be represented as sudo-backed process identification. |
+
+**Verified now:** Alice Mint tests 628/628 pass; latest ordinary UDP port evidence at Unix time `1792799119` showed 17880 in use, 17881 available, one socket row with owner not visible, and no clone backup/instrumentation/lock markers. **Not yet verified:** owner PID, whether it belongs to production/MCSManager, new elevated owner-audit tests on Mac, actual 17880 BDS startup/imports/exit, or automated ChatGPT ↔ OpenClaw result roundtrip. **Do not share/record administrator passwords.** The operator's original one-shot startup attempt remained blocked with `lab_udp_ports_busy` and no positive BDS-ready or module-import evidence.
