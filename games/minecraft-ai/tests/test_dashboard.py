@@ -84,8 +84,10 @@ class ObservedWorldCoverageTests(unittest.TestCase):
         self.assertIn('radius<15',script)
         self.assertIn('Mint 仍在使用旧采样器',script)
         self.assertIn('scout_bds_position_unavailable',script)
-        self.assertIn('horizontalFade',script)
-        self.assertIn('bottomFade',script)
+        # Sampling coverage is independent of Canvas styling. The visual
+        # regression below intentionally rejects the removed edge-mask fade.
+        self.assertNotIn('horizontalFade',script)
+        self.assertNotIn('bottomFade',script)
 
 class ExpandedWorldTransportTests(unittest.TestCase):
 
