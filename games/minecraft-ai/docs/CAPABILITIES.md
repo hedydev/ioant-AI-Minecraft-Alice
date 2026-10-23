@@ -1,3 +1,7 @@
+## 2026-10-24: Read-only UDP lab owner hints
+
+Maintained `witness-lab-port-check` now adds best-effort `socketOwners` derived from a strictly filtered `ss` read-only UDP query to help identify what blocks IPv4 17880. It retains only target port, family and optionally safe-bounded process name/PID, not raw addresses, unrelated sockets or command lines. A hidden process owner is represented as unknown; no privilege escalation, process control or lab startup occurs. Requires operator acceptance of updated Mac Python tests and actual Mint JSON before claiming an owner. Existing 17880 one-shot and production 17879 gates remain untouched.
+
 ## Experimental BDS 17880 UDP port diagnosis (2026-10-24)
 
 **Status: implemented, real Mint acceptance pending.** `alice-mac.sh witness-lab-port-check` runs a bounded read-only Mint Python bind test for isolated lab UDP 17880/17881, classifying `available/in_use/permission_denied/family_unsupported/socket_error` separately for IPv4 and IPv6. It additionally reports fixed booleans for presence of one-shot lab configuration/instrumentation/lock files. This is not evidence of BDS owner identity, world compatibility, loaded scripts or successful lab startup. A failed prior probe remains one-shot and must not be automatically retried. Existing `witness-lab-startup-probe` retained its fail-closed port guard; blocked probe reports no longer falsely claim isolation configuration is ready merely because mode is probe.

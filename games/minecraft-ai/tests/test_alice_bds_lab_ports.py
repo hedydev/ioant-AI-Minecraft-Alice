@@ -2,6 +2,7 @@
 import errno
 import importlib.util
 from pathlib import Path
+from types import SimpleNamespace
 import socket
 import tempfile
 import unittest
@@ -67,7 +68,7 @@ class LabPortCheckTests(unittest.TestCase):
         def inspector(family, addr):
             return "in_use" if family == socket.AF_INET6 else "available"
         with tempfile.TemporaryDirectory() as tmp:
-            with patch.object(P, "preparation_markers", return_value={
+            with patch.object(P, "socket_owners", return_value={"status": "unavailable", "sockets": []}), patch.object(P, "preparation_markers", return_value={
                 "labDirectory": "missing",
                 "configBackupPresent": False,
                 "scriptBackupPresent": False,
@@ -112,6 +113,50 @@ class LabPortCheckTests(unittest.TestCase):
             self.assertTrue(defaults["probeLockPresent"])
             mock_home.assert_called_once_with()
             self.assertEqual(defaults, P.preparation_markers(home=root))
+
+    def test_owner_hints_are_only_for_fixed_udp_ports_and_sanitized(self):
+        sample = (
+            'UNCONN 0 0 0.0.0.0:17880 0.0.0.0:* users:(("bedrock_server",pid=12345,fd=7))\n'
+            'UNCONN 0 0 [::]:17881 [::]:* users:(("testproc",pid=542,fd=10))\n'
+            'UNCONN 0 0 0.0.0.0:19032 0.0.0.0:* users:(("privateapp",pid=999,fd=4))\n'
+        )
+        def runner(args, **options):
+            self.assertEqual(args, ["ss", "-H", "-u", "-a", "-n", "-p",
+                                    "(", "sport", "=", ":17880", "or",
+                                    "sport", "=", ":17881", ")"])
+            self.assertEqual(options["timeout"], 5)
+            return SimpleNamespace(returncode=0, stdout=sample)
+        output = P.socket_owners(run=runner)
+        self.assertEqual(output["status"], "observed")
+        self.assertEqual(len(output["sockets"]), 2)
+        self.assertEqual(output["sockets"][0]["owners"],
+                         [{"pid": 12345, "process": "bedrock_server"}])
+        self.assertEqual(output["sockets"][1]["family"], "ipv6")
+        self.assertNotIn("privateapp", str(output))
+        self.assertNotIn("19032", str(output))
+        self.assertNotIn("0.0.0.0", str(output))
+
+    def test_owner_missing_permissions_do_not_invent_pid(self):
+        sample = 'UNCONN 0 0 0.0.0.0:17880 0.0.0.0:*\n'
+        output = P.socket_owners(run=lambda *a, **k: SimpleNamespace(
+            returncode=0, stdout=sample))
+        self.assertFalse(output["sockets"][0]["ownerVisible"])
+        self.assertEqual(output["sockets"][0]["owners"], [])
+
+    def test_unavailable_socket_listing_is_not_treated_as_free(self):
+        def missing(*args, **kwargs):
+            raise FileNotFoundError("ss unavailable")
+        result = P.socket_owners(run=missing)
+        self.assertEqual(result, {"status": "unavailable", "sockets": []})
+
+    def test_real_socket_owner_listing_is_mocked_in_report_tests(self):
+        with patch.object(P, "socket_owners", return_value={
+            "status": "observed", "sockets": []
+        }) as owner:
+            with patch.object(P, "preparation_markers", return_value={}):
+                result = P.make_report(inspector=lambda fam, addr: "available")
+        owner.assert_called_once_with()
+        self.assertEqual(result["socketOwners"]["sockets"], [])
 
     def test_existing_17880_action_gate_is_unchanged(self):
         entry=(SCRIPT.parent / "alice-mac.sh").read_text()
