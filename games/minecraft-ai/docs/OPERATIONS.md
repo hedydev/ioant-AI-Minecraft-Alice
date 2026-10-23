@@ -1,3 +1,7 @@
+## 2026-10-24 — Successor handoff / current owner-audit checkpoint
+
+Read [HANDOFF_2026-10-24_UDP17880_OPENCLAW.md](HANDOFF_2026-10-24_UDP17880_OPENCLAW.md) before the next AliceAI 17880 task. Last user-run `witness-lab-port-check` after **628/628** Mint Node tests: UDP IPv4 17880 is in use, IPv6 17881 is available, socket row exists but PID/process name is **not visible** to unprivileged `ss`; lab clone backup/lock presence booleans are false. Do **not** rerun the one-shot startup or stop a guessed process. Current maintained entrypoint `alice-mac.sh witness-lab-port-owner` performs an explicitly operator-authenticated, read-only fixed UDP 17880/17881 owner audit and has no live result yet. Use the exact operator commands and interpret evidence as documented in the handoff. No modification to 17879 production BDS/world.
+
 ## 2026-10-24 07:45 — read-only privileged owner audit for UDP 17880 (explicit manual action)
 
 Live Mint JSON after 628/628 tests: `ipv4_17880=in_use`, `ipv6_17881=available`; one 17880 socket row in `socketOwners`, but `ownerVisible=false` and `owners=[]`. This proves no visible PID from the ordinary Mint account, NOT that there is no socket owner. Isolated lab directory exists; configuration/script backups and probe lock all absent. Never kill a service or rerun the one-shot BDS probe on these facts.
