@@ -77,6 +77,44 @@ class LabPackTests(unittest.TestCase):
         self.assertEqual(production_marker.read_bytes(), b"original")
         self.assertEqual(PACK.stage(), "blocked_existing_pack_or_world_registration")
 
+    def test_pristine_lab_missing_pack_and_config_dirs_can_be_staged(self):
+        # The actual 17880 lab was created from a BDS installation whose
+        # optional pack/config directories might not have existed.
+        (self.lab / "behavior_packs").rmdir()
+        (self.lab / "config").rmdir()
+        self.assertEqual(PACK.inspect(), "ready_for_new_lab_only_pack")
+        self.assertFalse((self.lab / "behavior_packs").exists())
+        self.assertFalse((self.lab / "config").exists())
+        original = (self.lab / "worlds" / "Bedrock level" / "level.dat").read_bytes()
+        self.assertEqual(PACK.stage(), "lab_pack_staged_without_beta_or_network")
+        self.assertTrue((self.lab / "behavior_packs" / PACK.PACK_NAME / "manifest.json").is_file())
+        self.assertTrue((self.lab / "config" / PACK.MODULE_ID / "permissions.json").is_file())
+        self.assertEqual((self.lab / "worlds" / "Bedrock level" / "level.dat").read_bytes(), original)
+        self.assertFalse((self.lab / "config" / PACK.MODULE_ID / "secrets.json").exists())
+        self.assertEqual(PACK.stage(), "blocked_existing_pack_or_world_registration")
+
+    def test_symlinked_optional_lab_parent_is_refused_no_write(self):
+        outside = self.prod / "external-config"
+        outside.mkdir()
+        (self.lab / "config").rmdir()
+        (self.lab / "config").symlink_to(outside, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, "lab_parent_directory_invalid"):
+            PACK.stage()
+        self.assertFalse((self.lab / "behavior_packs" / PACK.PACK_NAME).exists())
+        self.assertFalse(list(outside.iterdir()))
+
+    def test_sanitized_main_reports_known_precondition_reason(self):
+        (self.lab / "config").rmdir()
+        (self.lab / "config").symlink_to(self.prod, target_is_directory=True)
+        with patch.object(sys, "argv", ["alice-bds-lab-pack.py", "stage"]):
+            with patch("builtins.print") as printed:
+                self.assertEqual(PACK.main(), 0)
+        payload = json.loads(printed.call_args.args[0])
+        self.assertEqual(payload["state"], "preconditions_failed")
+        self.assertEqual(payload["reason"], "lab_parent_directory_invalid")
+        self.assertFalse(payload["productionModified"])
+        self.assertNotIn(str(self.prod), json.dumps(payload))
+
     def test_existing_pack_list_refused_unmodified(self):
         registration = self.lab / "worlds" / "Bedrock level" / "world_behavior_packs.json"
         original = '[{"pack_id":"some-other-pack"}]'
@@ -123,6 +161,7 @@ class LabPackTests(unittest.TestCase):
         self.assertIn("alice-bds-lab-pack-mac.sh", entry)
         self.assertIn('"productionModified":False', wrapper)
         self.assertIn('"labBdsStartedByThisAction":False', wrapper)
+        self.assertIn('"reason":{"none","proc_unavailable"', wrapper)
         self.assertNotIn("systemctl", wrapper)
 
 

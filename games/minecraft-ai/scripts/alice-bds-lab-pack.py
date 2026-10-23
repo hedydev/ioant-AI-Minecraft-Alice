@@ -111,9 +111,15 @@ def require_eligible():
         or "runCommand" in (SOURCE / "scripts" / "main.js").read_text(encoding="utf-8")
         or set(source_permissions.get("module_permissions", {})) != {"@minecraft/server-net"}):
         raise ValueError("unreviewed_source_pack")
-    for folder in (LAB / "behavior_packs", LAB / "config", LAB / "worlds" / WORLD):
-        if not directory(folder):
-            raise ValueError("lab_directory_missing_or_symlink")
+    # A pristine Bedrock server is allowed to have NO behavior_packs/ or
+    # config/ directory. The isolated backup restore copies source layout
+    # faithfully, so these empty directories may never have existed.
+    # Only the disposable stage action may create them (never check).
+    for folder in (LAB / "behavior_packs", LAB / "config"):
+        if folder.is_symlink() or (folder.exists() and not directory(folder)):
+            raise ValueError("lab_parent_directory_invalid")
+    if not directory(LAB / "worlds" / WORLD):
+        raise ValueError("lab_world_missing")
     return source_manifest, source_permissions
 
 
@@ -139,6 +145,16 @@ def stage():
     pack = LAB / "behavior_packs" / PACK_NAME
     module = LAB / "config" / MODULE_ID
     registration = LAB / "worlds" / WORLD / "world_behavior_packs.json"
+    # Create only the missing top-level lab directories. A fresh BDS clone
+    # often lacks these; never follow symlinks or overwrite existing entries.
+    # The read-only check mode must never create them.
+    for parent in (LAB / "behavior_packs", LAB / "config"):
+        if parent.is_symlink():
+            raise ValueError("lab_parent_directory_invalid")
+        if not parent.exists():
+            parent.mkdir(mode=0o700)
+        elif not directory(parent):
+            raise ValueError("lab_parent_directory_invalid")
     # Destination paths are exclusive. Failed operations never touch the
     # production tree; preserve partial states instead of deleting unknown files.
     pack.mkdir(mode=0o700)
@@ -162,10 +178,10 @@ def stage():
     return "lab_pack_staged_without_beta_or_network"
 
 
-def report(mode, state):
+def report(mode, state, reason="none"):
     return {"audit": "ALICE_BDS_LAB_PACK_ONLY", "schemaVersion": 1,
             "observedAtUnix": int(time.time()),
-            "mode": mode, "state": state,
+            "mode": mode, "state": state, "reason": reason,
             "betaApisExperiment": beta_api_experiment(LAB / "worlds" / WORLD / "level.dat"),
             "labOnly": True, "betaNbtModified": False, "secretsInstalled": False,
             "networkEnabled": False, "productionModified": False,
@@ -177,11 +193,25 @@ def main():
     mode = sys.argv[1] if len(sys.argv) == 2 else "invalid"
     if mode not in ("check", "stage"):
         raise SystemExit("Usage: alice-bds-lab-pack.py check|stage")
+    # Fixed-code reasons, never an arbitrary exception, file path, username
+    # or token. Diagnostics stay useful without exposing server-private data.
+    reasons = {
+        "proc_unavailable", "bds_cwd_unverified", "lab_bds_is_running",
+        "lab_or_production_directory_missing", "lab_world_missing",
+        "invalid_json_file", "lab_marker_mismatch", "lab_properties_missing",
+        "lab_server_properties_mismatch", "lab_level_missing",
+        "unreviewed_source_pack", "lab_parent_directory_invalid"
+    }
+    reason = "none"
     try:
         result = stage() if mode == "stage" else inspect()
-    except (ValueError, TypeError, OSError, KeyError, UnicodeError):
+    except ValueError as exc:
         result = "preconditions_failed"
-    print(json.dumps(report(mode, result), separators=(",", ":")))
+        reason = str(exc) if str(exc) in reasons else "unknown_precondition"
+    except (TypeError, OSError, KeyError, UnicodeError):
+        result = "preconditions_failed"
+        reason = "io_or_schema_error"
+    print(json.dumps(report(mode, result, reason), separators=(",", ":")))
     return 0
 
 

@@ -42,6 +42,13 @@ allowed={
     "state":{"preconditions_failed","ready_for_new_lab_only_pack",
              "blocked_existing_pack_or_world_registration",
              "lab_pack_staged_without_beta_or_network"},
+    "reason":{"none","proc_unavailable","bds_cwd_unverified",
+              "lab_bds_is_running","lab_or_production_directory_missing",
+              "lab_world_missing","invalid_json_file","lab_marker_mismatch",
+              "lab_properties_missing","lab_server_properties_mismatch",
+              "lab_level_missing","unreviewed_source_pack",
+              "lab_parent_directory_invalid","unknown_precondition",
+              "io_or_schema_error"},
     "betaApisExperiment":{"enabled_in_level_dat","disabled_in_level_dat",
                           "not_declared_in_level_dat","unverified"}}
 safe={"audit":"ALICE_BDS_LAB_PACK_ONLY","schemaVersion":1,
