@@ -37,9 +37,10 @@ def inspect_port(family, addr, socket_factory=socket.socket):
 
 
 
-def preparation_markers(home=Path.home):
-    """Presence indicators only, not authority to reset an experiment."""
-    lab = home() / "minecraft-bedrock-alice-lab"
+def preparation_markers(home=None):
+    """Presence indicators only; resolve home at call time for isolated tests."""
+    root = Path.home() if home is None else Path(home)
+    lab = root / "minecraft-bedrock-alice-lab"
     if lab.is_symlink():
         return {"labDirectory": "symlink", "configBackupPresent": False,
                 "scriptBackupPresent": False, "probeLockPresent": False}

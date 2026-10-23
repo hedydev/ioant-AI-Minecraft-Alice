@@ -99,6 +99,20 @@ class LabPortCheckTests(unittest.TestCase):
                 self.assertFalse(marks["scriptBackupPresent"])
                 self.assertEqual(list(lab.iterdir()),before)
 
+    def test_home_lookup_is_not_captured_at_import_time(self):
+        # P.Path.home is patched AFTER module import. The default must resolve
+        # to this test-only location, never the actual user home.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            lab = root / "minecraft-bedrock-alice-lab"
+            lab.mkdir()
+            (lab / ".alice-lab-probe.lock").write_text("")
+            with patch.object(P.Path, "home", return_value=root) as mock_home:
+                defaults = P.preparation_markers()
+            self.assertTrue(defaults["probeLockPresent"])
+            mock_home.assert_called_once_with()
+            self.assertEqual(defaults, P.preparation_markers(home=root))
+
     def test_existing_17880_action_gate_is_unchanged(self):
         entry=(SCRIPT.parent / "alice-mac.sh").read_text()
         self.assertIn("witness-lab-port-check",entry)
