@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+"""Canonical Mint operator CLI. See docs/OPERATIONS.md for lifecycle and privacy."""
+import argparse
+import json
+import os
+import pathlib
+import subprocess
+import sys
+import time
+
+from alice_operator.config import load_environment, private_json, private_path, save_environment
+from alice_operator.process import AliceProcess
+from alice_operator.diagnostics import diagnose
+
+
+def status(app):
+    owner = app.owner()
+    inspected = app.inspect(owner) if owner else None
+    file = app.root / 'status.json'
+    previous = private_json(file, limit=8192) if file.exists() else {}
+    # status.json is shared across restarts. Its mtime alone cannot prove it
+    # belongs to the currently locked process; previous Alice can have written
+    # a heartbeat just milliseconds before its clean SIGINT shutdown.
+    file_pid = previous.get('producerPid')
+    matching = (
+        owner is not None and
+        type(file_pid) is int and file_pid == owner['pid'] and
+        isinstance(previous.get('producerStartToken'), str) and
+        previous['producerStartToken'] == inspected[1]
+    )
+    data = previous if matching else {}
+    source = 'current_process' if matching else (
+        'no_running_process' if owner is None else
+        'awaiting_current_process_heartbeat'
+    )
+    m = data.get('movementEvidence') or {}
+    age = round(time.time() - file.stat().st_mtime, 1) if matching else None
+    return {'pid': owner['pid'] if owner else None, 'processAlive': owner is not None,
+            'statusSource': source,
+            'statusFilePid': file_pid if type(file_pid) is int else None,
+            'heartbeatAgeSeconds': age, 'heartbeatFresh': age is not None and 0 <= age < 15,
+            'reportedConnected': data.get('connected'),
+            'sessionEstablished': data.get('sessionEstablished'),
+            'sessionExit': data.get('sessionExit'),
+            'deathRecovery': data.get('deathRecovery'),
+            'health': data.get('health'),
+            'state': data.get('state'), 'job': data.get('job'), 'clientFeet': data.get('position'),
+            'serverFeet': m.get('latestFeet'), 'serverTravelBlocks': m.get('travelBlocks'),
+            'bdsSamples': m.get('independentSamples'),
+            'idleHold': (data.get('worldRoutine') or {}).get('idleHold')}
+
+
+def main(argv=None):
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('action', choices=['capture-config', 'check', 'test', 'status', 'diagnose', 'start', 'restart', 'logs'])
+    args = p.parse_args(argv)
+    if sys.platform != 'linux':
+        raise ValueError('Run alice-mint.py on Mint; use alice-mac.sh on Mac')
+    app = AliceProcess()
+    if args.action == 'status':
+        result = status(app)
+    elif args.action == 'diagnose':
+        result = diagnose(app)
+    elif args.action == 'test':
+        env = {**os.environ, 'PATH': str(app.node.parent) + os.pathsep + os.environ.get('PATH', '')}
+        return subprocess.call([str(app.node), '--test', *sorted(str(f) for f in (app.project / 'test').glob('*.test.cjs')),
+                                *sorted(str(f) for f in (app.project.parent / 'test').glob('*.test.cjs'))], cwd=app.project, env=env)
+    else:
+        owner = app.owner()
+        if args.action == 'start' and owner:
+            raise ValueError('Alice is already running; use: python3 ~/minecraft-ai/scripts/alice-mint.py restart')
+        if args.action in ('restart', 'capture-config', 'logs') and not owner:
+            raise ValueError('No active Alice process; use start with saved private configuration')
+        if args.action == 'logs':
+            app.inspect(owner)
+            log = (pathlib.Path('/proc') / str(owner['pid']) / 'fd/1').resolve(strict=True)
+            if log.parent != app.root or not log.name.startswith('operator-'):
+                raise ValueError('Alice output belongs to its original terminal; view that terminal')
+            private_path(log)
+            os.execvp('tail', ['tail', '-n', '60', '-F', str(log)])
+        env = app.inspect(owner)[2] if owner else load_environment(app.root)
+        if args.action == 'capture-config':
+            result = {'configCreated': save_environment(app.root, env),
+                      'file': str(app.root / 'operator-env.json'), 'credentialsStored': False}
+        elif args.action == 'check':
+            app.check(env)
+            if not owner:
+                app.wait_bds_release(env)
+            result = {'preflight': 'passed', 'activePid': owner['pid'] if owner else None,
+                      'action': 'use_restart' if owner else 'ready_for_start'}
+        else:
+            result = app.launch(env, owner if args.action == 'restart' else None)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0
+
+
+if __name__ == '__main__':
+    try:
+        raise SystemExit(main())
+    except (ValueError, OSError, subprocess.SubprocessError, KeyError) as exc:
+        # Only our fixed errors may be shown. Never print env, arbitrary JSON or subprocess stderr.
+        message = str(exc) if type(exc) is ValueError else type(exc).__name__
+        print('Alice operator: ' + message, file=sys.stderr)
+        raise SystemExit(1)
