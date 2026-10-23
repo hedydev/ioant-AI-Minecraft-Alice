@@ -1,3 +1,9 @@
+## 2026-10-24 04:xx — 147-test Mac run: one test double masked the real process audit
+
+- User Mac Python 3.15 regression: Ran 147 tests, failures=1, skipped=3. The only failing test was `test_process_guard_disambiguates_only_positively_identified_instances` with `reader.call_count=0` vs 1. No Alice BDS or lab operation was attempted since `alice-mac.sh sync` aborts at Python test failure.
+- Root cause VERIFIED in source: `LabPackTests.setUp()` universally patches `PACK.require_lab_stopped` to a no-op (essential to avoid scanning real /proc during ordinary unit tests). The new dedicated test also called that same mocked module attribute, so the real process-check function never executed, and no mocked `privileged_read_cwd` call could occur. This is NOT evidence that `sudo readlink` or real process classification failed in Mint.
+- Test-only fix: save original `PACK.require_lab_stopped` function in `self.real_process_guard` BEFORE fixture patch starts; invoke it in all three dedicated process identity branches and add assertion that it is not the fixture mock. Other tests continue to use mocked guard, production safety and privileged readlink logic remain unchanged. Re-run full Mac Python + Mint Node24 suites via safe sync before interactive witness-lab-pack-stage-verified action.
+
 ## 2026-10-24 04:19 — isolated lab staging blocked by process cwd visibility
 
 New report: state=preconditions_failed, reason=bds_cwd_unverified, Beta experiment not declared. This is not evidence that 17880 lab BDS is active. Added an explicit audited process identity check which only reads Linux process cwd using a system readlink command after interactive operator authorization; it leaves all world and lab writes unprivileged and keeps the fail-closed guard. New Mac action witness-lab-pack-stage-verified; success remains staged files only, not actual BDS module load or movement proof. Python/Mint regressions remain to be run.

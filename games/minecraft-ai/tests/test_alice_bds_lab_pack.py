@@ -54,6 +54,10 @@ class LabPackTests(unittest.TestCase):
         self.patch = patch.multiple(PACK, PRODUCTION=prod, LAB=lab, SOURCE=source)
         self.patch.start()
         self.addCleanup(self.patch.stop)
+        # Most tests must not inspect the real host's /proc, but the
+        # dedicated process-identity test needs the ORIGINAL function.
+        # Retain it before setUp replaces the module attribute with a mock.
+        self.real_process_guard = PACK.require_lab_stopped
         self.proc_guard = patch.object(PACK, "require_lab_stopped", return_value=None)
         self.proc_guard.start()
         self.addCleanup(self.proc_guard.stop)
@@ -181,6 +185,9 @@ class LabPackTests(unittest.TestCase):
 
     def test_process_guard_disambiguates_only_positively_identified_instances(self):
         from unittest.mock import patch as mockpatch
+        # The outer fixture intentionally mocks this globally. Calling
+        # PACK.require_lab_stopped here would test that mock, not the audit!
+        self.assertIsNot(self.real_process_guard, PACK.require_lab_stopped)
         with tempfile.TemporaryDirectory() as tempdir:
             proc = Path(tempdir)
             item = proc / "18420"
@@ -189,16 +196,16 @@ class LabPackTests(unittest.TestCase):
             # Missing cwd triggers the privileged reader, not a blanket skip.
             with mockpatch.object(PACK, "privileged_read_cwd",
                                   return_value=self.prod.resolve()) as reader:
-                PACK.require_lab_stopped(proc)
+                self.real_process_guard(proc)
                 self.assertEqual(reader.call_count, 1)
             with mockpatch.object(PACK, "privileged_read_cwd",
                                   return_value=self.lab.resolve()):
                 with self.assertRaisesRegex(ValueError, "lab_bds_is_running"):
-                    PACK.require_lab_stopped(proc)
+                    self.real_process_guard(proc)
             with mockpatch.object(PACK, "privileged_read_cwd",
                                   side_effect=ValueError("bds_cwd_requires_privileged_read")):
                 with self.assertRaisesRegex(ValueError, "bds_cwd_requires_privileged_read"):
-                    PACK.require_lab_stopped(proc)
+                    self.real_process_guard(proc)
 
     def test_control_entry_and_mac_sanitized_contract(self):
         entry = (SCRIPTS / "alice-mac.sh").read_text()
