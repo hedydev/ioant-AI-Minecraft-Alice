@@ -1,3 +1,5 @@
+> **独立仓库（2026-10-23）**：当前 AliceAI 产品正式代码在 [hedydev/ioant-AI-Minecraft-Alice](https://github.com/hedydev/ioant-AI-Minecraft-Alice)，保留内部 `games/minecraft-ai/` 相对路径以兼容现有 Mac/Mint 运维脚本。历史文档中 `cd ~/Documents/workspace/hero-skills` 必须替换为 `cd ~/Documents/workspace/ioant-AI-Minecraft-Alice`。新工作不要再向 Hero Skills 提交 Alice 代码。
+
 > **Native Bedrock operators and all AIs:** use the maintained [Mac/Mint operating guide](docs/OPERATIONS.md). Daily entrypoints are `scripts/alice-mac.sh` and `scripts/alice-mint.py`; older Paper instructions below are a separate integration.
 
 # Alice MC AI — Mindcraft teammate experiment

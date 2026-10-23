@@ -528,3 +528,12 @@ class WorldViewportClarityTests(unittest.TestCase):
         self.assertIn('formatVital(lifeValue)',js)
         self.assertIn('formatVital(foodValue)',js)
 
+
+class WorldIdleTruthTests(unittest.TestCase):
+    def test_navigation_block_preserves_factual_idle_and_no_fake_movement(self):
+        ui=(ROOT/'dashboard'/'world.js').read_text()
+        self.assertIn("positionBlocked=run?.state==='IDLE'",ui)
+        self.assertIn("位置安全阻塞 · 等待独立 BDS 见证",ui)
+        self.assertIn("setText('world-state',view.alice.state||'IDLE')",ui)
+        self.assertIn("holdAge<180000",ui)
+        self.assertNotIn("setText('world-state','MOVING')",ui)

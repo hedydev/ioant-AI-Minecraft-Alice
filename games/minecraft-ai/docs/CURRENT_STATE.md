@@ -1,3 +1,10 @@
+## 2026-10-23 — 独立仓库交接及阻塞 UI
+
+- 原 Hero Skills `games/minecraft-ai/` 的 283 个文件逐一核对路径、SHA、执行权限后迁入 `hedydev/ioant-AI-Minecraft-Alice`；Hero Skills 源目录已删除，仅保留知识索引。相对工程路径不变，Mac clone 新仓库后使用同一脚本。
+- Mac Canvas 采用有界宽高比、实际方块不再被人为透明 mask；HUD 生命/饥饿显示小数格式已修正。浏览器手感仍待验收。
+- 最新验收中长时间 IDLE 的根因是 `scout_bds_position_unavailable`，并非 Ollama 不思考。Dashboard 在新鲜可信阻塞证据出现时以“⛔ 位置安全阻塞”解释原始 `IDLE`；无法恢复服务器坐标证据时，绝不伪造移动成功。
+- BDS Script API 独立见证只完成源码，尚未获得 BDS 1.26.51 兼容性/世界行为包正式验收。本次迁仓没有重启 Alice、BDS、MCSManager、旧见证服务，也没有操作存档或账号。
+
 ## 2026-10-23 3D view/UI follow-up
 - Remove the faux fade/mask applied to real voxel edges. Only actual water/glass/leaves remain translucent.
 - Bound the viewport by 16:10 desktop (4:3 mobile) instead of an overly tall height, center the occupied voxel slice and recenter on a significant observation-origin change, preserve original drag/wheel speed.

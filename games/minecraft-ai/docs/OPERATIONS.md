@@ -1,3 +1,5 @@
+> **独立仓库（2026-10-23）**：当前 AliceAI 产品正式代码在 [hedydev/ioant-AI-Minecraft-Alice](https://github.com/hedydev/ioant-AI-Minecraft-Alice)，保留内部 `games/minecraft-ai/` 相对路径以兼容现有 Mac/Mint 运维脚本。历史文档中 `cd ~/Documents/workspace/hero-skills` 必须替换为 `cd ~/Documents/workspace/ioant-AI-Minecraft-Alice`。新工作不要再向 Hero Skills 提交 Alice 代码。
+
 ## 2026-10-23 — 可选 BDS Script API 无刷屏坐标见证（staged，未部署）
 当前 15:51 匿名验收证据：自主目标采木已选但 `scout_bds_position_unavailable` 阻止真实寻路，`witnessStatus=stale_or_invalid_witness`。旧 querytarget systemd 服务保持 disabled。
 源码新增 BDS 侧只读行为包 `bds-witness-pack/`、Mint 私有回环 HTTP `scripts/bds_script_witness.py`、独立证据校验和安全门禁兼容。脚本不执行 Minecraft 命令、不会在 MCSManager 控制台刷屏，拒绝缺少凭据、错误/重放身份、旧会话和过期数据。**BDS 1.26.51 的 server-net Beta 支持尚未验证，世界实验及停机配置均未更改，不能声称 Alice 恢复移动。**

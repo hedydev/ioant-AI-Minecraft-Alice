@@ -11,6 +11,7 @@ let previous=null,target=null,animationAt=0,requestBusy=false,refreshTimer=null,
 let commandTimer=null,commandReadBusy=false,commandBusy=false,commandOnline=false;
 let timelineSignature=null,timelinePointerActive=false;
 let lastCommandId=null,pendingModeRevision=null,modelBusy=false;
+let positionBlocked=false,positionBlockedNote='';
 const commandIsLocal=['127.0.0.1','localhost'].includes(location.hostname);
 function showCommandResult(message,kind=''){
   const el=byId('world-command-result');
@@ -64,9 +65,17 @@ async function refreshCommandState(){
       work_cooldown:'任务工作冷却中',
       eligible_for_work:'已通过基本门禁，等待下一轮任务规划'
     };
-    const recentHold=Number.isFinite(routine.idleHold?.at)&&
-      Date.now()-routine.idleHold.at>=0&&Date.now()-routine.idleHold.at<180000?
-      routine.idleHold.reason:null;
+    const idleHold=routine.idleHold;
+    const holdAge=Number.isFinite(idleHold?.at)?Date.now()-idleHold.at:null;
+    const recentHold=holdAge!==null&&holdAge>=0&&holdAge<180000?
+      idleHold.reason:null;
+    const positionHold=new Set(['scout_bds_position_unavailable',
+      'no_fresh_authoritative_self_position','server_position_unconfirmed',
+      'bds_witness_stale']);
+    positionBlocked=run?.state==='IDLE'&&(
+      gate==='position_witness_unverified'||positionHold.has(recentHold));
+    positionBlockedNote=positionHold.has(recentHold)?
+      '服务器坐标见证缺失':'BDS 独立坐标见证未验证';
     // Earlier Mint releases do not publish idleGate. Their recent idleHold
     // is still a real reason from the task controller, not an inference.
     const holdLabels={
@@ -79,9 +88,11 @@ async function refreshCommandState(){
     const gateText=gateLabels[gate]||'运行版本未提供门禁诊断';
     setText('world-idle-reason',!run?'⏳ Alice 状态不可用':
       run.state!=='IDLE'?'✅ 非 IDLE：'+run.state:
+      positionBlocked?'⛔ IDLE · 安全门禁阻止寻路：'+positionBlockedNote+
+        '。不会将客户端预测位移当作 BDS 真值。':
       '⏸️ IDLE：'+(reason||gateText)+
       (gate&&reason?' · 当前门禁：'+gateText:'')+
-      (reason?' · ⚠️ 绝不把客户端预测位移当成服务器确认':''));
+      (reason?' · 最近已记录的任务受阻原因':''));
     const agent=run?.agent||{};
     modelBusy=agent.modelStatus==='busy'&&!!run;
     const recent=Number.isFinite(agent.lastPlanningAt)&&Date.now()-agent.lastPlanningAt<600000;
@@ -136,7 +147,7 @@ async function refreshCommandState(){
         outcome.status==='completed'?'ok':'');
     }
   }catch(err){
-    commandOnline=false;modelBusy=false;
+    commandOnline=false;modelBusy=false;positionBlocked=false;positionBlockedNote='';
     setText('world-day-phase','—');setText('world-day-weather','—');
     setText('world-hud-thinking','🧠 模型状态未知');
     setText('world-idle-reason','⚠️ 控制服务不可用，无法确定 IDLE 原因');
@@ -289,8 +300,11 @@ function apply(data){
   setText('world-position-trust',received?'✓ 收到近期服务器位置样本':'⚠ 当前显示客户端估算坐标（服务器未确认）');
   byId('world-position-trust').classList.toggle('confirmed',received);
   setText('world-server-position',received?'服务端脚底：'+coord(view.alice.server)+' · 样本 '+view.alice.serverSamples:'服务端坐标：暂无新鲜自身位置包 · 样本 '+(view.alice.serverSamples||0));
+  // Retain raw IDLE as truth; distinguish last confirmed safety blocker.
   setText('world-state',view.alice.state||'IDLE');
-  setText('world-job',view.alice.job||'空闲 / 观察');
+  setText('world-job',view.alice.state==='IDLE'&&positionBlocked?
+    '⛔ 寻路安全阻塞：'+positionBlockedNote:
+    (view.alice.job||'空闲 / 观察'));
   const formatVital=n=>Number.isFinite(n)?String(Math.round(Math.max(0,Math.min(20,n))*10)/10):'—';
   setText('world-vitals',formatVital(view.alice.health)+'/20 · '+formatVital(view.alice.food)+'/20');
   const lifeValue=Number.isFinite(view.alice.health)?Math.max(0,Math.min(20,view.alice.health)):null;
@@ -298,7 +312,9 @@ function apply(data){
   setText('world-hud-health',lifeValue===null?'❤️ —/20':'❤️ '+formatVital(lifeValue)+'/20 · '+'♥'.repeat(Math.ceil(lifeValue/2))+'♡'.repeat(10-Math.ceil(lifeValue/2)));
   setText('world-hud-food',foodValue===null?'🍗 —/20':'🍗 '+formatVital(foodValue)+'/20 · '+'▰'.repeat(Math.ceil(foodValue/2))+'▱'.repeat(10-Math.ceil(foodValue/2)));
   const names={SURVIVE:'🛡️ 求生 / 避险',COMBAT:'⚔️ 战斗',GUARD:'🛡️ 防卫',GATHER:'🪓 采集',CRAFT:'🔨 制作',EXPLORE:'🧭 探索',FOLLOW:'🚶 跟随',RECOVER:'🍎 恢复',STORAGE:'📦 物品管理',SLEEP:'💤 睡觉',IDLE:'👀 观察 / 等待'};
-  setText('world-hud-action',modelBusy?'🧠 Ollama 正在规划目标…':
+  setText('world-hud-action',view.alice.state==='IDLE'&&positionBlocked?
+    '⛔ 位置安全阻塞 · 等待独立 BDS 见证':
+    modelBusy?'🧠 Ollama 正在规划目标…':
     (names[view.alice.state]||'🤖 '+(view.alice.state||'未知状态'))+
     (view.alice.job?' · '+view.alice.job.slice(0,60):'')+
     (Number.isFinite(view.alice.jobElapsedMs)?' · ⏱ '+(view.alice.jobElapsedMs/1000).toFixed(1)+'秒':''));
