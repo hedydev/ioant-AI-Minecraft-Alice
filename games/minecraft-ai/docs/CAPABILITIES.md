@@ -1,3 +1,10 @@
+## 2026-10-23 — 生产重启预检查与位置见证解耦（仅 Alice，未部署）
+
+- **发现的阻塞：** 新仓库 `world_view.cjs` 明确为 `RADIUS=15,BELOW=6,ABOVE=5`，但 Mint 实时 `world-view.json` 仍为 `radius=5,below=3,above=4,scanned=968`。同时 `bds-position-witness.json` 是历史 `mcsm_querytarget` 数据，文件已有约 59,292 秒未更新。测试通过 / 文件同步不会热替换已经运行的 Node 模块，因此旧进程可能继续写入旧半径。不能单凭截图认定旧仓库仍在用，也不能用累计位置样本证明新鲜。
+- **发现的运维矛盾：** `scripts/alice_operator/process.py:AliceProcess.check()` 仍用 `systemctl --user is-active alice-bds-position-witness.service` 强制检查过去用户主动停用的**刷屏见证服务**，可能导致合规的 `deploy/restart` 在停止当前进程前被阻止。现移除该**服务依赖预检查**，保留生产备份/区块前置条件、PID+birth-token 检查、单实例锁及 BDS 登出门禁。**绝不**恢复或代替安装任何 querytarget 轮询服务。
+- **安全边界不变：** 在 `scout_start_proof.cjs` 中，导航必须拥有同一登录后的至少两条新鲜（≤4秒）独立 BDS 坐标见证，且客户端与 BDS 偏差 ≤0.75 格。缺少独立 BDS 见证时 Alice 可以登录并发布新 3D 只读视图，但自主探索/采集的寻路入口仍 fail-closed；地形修改另由既有 `serverPositionProof` 要求新鲜服务器来源的自身坐标样本和位置一致性，不能声称所有地形入口都要求独立脚本见证。不能视为恢复自治。新 Script API 非刷屏 BDS 包需要单独兼容性检查及明确世界修改授权。
+- **验证方法：** Mac 通过 Python 运维回归 + Mint Node24 全量测试后，用只读 SSH 命令核实磁盘上 `world_view.cjs` 常量和当前 `alice-mint.py status/diagnose` 的真实 PID。只有单实例/心跳和生产检查通过时，用户才考虑 `alice-mac.sh deploy` **一次**，只重启 Alice（不是 BDS），再查 live `world-view.json` 的 radius=15、below=6、above=5、scanned=11532。若仍为 radius5，区分“磁盘未同步”与“旧 Node 尚在写入”，不得再次盲重启。
+
 ## 2026-10-23 — 可选 BDS Script API 无刷屏坐标见证（staged，未部署）
 当前 15:51 匿名验收证据：自主目标采木已选但 `scout_bds_position_unavailable` 阻止真实寻路，`witnessStatus=stale_or_invalid_witness`。旧 querytarget systemd 服务保持 disabled。
 源码新增 BDS 侧只读行为包 `bds-witness-pack/`、Mint 私有回环 HTTP `scripts/bds_script_witness.py`、独立证据校验和安全门禁兼容。脚本不执行 Minecraft 命令、不会在 MCSManager 控制台刷屏，拒绝缺少凭据、错误/重放身份、旧会话和过期数据。**BDS 1.26.51 的 server-net Beta 支持尚未验证，世界实验及停机配置均未更改，不能声称 Alice 恢复移动。**

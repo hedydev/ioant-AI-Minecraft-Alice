@@ -59,7 +59,12 @@ class AliceProcess:
             raise ValueError('Missing Mint Alice project')
         js = "require('./src/gate.cjs').productionGate();require('./src/chunk_preflight.cjs').checkChunkImplementation()"
         self.run_check([str(self.node), '-e', js], env, 'Production backup/chunk preflight failed')
-        self.run_check(['systemctl', '--user', 'is-active', 'alice-bds-position-witness.service'], env, 'BDS witness service is not active')
+        # The old mcsm_querytarget unit was deliberately disabled because it
+        # flooded the BDS console. Process readiness must not depend on that
+        # unrelated operator-managed service. In-game movement and terrain
+        # writes REMAIN fail-closed in scout_start_proof.cjs and
+        # terrain_adaptation.cjs until independently observed, fresh BDS
+        # coordinates agree with Alice. Never start a witness here.
 
     def run_check(self, args, env, message):
         p = subprocess.run(args, cwd=self.project, env=env, capture_output=True, timeout=60)

@@ -356,6 +356,36 @@ class LifecycleTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'still reports'): app.wait_bds_release(config(), seconds=0)
 
 
+class PreflightWitnessSeparationTests(unittest.TestCase):
+    def test_preflight_does_not_require_disabled_console_poll_witness(self):
+        # A disabled mcsm_querytarget service must not prevent loading a new
+        # Alice executable / voxel producer. It does NOT authorize movement.
+        with tempfile.TemporaryDirectory() as tmp:
+            app=AliceProcess(tmp)
+            app.node.parent.mkdir(parents=True)
+            app.node.write_bytes(b'node-fixture')
+            app.project.mkdir(parents=True)
+            app.run_check=Mock()
+            with patch('alice_operator.process.subprocess.run') as run:
+                app.check(config())
+                run.assert_not_called()
+            app.run_check.assert_called_once()
+            arguments=app.run_check.call_args.args[0]
+            self.assertIn('productionGate()',arguments[-1])
+            self.assertIn('checkChunkImplementation()',arguments[-1])
+            self.assertNotIn('alice-bds-position-witness.service',
+                             (SCRIPTS/'alice_operator'/'process.py').read_text().split(
+                                 '    def run_check')[0].split('    def check')[1])
+
+    def test_missing_independent_position_still_denies_scout(self):
+        proof=(SCRIPTS.parent/'bedrock-native'/'experiment'/'src'/
+               'scout_start_proof.cjs').read_text()
+        self.assertIn("s.independentSamples<2",proof)
+        self.assertIn("clock()-at>4000",proof)
+        self.assertIn("scout_bds_position_unavailable",proof)
+        self.assertIn("meters>0.75",proof)
+
+
 class MacTests(unittest.TestCase):
     def test_dry_run_and_destination_validation(self):
         env={**os.environ,'ALICE_SSH_TARGET':'test@127.0.0.1'}
