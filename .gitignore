@@ -1,0 +1,28 @@
+# Dependency/runtime output
+**/node_modules/
+**/.pytest_cache/
+**/__pycache__/
+**/*.pyc
+**/target/
+**/dist/
+**/build/
+**/coverage/
+**/.DS_Store
+# Alice private runtime, identities, keys, witnesses and gameplay saves
+**/.alice-bedrock-control/
+**/worlds/
+**/world/
+**/bots/
+**/auth-cache/
+**/auth/
+**/secrets.json
+**/operator-env.json
+**/*-witness-token
+**/bds-position-witness.json
+**/status.json
+**/world-view.json
+**/*.zip
+**/*.log
+.env
+.env.*
+!.env.example
