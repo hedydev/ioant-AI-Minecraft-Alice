@@ -3,7 +3,11 @@
 set -euo pipefail
 [[ "$(uname -s)" == Darwin ]] || { echo 'Run on Mac.' >&2; exit 2; }
 mode="$1"
-[[ "$mode" == check || "$mode" == stage ]] || { echo 'Usage: ... check|stage' >&2; exit 2; }
+privileged="${2:-}"
+[[ "$mode" == check || "$mode" == stage ]] || { echo 'Usage: ... check|stage [--sudo-process-audit]' >&2; exit 2; }
+[[ -z "$privileged" || ( "$mode" == stage && "$privileged" == --sudo-process-audit ) ]] || {
+  echo 'Sudo cwd audit is allowed for explicit stage only.' >&2; exit 2;
+}
 target="$(printenv ALICE_SSH_TARGET || true)"
 [[ "$target" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*@[A-Za-z0-9][A-Za-z0-9.:-]*$ ]] || {
   echo 'Set ALICE_SSH_TARGET=user@your-Mint.' >&2; exit 2; }
@@ -15,13 +19,36 @@ out="$desktop/AliceAI-BDS-Lab-Pack-$mode-$stamp.json"
 temp="$(mktemp "$desktop/.alice-bds-lab-pack.XXXXXXXX")"
 chmod 600 "$temp"
 trap 'rm -f "$temp"' EXIT
-ssh -o BatchMode=yes -o ConnectTimeout=10 "$target" \
-  "python3 \"\$HOME/minecraft-ai/scripts/alice-bds-lab-pack.py\" $mode" > "$temp"
-python3 - "$temp" "$mode" <<'PY'
+if [[ "$privileged" == --sudo-process-audit ]]; then
+  # Explicit sudo prompt is visible in the Mac terminal. Only sudo -v and
+  # sudo -n /usr/bin/readlink -e /proc/PID/cwd use privilege; Python stage
+  # and pack file writes run as the original non-root Mint account.
+  echo 'Mint sudo password may be requested for READ-ONLY BDS process cwd verification.'
+  ssh -tt -o BatchMode=yes -o ConnectTimeout=10 "$target" \
+    'sudo -v && python3 "$HOME/minecraft-ai/scripts/alice-bds-lab-pack.py" stage' | tee "$temp"
+else
+  ssh -o BatchMode=yes -o ConnectTimeout=10 "$target" \
+    "python3 \"\$HOME/minecraft-ai/scripts/alice-bds-lab-pack.py\" $mode" > "$temp"
+fi
+python3 - "$temp" "$mode" "$privileged" <<'PY'
 import json, pathlib, sys, time
 p=pathlib.Path(sys.argv[1])
 mode=sys.argv[2]
+privileged=sys.argv[3]
 raw=p.read_bytes()
+if privileged:
+    try:
+        lines=raw.decode("utf-8").splitlines()
+    except UnicodeError:
+        raise SystemExit("Unrecognized interactive audit output; report not saved.")
+    # Interactive sudo prompts are shown in terminal but never saved in
+    # Desktop JSON. Accept one exact structured stage-result line only.
+    marker='{"audit":"ALICE_BDS_LAB_PACK_ONLY"'
+    matches=[line[line.index(marker):].strip() for line in lines
+             if marker in line]
+    if len(matches)!=1:
+        raise SystemExit("Privileged audit did not return one valid result; report not saved.")
+    raw=matches[0].encode("utf-8")
 if len(raw)>8192:
     raise SystemExit("Oversized lab pack report, not exported.")
 try:
@@ -42,7 +69,7 @@ allowed={
     "state":{"preconditions_failed","ready_for_new_lab_only_pack",
              "blocked_existing_pack_or_world_registration",
              "lab_pack_staged_without_beta_or_network"},
-    "reason":{"none","proc_unavailable","bds_cwd_unverified",
+    "reason":{"none","proc_unavailable","bds_cwd_requires_privileged_read","bds_cwd_unverified",
               "lab_bds_is_running","lab_or_production_directory_missing",
               "lab_world_missing","invalid_json_file","lab_marker_mismatch",
               "lab_properties_missing","lab_server_properties_mismatch",

@@ -1,3 +1,7 @@
+## 2026-10-24 04:19 — isolated 17880 lab stage process identity gate
+
+04:19 Mac JSON: state=preconditions_failed; reason=bds_cwd_unverified; Beta APIs flag not declared. No pack load, network sender, or production world change was proved. A Bedrock process may belong to MCSManager; Linux normal-user proc cwd access can be denied. Do not bypass ambiguous BDS detection. Explicit Mac witness-lab-pack-stage-verified action allows an operator-authorized read-only Linux cwd query through system readlink, while Python staging and any lab-only file writes run as the original Mint user. Any unresolved cwd or running 17880 BDS still aborts. The Mac wrapper sanitizes only one valid JSON result after the interactive check. After Mac ff-only pull and safe sync, run witness-lab-pack-stage-verified. Beta NBT, lab service startup and production 17879 witness remain out of scope.
+
 ## 2026-10-24 03:55 — Stopped experimental 17880 pack staging returned preconditions_failed
 
 - User uploaded AliceAI-BDS-Lab-Pack-stage-20261024-035539(1).json: schema 1, mode stage, state preconditions_failed, betaApisExperiment=not_declared_in_level_dat, serverModuleRuntimeVerified=false, secretsInstalled=false, networkEnabled=false. The lab-only tool reports productionModified=false and productionBdsRestarted=false. This is NOT proof of pack registration or compatibility. Do not repeat the previous binary-success claim.

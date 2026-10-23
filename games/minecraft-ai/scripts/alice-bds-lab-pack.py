@@ -6,6 +6,7 @@ production witness write. This cannot verify actual module loading by itself.
 """
 import json
 from pathlib import Path
+import subprocess
 import sys
 import time
 
@@ -43,14 +44,36 @@ def read_json(path, limit=16384):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def require_lab_stopped():
-    # /proc identifies any lab BDS independently of MCSManager ownership.
-    # Do not modify a live lab world or conclude it is offline if a matching
-    # process exists or its working directory cannot be inspected.
-    proc = Path("/proc")
+def privileged_read_cwd(proc_entry, *, run=subprocess.run):
+    """Read ONLY one Linux cwd symlink with explicit cached sudo permission.
+
+    Never run project Python, a shell, or any program capable of writing as
+    root. A privileged read is required only when ordinary readlink fails.
+    """
+    try:
+        response = run(
+            ["sudo", "-n", "/usr/bin/readlink", "-e", str(proc_entry / "cwd")],
+            capture_output=True, text=True, check=False, timeout=3
+        )
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        raise ValueError("bds_cwd_requires_privileged_read")
+    if response.returncode != 0:
+        raise ValueError("bds_cwd_requires_privileged_read")
+    raw = response.stdout.strip()
+    if not raw.startswith("/") or chr(10) in raw or chr(13) in raw:
+        raise ValueError("bds_cwd_unverified")
+    try:
+        return Path(raw).resolve(strict=True)
+    except (OSError, ValueError):
+        raise ValueError("bds_cwd_unverified")
+
+
+def require_lab_stopped(proc=Path("/proc")):
+    """Reject live lab BDS, or any ambiguous BDS whose cwd is unknown."""
     if not proc.is_dir():
         raise ValueError("proc_unavailable")
     try:
+        lab = LAB.resolve(strict=True)
         for item in proc.iterdir():
             if not item.name.isdecimal():
                 continue
@@ -63,10 +86,18 @@ def require_lab_stopped():
             try:
                 cwd = (item / "cwd").resolve(strict=True)
             except (OSError, ValueError):
-                raise ValueError("bds_cwd_unverified")
-            if cwd == LAB.resolve(strict=True):
+                # A process which disappeared during the audit cannot still
+                # be running. Never silently ignore a stable, unreadable BDS.
+                if not item.exists():
+                    continue
+                cwd = privileged_read_cwd(item)
+            if cwd == lab or lab in cwd.parents:
                 raise ValueError("lab_bds_is_running")
-    except OSError:
+    except (OSError, ValueError) as exc:
+        if isinstance(exc, ValueError) and str(exc) in (
+                "bds_cwd_unverified", "bds_cwd_requires_privileged_read",
+                "lab_bds_is_running"):
+            raise
         raise ValueError("proc_unavailable")
 
 
@@ -196,7 +227,8 @@ def main():
     # Fixed-code reasons, never an arbitrary exception, file path, username
     # or token. Diagnostics stay useful without exposing server-private data.
     reasons = {
-        "proc_unavailable", "bds_cwd_unverified", "lab_bds_is_running",
+        "proc_unavailable", "bds_cwd_unverified", "bds_cwd_requires_privileged_read",
+        "lab_bds_is_running",
         "lab_or_production_directory_missing", "lab_world_missing",
         "invalid_json_file", "lab_marker_mismatch", "lab_properties_missing",
         "lab_server_properties_mismatch", "lab_level_missing",

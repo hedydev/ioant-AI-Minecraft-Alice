@@ -154,11 +154,60 @@ class LabPackTests(unittest.TestCase):
                 self.assertFalse((self.lab / "worlds" / "Bedrock level" /
                                   "world_behavior_packs.json").exists())
 
+    def test_privileged_fallback_invokes_only_readlink_and_never_shell_or_root_python(self):
+        from types import SimpleNamespace
+        proc_entry = self.lab / "fake-proc" / "10012"
+        proc_entry.mkdir(parents=True)
+        calls = []
+        def trusted_run(args, **kw):
+            calls.append((args, kw))
+            return SimpleNamespace(returncode=0, stdout=str(self.prod.resolve()) + chr(10))
+        result = PACK.privileged_read_cwd(proc_entry, run=trusted_run)
+        self.assertEqual(result, self.prod.resolve())
+        self.assertEqual(calls[0][0], [
+            "sudo", "-n", "/usr/bin/readlink", "-e", str(proc_entry / "cwd")])
+        self.assertIs(calls[0][1]["check"], False)
+        self.assertEqual(calls[0][1]["timeout"], 3)
+
+    def test_privileged_readlink_failure_never_claims_stopped(self):
+        from types import SimpleNamespace
+        proc_entry = self.lab / "fake-proc" / "10012"
+        proc_entry.mkdir(parents=True)
+        for status in (1, 126, 127):
+            with self.subTest(status=status), self.assertRaisesRegex(
+                    ValueError, "bds_cwd_requires_privileged_read"):
+                PACK.privileged_read_cwd(proc_entry, run=lambda *a, **kw:
+                                          SimpleNamespace(returncode=status, stdout=""))
+
+    def test_process_guard_disambiguates_only_positively_identified_instances(self):
+        from unittest.mock import patch as mockpatch
+        with tempfile.TemporaryDirectory() as tempdir:
+            proc = Path(tempdir)
+            item = proc / "18420"
+            item.mkdir()
+            (item / "comm").write_text("bedrock_server" + chr(10))
+            # Missing cwd triggers the privileged reader, not a blanket skip.
+            with mockpatch.object(PACK, "privileged_read_cwd",
+                                  return_value=self.prod.resolve()) as reader:
+                PACK.require_lab_stopped(proc)
+                self.assertEqual(reader.call_count, 1)
+            with mockpatch.object(PACK, "privileged_read_cwd",
+                                  return_value=self.lab.resolve()):
+                with self.assertRaisesRegex(ValueError, "lab_bds_is_running"):
+                    PACK.require_lab_stopped(proc)
+            with mockpatch.object(PACK, "privileged_read_cwd",
+                                  side_effect=ValueError("bds_cwd_requires_privileged_read")):
+                with self.assertRaisesRegex(ValueError, "bds_cwd_requires_privileged_read"):
+                    PACK.require_lab_stopped(proc)
+
     def test_control_entry_and_mac_sanitized_contract(self):
         entry = (SCRIPTS / "alice-mac.sh").read_text()
         wrapper = (SCRIPTS / "alice-bds-lab-pack-mac.sh").read_text()
         self.assertIn("witness-lab-pack-stage", entry)
+        self.assertIn("witness-lab-pack-stage-verified", entry)
         self.assertIn("alice-bds-lab-pack-mac.sh", entry)
+        self.assertIn("stage --sudo-process-audit", entry)
+        self.assertIn("sudo -v && python3", wrapper)
         self.assertIn('"productionModified":False', wrapper)
         self.assertIn('"labBdsStartedByThisAction":False', wrapper)
         self.assertIn('"reason":{"none","proc_unavailable"', wrapper)

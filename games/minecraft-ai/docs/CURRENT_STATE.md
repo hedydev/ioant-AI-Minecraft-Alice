@@ -1,3 +1,7 @@
+## 2026-10-24 04:19 — isolated lab staging blocked by process cwd visibility
+
+New report: state=preconditions_failed, reason=bds_cwd_unverified, Beta experiment not declared. This is not evidence that 17880 lab BDS is active. Added an explicit audited process identity check which only reads Linux process cwd using a system readlink command after interactive operator authorization; it leaves all world and lab writes unprivileged and keeps the fail-closed guard. New Mac action witness-lab-pack-stage-verified; success remains staged files only, not actual BDS module load or movement proof. Python/Mint regressions remain to be run.
+
 ## 2026-10-24 03:55 — Stopped experimental 17880 pack staging returned preconditions_failed
 
 - User uploaded AliceAI-BDS-Lab-Pack-stage-20261024-035539(1).json: schema 1, mode stage, state preconditions_failed, betaApisExperiment=not_declared_in_level_dat, serverModuleRuntimeVerified=false, secretsInstalled=false, networkEnabled=false. The lab-only tool reports productionModified=false and productionBdsRestarted=false. This is NOT proof of pack registration or compatibility. Do not repeat the previous binary-success claim.
