@@ -1,0 +1,675 @@
+## 2026-10-23 — 可选 BDS Script API 无刷屏坐标见证（staged，未部署）
+当前 15:51 匿名验收证据：自主目标采木已选但 `scout_bds_position_unavailable` 阻止真实寻路，`witnessStatus=stale_or_invalid_witness`。旧 querytarget systemd 服务保持 disabled。
+源码新增 BDS 侧只读行为包 `bds-witness-pack/`、Mint 私有回环 HTTP `scripts/bds_script_witness.py`、独立证据校验和安全门禁兼容。脚本不执行 Minecraft 命令、不会在 MCSManager 控制台刷屏，拒绝缺少凭据、错误/重放身份、旧会话和过期数据。**BDS 1.26.51 的 server-net Beta 支持尚未验证，世界实验及停机配置均未更改，不能声称 Alice 恢复移动。**
+具体设计、隐私、安全边界、回归与部署步骤见 [SILENT_BDS_WITNESS_20261023.md](SILENT_BDS_WITNESS_20261023.md) 和 `bds-witness-pack/README.md`。Mac `alice-mac.sh sync` 只同步运行测试；不得自动 `deploy`、重启 BDS、启用旧刷屏服务或编辑世界存档。
+
+## 2026-10-23 — 3D 有限切片与 IDLE 实证修复
+
+- 14:59（UTC+8）验收 ZIP `AliceAI-Acceptance-2026-10-23T06-59-44-052Z.zip` 的实际运行态 `world-view.json` 报 `radius=5`、`scanned=968`（11×11×8），证明该时间点运行的是旧版 Mint 采样器。Mac 拉取 GitHub 与浏览器刷新**不能**让运行中的 Node 采样器更新。截图里的“427 格”是非空气体素数量，不是采样半径。
+- 同一 ZIP 记录 14:53:55 `LEARN_WEAPON→ACQUIRE_WOOD` 目标已选、随即因 `server_position_unconfirmed` 进入 WAITING；14:59:42 最后位置证据已过期约 354 秒，`witnessStatus=stale_or_invalid_witness`，`state=IDLE` 但 `mode=autonomous`、血饥 20/20。此为缺少独立真实 BDS 位置证据的**任务安全阻塞**，不是 Ollama 持续思考。不能用此历史 ZIP 断言 15:49 的当前状态，必须通过新日志验收。
+- 为减少有限数据截面造成的“黑色 mask / 地下平板被切断”视觉错觉，Mint 观察体积扩大至 **半径 15，31×31×12（脚下 6 / 上方 5，最多 11,532 个已缓存区块方块读取）**，保留 512 KiB 原子快照/只读 SSH 上限，`remote_world.py` 最大体素项数同步从 8,000 改为 12,000。新渲染器在有限体积底部和横向边缘作透明度渐隐，不伪造未加载区块或绘制不存在的地下无限方块。**Canvas 剩余背景不是遮罩**；人为缩放 2.5 倍可能裁切，重置至 1 倍能完整取景。
+- 在 Mac 3D 边栏，明确按**实时快照**显示 `radius`、`side×side×layers`、`scanned`（包含空气）、`voxels.length`（非空气）和 `unknown`；观察半径小于 15 时显示旧采样器警示，而不是假称更新。没有 Mint idleGate 诊断字段的旧部署，会翻译当前新鲜 `idleHold.reason`（如 `scout_bds_position_unavailable`），明确提示不能安全移动。继续不启动已停用的 querytarget 见证服务；不降级移动安全校验，不让模型编造服务端位置。
+- Mac 运行 `git status --short; git fetch origin main; git pull --ff-only origin main`，测试 `node --test games/minecraft-ai/bedrock-native/experiment/test/world_view.test.cjs`、`python3 -m unittest discover -s games/minecraft-ai/tests -v`，再使用 `ALICE_SSH_TARGET=tedz@192.168.0.104 bash games/minecraft-ai/scripts/alice-mac.sh sync`（备份同步并在 Mint 回归，**不会重启**）。全部通过且用户选择部署时，**仅一次** `alice-mac.sh deploy` 更新当前 Alice Node 采样器（该操作重启 Alice 客户端，但绝不重启 BDS）。Mac 独立重启 `run-dashboard.sh` 加载 Python 读取校验并强制刷新浏览器。先以 `ssh ... python3 -c ... world-view.json` 确认实际半径；世界方块范围依靠真实采样证明，不看截图估算。
+
+## 2026-10-23 — 完整 31×31 视野、复制稳定性与 IDLE 门禁诊断（源码已提交，实机待验收）
+
+- **观察半径：** 半径从 7 改成 15（水平 31×31，Y 仍为脚下 3 层 / 脚上 4 层，总计最多 7,688 个只读采样格）；仅使用 Alice 已接收的区块缓存，不强制加载新区块或更改世界。为避免扩大后空白，生产端原子快照、只读 SSH 读取、Mac API 的上限由 128 KiB 同步增加到 512 KiB，体素验证从 2,000 增至 8,000；超界/过期/断线数据依然拒绝。不调整服务器位置真值的安全判定。
+- **相机：** 添加确定性的等距投影边界取景 `world_camera.js`，完整观察体积的 8 个角在默认 zoom=1、不同窗口比例/视角下均落在可见画布内（预留 24px 横边距、顶侧文字空间）；手动放大可主动裁切，点击“重置视角”恢复完整取景。默认关闭“透视屋顶”以完整绘制已观测上层，仍可手动开启剖视。密集地形的 2D Canvas 绘制限速 12fps，稀疏 24fps，减少 CPU。
+- **时间线复制：** `world_timeline.js` 通过事件快照签名检测真正改变的列表；未变化不重建 DOM；鼠标按下或用户选中时间线文字时暂缓重建，即使新事件到了也允许复制。恢复正常选择状态后下次轮询同步，不丢失真实行为数据。
+- **长期 IDLE：** `runtime.idleGateReason()` 将当前自主任务拒绝原因细分为队友模式/STOP/未就绪/低血量/附近敌怪/缺少 BDS 坐标见证/冷却等，只读呈现在 3D 边栏；连续处于 IDLE 时，首次与变更时即时记录 `[Alice autonomy] idle gate:`，长期无变化时每 60 秒一条。**不强制执行任务、不伪造路径/服务端位移，不解除此前用户关闭的 querytarget 坐标见证服务。** 14:53:55—15:00 的已发生 IDLE 尚无当时状态证据，不能凭一个 state 断言根因。
+- **回归：** `node --test games/minecraft-ai/bedrock-native/experiment/test/{world_camera,world_timeline,world_view,runtime}.test.cjs`、Mac `python3 -m unittest discover -s games/minecraft-ai/tests -v`、规范 `alice-mac.sh sync` 所执行的 Mint Node24 全套测试。已单独执行真实模块的隔离 V8 验证：16 种画布/朝向组合全部顶点落在可视范围、7688 实体块的 JSON 快照约 94KB <512KB、事件签名与复制门禁验证成功；不能冒充 Mac/Mint 或 BDS 实机通过。
+- **部署分界：** Mac pull +（正在运行的 Mac dashboard 先用 Ctrl+C 正常停止）重新执行 `bash games/minecraft-ai/scripts/run-dashboard.sh` 使 Python API 扩容及网页生效；Linux Mint 通过规范 `bash games/minecraft-ai/scripts/alice-mac.sh sync` 安全拷贝并测试，不会重启客户端；确认通过以后用户可按计划**只执行一次** `alice-mac.sh deploy` 来加载 Node 快照/IDLE 诊断代码（会重启现有 Alice 进程）。MCSManager/BDS、世界存档、Xbox 凭证及已停用的独立 BDS querytarget 见证进程均不得重启/修改。
+
+## 2026-10-23 — Evidence-backed death learning, duration telemetry and 3D controls (STAGED, not Mint accepted)
+
+- **Before this change:** Alice persisted total deaths (`life.json`), verified item-skill outcomes, failed work-site cool-downs and explored endpoints, but **not** an attributed cause-of-death learning loop. The mere presence of an enemy or `entityHurt` cannot prove who dealt the fatal hit. Previous deaths are not retrospectively labeled as confirmed causes.
+- **New:** `src/death_experience.cjs` saves at most 32 observed death contexts to private, owner-only `~/.alice-bedrock-control/death-experience.json`. Labels are only `recent_damage_and_hostile_nearby`, `hostile_nearby_unconfirmed`, `hunger_exhaustion_possible` or `cause_unknown`. `verifiedCause=false` is mandatory. No player IDs/coordinates, login data, packet payloads, freeform text, arbitrary exception details or guessed killer are stored. Symlinks/unsafe permissions are refused.
+- **Applied learning:** >=2 observed deaths with the same nearby *mob type* inside 6h activates `prefer_verified_retreat_over_unconfirmed_attack` for that type. It changes the existing safety controller's decision to attempt a **collision/BDS-verified retreat first**; when no verified route exists, the existing safe last-stand rule remains and no path safety/BDS gate is weakened. Count decays outside the 6h evidence window. This is a bounded reactive policy, **not** proven reinforcement learning, not automatic invulnerability and not an unrestricted Ollama-generated action. Ollama's allowlisted high-level goal request receives an anonymous death summary as advisory context.
+- **Timing:** regular async jobs now log `[Alice job] duration:` for completion, exception and cancellation, with `durationMs`, type, source classification and outcome. `ModelGoalScheduler` logs `[Alice agent] planning duration:` and captures wall-clock `planningLatencyMs`; this measures end-to-end model request time, not hidden token-by-token internal inference. 3D HUD reports active job age and the last recent Ollama request duration. Existing 300ms safety tick polling does not create one log per poll.
+- **3D/UI:** camera instruction overlay removed; passive sample radius 5→7 (15×15×8 observed voxels), no forced chunks; inventory/drop entity names are shown only when adapter supplies item data; unknown stays unknown. HUD shows real Alice health/food (20-point indicators), emoji behavior and game-derived sun/weather. Side panel shows cautious death-learning conclusions; offline data clears. Nginx permits Bedrock acceptance ZIP export only from Mac loopback via the existing privacy-filtered `export-alice-acceptance.py`.
+- **Field acceptance required:** run Mac Python dashboard tests, Mint Node24 full `npm test` and `production:check` through canonical `alice-mac.sh sync` without a restart; only then request a controlled `deploy` to load Node changes. Existing BDS coordinate-witness service was manually disabled by the operator and this code **does not** silently reactivate it. Thus, real navigation may fail closed until a separate independently verified, non-console-spamming witness path exists. Never claim successful AI learning or escape on source tests alone.
+
+## 2026-10-23 — Ordered post-Ready Bedrock death recovery and cornered self-defense (STAGED)
+
+- Confirmed from PID 3125378 log: login + full spawn successful at 05:42:15; spider combat then death 05:44:33; single full retry at 05:44:45.575 was followed **82ms later** by real server ReadyToSpawn but no final spawn. Pinned upstream health plugin suppresses duplicate `player_action` because first fallback already marked sent; previous retry sent action before server Ready.
+- Fix: after 12s no-Ready, queue only one `respawn state=2`, then queue one final `player_action:respawn` on a subsequent actual server `respawn state=1`. If Ready was already received, use one direct action-only retry. Duplicate Ready must not spawn extra packet, 30s stall persists; never another Xbox login/BDS restart. 12/12 isolated fake-timer protocol tests PASS. **Real BDS recovery PENDING.**
+- If a spider/zombie threatens Alice and the strict collision-safe retreat survey has no eligible observed *away* route, one cooldown-limited melee self-defense is possible if enemy still near, health>0 and no retreat action attempted. Creepers, out-of-range enemies, any attempted movement, missing readiness or active attack backoff are excluded. This remains **damage unverified**, not a proven kill. Two Runtime regressions added; full Mint tests PENDING. No blind movement, false coordinates, or destructive terrain adaptation.
+
+## 2026-10-23 — One bounded same-session Bedrock respawn handshake retry (STAGED)
+
+- Evidence: old PID 3045722 has health 0, respawn_stalled for 2122 seconds, 3 death cycles, no server ReadyToSpawn, one previously retried `player_action`; Node heartbeat and `sessionEstablished=true` do not prove a live play session. Real cause may still be upstream/BDS health or protocol behavior, not necessarily incomplete handshake.
+- Compared exact pinned Mineflayer health plugin. After 12s of unresolved death, new recovery sends `respawn state=2` **once** before `player_action respawn` if server ready never arrived. If BDS already signaled ready, only the second action is retried. One attempt, no automatic new Xbox client, 30s stall remains. Exposes `readyRetrySent` in owner-only status/anonymous recovery log. Does not claim verified BDS success.
+- Mint 578-suite sync had 577 successes and one fixture-only logger contract error in new `observed_beds.test.cjs`. Fixture corrected without altering symlink safety checks. Independent respawn 9/9 fake-timer regression passes; Mint full test and BDS real death/respawn still PENDING.
+
+## 2026-10-23 — Survival-first observed bed memory and disconnect diagnosis (STAGED)
+
+- **Safety priority:** self-protection and food/equipment maintenance first; at night an available defensive wooden sword is crafted before constructing optional cover. One-block shelter remains collision-protected, independent BDS position checked, and never invents placement. No blanket nighttime bed mission.
+- **Bed as memory:** Passive 60s-limited observation (including ongoing safe exploration) remembers up to 32 actual bed landmarks privately across restarts, without confusing beds with verified personal respawn points. A bed must still exist nearby, be free, safe from mobs and in a valid sleep window before Alice can use it. Only remembered positions are resurveyed for opportunistic sleep; no repeated nightly global bed search.
+- **Offline diagnosis:** new `sessionExit` distinguishes server disconnect/kick from transport closure/end, while death/respawn phase remains independent. Mac/Mint `status` displays `sessionExit`; `diagnose` extracts only fixed anonymous event labels and verified ISO timestamps from recent owner-only logs. No automatic second client or guessing the cause of today's disconnect. All new functionality requires Mint Node24/full game acceptance before marking observed.
+
+## 2026-10-23 — Night safety review cadence and truthful WAIT status (STAGED)
+
+- **Night safety review:** no-bed/no-placeable-shelter and no immediately craftable defensive weapon now rechecks the existing bounded two-step, same-Y, independently BDS-aligned escape proposition **every 15 seconds**, not only when the ordinary 120-second daytime raw-material workload slot opens. It never bypasses human-order grace, hostile stand-off radius (12), weather, grounded health ≥16, verified chunks, pathfinder admission, Bedrock witness or existing post-attempt cooldown. Known sleeping, crafting and building opportunities outrank movement.
+- **Truthful dashboard timeline:** `PREPARE_DAYLIGHT / WAIT` can now retain `nightSafetyReason` (e.g., `night_hostile_within_12`, `scout_bds_position_unavailable`, `night_reposition_cooldown`), while generic world planning reason remains unchanged. `worldRoutine.nightSurvival` and `idleHold` expose the current safety status. No claim of 24/7 wandering; immobility due an actual hazard is intended.
+- **Validation:** Added nighttime 120s-cooldown separation, WAIT-status, human-order grace and anonymous timeline privacy regressions. Node syntax and isolated source checks pending; Mint full Node24 tests and real BDS behavior not yet run.
+
+## 2026-10-23 — Emergency Bedrock combat and short retreat
+
+- **Staged tactical latency:** Newly urgent RETREAT is no longer blocked by attack-only 1.25s cooldown; existing per-retreat 4.5s rate limit remains. Recent self-hit threat outside melee continues defensive action rather than out-of-range ATTACK. Logged `[Alice safety] combat decision:` is deduplicated and credential-free; hit memory is cleared at new spawn. (STAGED, not BDS accepted yet)
+
+- **Improved staged behavior:** Existing 300ms `safetyTick` continues to use shared Paper `safety_policy.js` decisions; real self-health drops feed recent-hit memory and `EVADE_COUNTER` now dispatches a retreat rather than attacking by default. Agent does not wait for LLM during an urgent threat.
+- **Improved staged safety:** From fully loaded, geometrically observed flat routes, short 1- or 2-cell emergency escapes away from hostiles may be considered even if no 3-cell corridor is available. One-step routes are forbidden for ordinary autonomous exploration, night routes and any blind/unverified terrain. Movement still guarded and cannot dig, parkour or open doors.
+- **Evidence contract:** A retreat is not successful merely because `pathfinder.goto` resolved. Requires fresh post-checkpoint BDS movement >=0.25 blocks **away from threat** and <=0.85m client/server discrepancy. Returns separate `localMovedBlocks`, `serverMovedBlocks`, `serverEvidenceReason` (fixed reason) and `serverMovementVerified`.
+- **Testing:** Exact checked-in pure voxel + escape tests 21/21 PASS in isolated V8; fake authoritative vs stale/contrary/missing position checks PASS; real Mint Node24 suite and actual creeper survival **PENDING**. `bot.attack` remains baseline native Bedrock execution; no `mineflayer-pvp` import or proven killer.
+
+## 2026-10-23 — Event-time production logs and private operator diagnosis (staged)
+
+- Every line of new native Bedrock `--production-start` stdout/stderr is prefixed **at time of emission** with the Mint host's timezone-aware ISO timestamp and current PID; native Node warnings are included, content and bytes are preserved. Previous logs cannot be retroactively timestamped.
+- `scripts/alice-mint.py diagnose` and `scripts/alice-mac.sh diagnose` are canonical **read-only** candidate process + private logfile path introspection. Compare verified lock owner, exact Node24 Alice command, known cwd, and most recent operator logs. No BDS manipulation, credential reading, or guessed login. CLI tests staged; actual Mint/Node24 tests pending.
+- The recent user log `SIGINT / connection ended / session_closed` was the old PID safely shutting down. New detached process writes a separate `operator-alice-*.log`; seeing movement after old logs stop does NOT by itself prove duplicate clients. 11+ `start_game` / `close` listeners are a separate warning to investigate.
+
+## 2026-10-23 — Bounded auto-respawn retry and separate session telemetry (staged)
+
+P2992409 production status shows `processAlive=true/heartbeatFresh=true/health=0/SURVIVE`; old `reportedConnected=false` is caused by death clearing `seenSpawn`, NOT proof of RakNet disconnect. After real death #11 no further spawn was observed in supplied log. Pinned upstream already queues Bedrock respawn ready + one action fallback; Alice now audits received server ready, actual spawn and transport close, does one bounded same-client action retry at 12 seconds if still dead, reports `respawn_stalled` at 30s, never opens a second Xbox client. Both `sessionEstablished` and `deathRecovery` appear in Mint/Mac `status` with explicit caveats on liveness. Isolated in-memory seven-test policy suite 7/7 PASS, full Mint Node24 suite and real dying/respawning acceptance still pending; does NOT fix the separate low-health retreat-route failure.
+
+## 2026-10-23 — Canonical Mac/Mint operator scripts (deployed and exercised)
+
+User-requested maintained entrypoints now live in `scripts/alice-mac.sh` and `scripts/alice-mint.py`, with focused private configuration/process modules in `scripts/alice_operator/`. Mandatory maintenance rules are in `AGENTS.md` and the canonical `docs/OPERATIONS.md`; dated reports link there. No scripts depend on a Codex session output path.
+
+Mint's previous background Alice caused `BDS still records configured Alice Gamertag ONLINE` when a second launch was attempted. New `start` refuses the active process; `restart` verifies PID/command/Node/cwd/lock identity, preserves environment only in memory, checks prerequisites, uses pidfd SIGINT, requires local exit and BDS logout, then starts one replacement. Private allowlisted settings were captured with mode0600 for later cold starts; no credentials/full environment were committed.
+
+Live operator acceptance: old PID 2922015 -> new PID 2983739 through the Mac entrypoint. Latest immediate status showed reportedConnected=true, health=20, job=GATHER; this proves restart and login, not successful harvesting or a fix for death/respawn. A subsequent `start` was correctly rejected without another client. Read-only check/status and private config capture passed; focused regression tests cover duplicate starts, preflight/log failure, BDS timeout, PID identity changes, ordering, privacy and destination injection. Full Python suite 85 tests passed with 3 existing skips; final focused operator suite 13/13 passed; cold-start saved-configuration preflight passed without logging in. Mac deploy dry-run passed. Existing Node24 gameplay suite was previously 539/539; this delivery changes operator scripts only.
+
+## 2026-10-23 — Injected-client initialization and stable BDS input IDs (Mint movement and first endpoint verified)
+
+The injected native client bypassed the pinned Mineflayer Bedrock factory and its initial loading-screen/aim-assist sequence. Restore the same sequence once on player_spawn, only for protocol 2193. Tests compare against the actual installed factory offline and verify exact codec bytes; no extra login or node_modules patch. Only initial join is in scope.
+
+**Correction to the earlier input flag conclusion:** the Mojang beta.1 JSON enum lists names without numeric values and omits members. Its array positions are not stable BDS wire IDs. Endstone's dump of BDS **1.26.51.1** at `0db6185921974b5aba4a30af33a5eed842dd2cb9` explicitly gives Up=10, StartJumping=31, VerticalCollision=50, InternalUpdate=65; the installed 66-entry mapping matches. The former `official_2193` rewrite to 63 entries was incorrect and has been removed. The old opt-in is now a strict validation-only alias (`stable_bds_2193`, applied=false), so existing launch environments no longer silently renumber valid inputs. Unknown/previously overwritten layouts fail explicitly. Historical notes below describe superseded conclusions.
+
+The outbound audit was also outside the analog wrapper, comparing pre-transformation input with post-transformation bytes. Pipeline order now places compatibility before audit/serializer, eliminating false analog_mismatch while retaining detection of real mismatches. Mint now confirms cumulative BDS travel 3.02 blocks and matching client/server feet (1.49,69,2.41); 20 moving inputs match encoded bytes, zero mismatches. The second autonomous night route returned `ok:true`, `serverMovementVerified:true`, `server_verified_scout_endpoint` for target (1,69,2). The first attempt stopped on unavailable position proof; the normal later attempt succeeded. No wood/build acceptance yet. Mint Node24 full suite 539/539; Python 72 tests with 3 existing skips. See `BEDROCK_INITIALIZATION_20261023.md` for sources, live result and operator commands.
+
+## 2026-10-23 — 快速启动决策与明确的依赖等待
+
+- **实机已观测**：角色、生命值、背包就绪后立即评估持续目标（一次登录100毫秒），不再人为等待20秒；状态不齐时先显示目标及等待原因，不消耗两分钟行动冷却。
+- **测试已通过**：定时评估与启动事件互斥；导航缺证/坐标偏差不再误罚木材地点；恢复新鲜一致坐标后重新评估。真实玩家命令和STOP仍优先。
+- **运维已部署**：只读BDS见证器由systemd用户服务托管；关闭终端不再使该进程随前台会话消失。
+- **仍未通过**：实际BDS行走、采集、建造。快速决策不等于已完成真实移动。完整Node24测试531项通过。
+
+## 2026-10-23 — Night second-waypoint guard bug fixed (staged)
+
+Night defensive reposition retains the **initial surveyed cell** for a two-step equal-height route; after locally reaching its first step, second-step validation no longer falsely reuses a moved position as the route's origin. Weather, mob distance, health and footing remain checked live before each new step. Pure-policy regression 6/6 PASS in isolated V8; real Mint Node24 tests and independent BDS travel ≥0.25 blocks still pending.
+
+## 2026-10-23 — Night-time survival fallback (STAGED; movement still P0)
+
+Alice now has distinct bed → verified shelter → inventory-only defensive craft → observed safe short reposition priorities instead of unconditional night WAIT when bed or terrain are not suitable. New night route is at most two adjacent same-Y WALK cells, only when no threats within 12, clear weather, healthy grounded actor, independent BDS location aligned and all normal STOP/safety gates pass. No arbitrary roaming, hostiles pursuit, blind mining, world changes or bypass of daytime SCOUT restrictions. Running logic also records `nightSurvival.status/reason` for UI and anonymous acceptance. Pure night selector regression 5/5 PASS in isolated V8; runtime suite and actual Minecraft BDS movement NOT yet verified. If BDS evidence is unavailable, staying put with a reason is the safe expected outcome.
+
+
+## 2026-10-23 — Native Bedrock move input diagnostics (staged; not movement success)
+
+- **Staged:** In operator-opt-in `ALICE_BEDROCK_INPUT_AUDIT=1` mode, inspect first 32 encoded **moving** PlayerAuthInput frames by passive decode + parity checks (tick, flags, vectors, positions, delta and yaw/pitch). Only aggregated fixed mismatch codes are written, not packets/identities. Read from `scripts/inspect_movement_sync.cjs` as `wireProbe*`. Tests without live BDS pass; Mint dependencies and BDS remain to be verified.
+- **Staged:** SCOUT fail log now reports number of locally completed waypoints, total predicted travel versus last failed-leg travel, and distinct server-origin packet/BDS witness sample counts.
+- **Not observed:** Independent real BDS player movement ≥0.25 blocks remains unconfirmed; zero corrections or matching local encoder roundtrip are NOT authoritative movement proof.
+
+## 2026-10-22 — P0 per-frame Bedrock player auth input sync (staged, not yet Mint accepted)
+
+User/Codex reproduced old Mineflayer fork client_input.js temporal mismatch with actual Pathfinder + physics: at 400ms delay local physics advanced ~0.80 blocks over 8 ticks, but its only outgoing player_auth_input used stale zero vector. hero-skills now vendors one pinned Bedrock input plugin `src/bedrock_client_input_sync.cjs`, injected via public Mineflayer plugins.client_input replacement, NO edits in node_modules. Emission pairs EACH physics step with exactly one tick and the matching captured control/yaw/predicted position (physicsTick callback controls apply next frame); runs up to 32 catchup steps; >32 stops controls/pathfinder, records overrun/skips instead of fabricating movement. Existing official 2193 enum / optional analog compat remain. Production `navigation_position_guard.cjs` now checks every Pathfinder goto/setGoal, covering GATHER, EXPLORE, FOLLOW, permits null-stop; plugin-injected after inject_allowed. New test/client_input_tick_sync.test.cjs 50/400/750/1800ms uses real installed physics/pathfinder; test/navigation_position_guard.test.cjs covers shared entry points. Standalone synthetic checks pass, actual Mint Node integration and BDS movement validation are **pending**. Read-only acceptance: `node scripts/inspect_movement_sync.cjs`; only independent >=0.25m BDS motion confirms. See docs/MOVEMENT_SYNC_P0_20261022.md.
+
+## 2026-10-22 — Live BDS scout start alignment + optional analog vector compatibility (staged)
+
+Acceptance 05:24:27–05:24:30 confirms EXPLORE physically ran and client predicted 9.06 blocks, but independent BDS returned no positional change. In 1.26.51 pinned Mineflayer client_input.js, analog movement is always {x:0,z:0} even with nonzero desired/raw move; operator-only opt-in ALICE_BEDROCK_INPUT_ANALOG_COMPAT=official_2193_analog consistently maps that analog vector for known player_auth_input shape, after official flags patch. It is OFF by default and cannot itself prove server acceptance. Production EXPLORE initiation now refuses misaligned local/BDS start position until >=2 trusted fresh samples and <=0.75m alignment. No world or authentication files touched. 9 isolated tests passed; Mint runtime validation pending. Mojang PlayerAuthInput spec: https://mojang.github.io/bedrock-protocol-docs/1.26.51/packets/player-auth-input-packet/ .
+
+## 2026-10-22 — Protocol 2193 input flags discrepancy and opt-in correction (staged)
+
+Official Mojang Bedrock 1.26.51 protocol 2193 PlayerAuthInputData has 63 flags (up=9, start_jumping=30, block_action=34, internal_update=62), but current PrismarineJS/minecraft-data master data/bedrock/1.26.51/protocol.json has 66 (up=10, start_jumping=31, block_action=35, internal_update=65), inserting 3 later-protocol flags. This is a strong, specific hypothesis for Alice's serialized movement inputs leaving BDS position unchanged, **not yet proved in Mint's installed node_modules or game**. scripts/probe_input_flags.cjs checks that installed serializer schema without login or world commands; src/input_flag_compat.cjs has exact-whole-map, fail-closed in-memory correction, only opt-in ALICE_BEDROCK_INPUT_FLAG_COMPAT=official_2193 and only before serializer is constructed; default off. Six synthetic tests pass; Mint/node/BDS actual acceptance still required. No npm reinstall, no BDS restart, no auth/world writes. Official spec: https://mojang.github.io/bedrock-protocol-docs/1.26.51/types/player-auth-input-data/ .
+
+## 2026-10-22 — Delayed RakNet hook recovery and independent private wire status (staged)
+
+Actual Bedrock-protocol 3.60.1 createClient uses delayedInit and only assigns connection after asynchronous discovery, so early outbound_input_audit could report transportHookAttached=false despite active sessions. Opt-in hook now retries on connect_allowed/start_game/read-only status, fails open when native method is non-writable, and discloses transportHookState. The optional private, atomic owner-only ~/.alice-bedrock-control/outbound-input-audit.json captures only whitelisted counters independently of 4KiB main heartbeat. Thirteen standalone queue/transport source tests passed in isolated V8. Four new private snapshot tests and Mint live validation still pending. Does not imply Minecraft movement repaired or BDS packet acceptance.
+
+## 2026-10-22 — Opt-in RakNet send-stage diagnostic (staged)
+
+Mint saw seven newly queued movement-intent packets and a changed local prediction during 02:59:41–02:59:46, but BDS witnesses #576–#593 remained at (0.5,69,0.5). The production-opt-in outbound input audit now separately measures requested auth-input calls, successful serializer returns, serialization errors, pending encoded queue buffers, and general RakNet sendReliable invocations/errors. No packets, credentials or player coordinates are logged; packet objects and transport behavior are unchanged. Generic RakNet calls do not establish player_auth_input delivery; independent BDS querytarget remains the travel authority. Nine isolated tests passed; Mint Node/in-game validation pending. Requires controlled Alice-only restart, not BDS.
+
+## 2026-10-22 — Outbound player_auth_input queue/tick diagnostic (staged; real BDS movement still broken)
+
+An operator-opt-in (`ALICE_BEDROCK_INPUT_AUDIT=1`) private telemetry observer now records packet QUEUE calls, movement intent counts, server `start_game.current_tick` seed presence and format, observed tick progression vs real time, duplicate/regressed tick count and received correction count. It never stores full packets, Xbox credentials, username or XYZ; pass-through wrapper forwards identical arguments and return/throw result. In `status.json.outboundInput`, labels explicitly say `queue_only_not_network_or_BDS_proof`. Missing opt-in means no wrapper and no new status. Added Node tests for opt-in passive observation and heartbeat cap; Mint test and real process activation remain unverified. Existing BDS querytarget has separately PROVEN server coordinate remained stationary over 22 accepted samples, despite 64-block local client divergence. Queued packets cannot substitute for BDS position change; input acceptance/tick cause and true movement remain P0.
+
+## 2026-10-21 — P0 independent BDS position witness and diagnosed gathering (staged)
+
+Optional separate operator-managed `bds_position_witness.py` reads exactly one Alice position through a fixed MCSManager `querytarget` against a loopback panel, never through a game-AI command. A private witness reader rejects stale, wrong-gamertag, duplicate-serial, conflicting-uniqueId or unsafe-permission files. `movement_evidence.cjs` keeps native correction packets and separately counts independent real-server samples, preserving all existing world-edit safety and strict >=2-authoritative-sample movement gates. Missing witness remains unknown, not immobile/success. GATHER emits anonymized stage events for tree scan, Pathfinder, dig and pickup and propagates the exact failed stage with bounded reason instead of generic `task_rejected`, without adding retries or weakening the actual inventory-delta test. Source staged: no Mint/BDS external integration or collected wood verified. See `docs/P0_BDS_WITNESS_AND_GATHER_2026-10-21.md`.
+
+## 2026-10-21 — Night-shelter regression test correction (Node24 pending)
+
+Clarified in runtime tests that a wilderness shelter requires an observed, loaded, naturally supported floor; the generic test fixture deliberately returns air everywhere and cannot prove an outdoor site. Fixed the daybreak objective priority test to provide a real simulated grass floor, and added a negative case asserting unknown/unloaded or air support cannot authorize shelter or world edits. Isolated real-runtime goal transition checked; safety contract and all production code unchanged. Full Mint Node24 test pending.
+
+## 2026-10-21 — Night shelter goal and one-block-at-a-time builder (staged)
+
+In autonomous Bedrock mode dusk/night no longer implies unconditional PREPARE_DAYLIGHT waiting; Alice prioritizes SECURE_SHELTER and surveys a small natural 3x3 footprint. A 23-block wall/roof frame and one wooden door form a conservative shelter proposal. A Bedrock-authoritative self-position, fully loaded geometry, no nearby players' builds or hostile mobs, adequate health, item supply and verified inventory consumption are required to place only one block per task. Building is impossible without current server position proof and never modifies existing structures; failure shows shelter_materials_missing or shelter_position_unconfirmed instead of misleading blanket daylight_required. Daytime resumes prior wood/weapon objective. Door placed is not proof that it is shut: safety remains unverified until a trusted door-state observation exists. No confirmed Minecraft-world build yet; staged only.
+
+## 2026-10-21 — Continuous goal manager separate from Core IDLE (staged)
+
+`ContinuousGoal` preserves goal/step/phase across short autonomous jobs. Core's `IDLE` means only *no active physical action*: separate `longTermGoal` exposes persistent `LEARN_WEAPON`, `COLLECT_WOOD` or `OBSERVE`; `ACQUIRE_WOOD`, `DISCOVER_RESOURCES`, `CRAFT_WEAPON` or `OBSERVE_WORLD`; `READY`, `ACTING`, `BLOCKED`, `WAITING` or `PAUSED`. Success is driven by fresh inventory milestones or genuinely server-attested exploration, never local estimated movement. Verified autonomous GATHER/CRAFT delta schedules 5-second follow-up goal review instead of the previous fixed 120-second pause; unverified outcomes retain their existing bounded memory/safety cooldown. Explicit STOP and FOLLOW pause goal, and existing user/survival priorities preempt tasks. Goal name only persists in private atomic mode-0600 state for fresh revalidation after restart. Mac control UI and anonymized acceptance logs show Core versus long goal separately. Does not add new mining/jumping/network primitives or permit unlimited runtime/LLM calls. Isolated module and runtime tests passed; full Mint Node24 and in-game observed success still pending.
+
+## 2026-10-21 — Queued agent failure overrides startup placeholder (staged, Node24 pending)
+
+A real Mint regression revealed `ModelGoalScheduler.pendingTrigger` initializes to `new_goal`, so an early rejected autonomous GATHER invoking `queue('tool_blocked')` could not replace this placeholder and the test observed stale `new_goal`. Now a concrete tool-blocked failure replaces only the pending startup `new_goal`, not an already queued live event or STOP quarantine; model request rate limits (90s, 12/hour) and validated high-level tools remain unchanged. Existing+new model scheduler tests and synthetic runtime integration passed isolated JS validation. Full Mint Node24 and BDS acceptance remain staged. The 14:47 export still captures prior-process `[Alice job] {}` events and cannot disprove the newer throw-handler without a successful restart.
+
+## 2026-10-21 — Autonomous resource task exception recovery (staged)
+
+In the 10:25 one-hour acceptance capture, 14 asynchronous `[Alice job]` events were anonymized to `{}` while all 341 position samples stayed exactly (1.54,70,-1.50). Autonomous GATHER repeatedly failed, never recorded an exhausted work site and therefore kept retrying the same nearby tree every ~120 seconds instead of reconsidering verified safe routes. The exceptional `startJob.catch` path now logs a bounded, sanitized `[Alice job] exception:` with `taskType/source/reason/stage/verified`, enters the same persistent natural resource-site failure memory used for ordinary failed results, queues the next safe model review and allows a read-only site resurvey after 5s. A human GATHER failure doesn't penalize autonomous work sites. No changes to Bedrock protocol, position proof, ability to jump, digging permissions, threats, world state or session identity. Full Node24/Mint and in-world verification pending.
+
+## 2026-10-21 — Sleep recovery scheduler deadline regression fix (staged)
+
+Production bedtime recovery now sets the next read-only bed review to `clock()+90000` if no actual bed was identified, or `clock()+30000` if a specific bed failed, instead of erroneously taking `Math.min(0,deadline)` and silently scheduling `0`. Per-bed memory cooldown remains unchanged and still guards repeated interaction; a confirmed sleeping result does not schedule a failure review. This resolves three failing Mint `runtime.test.cjs` assertions reported by the user. Four real-runtime isolated test cases passed; rerun full Node24 tests and independently verify server-confirmed sleep before marking observed.
+
+## 2026-10-21 — FOLLOW progress and one-block jump intent telemetry (staged)
+
+After a real server-authorized teleport persisted across Alice restarts, the user reported FOLLOW initially moves and then indefinitely stops at 4.15 blocks from the owner with `pathStatus=success`, `pathMoving=false`, `stalledWindows=0`. Cause: client goal rounding can call a nearby position reached too early; FOLLOW watchdog only counted stalls > followRadius+2 (5 blocks by default). Now GoalFollow validates actual target position against node center with a conservative 0.55-block margin, refreshes on one target block of movement, and watchdog repaths on repeated outside-radius local stalls (safe and non-destructive). Bedrock Pathfinder already contains one-block jump controls; `follow_input_observation.cjs` now counts passive physics-tick jump, forward and grounded observations for diagnosis. No blind jump, block breaking, packet rewrites, bypass of STOP or monster policy, claim of server movement, or forced world edits. Success is pending Node24/Mint and independent BDS XYZ + one-block ledge acceptance.
+
+## 2026-10-21 — Night bed choice and sleep-state evidence (staged; Mint/BDS pending)
+
+Autonomous Bedrock Alice has always attempted `sleepNearby` at night outside FOLLOW/threat/survival preemption, but one BDS `sleep` event timeout previously triggered **12-minute area-wide sleep exclusion**, even if an alternative bed was free. Now Alice surveys 12-block bed candidates with occupancy, hostile/unknown/protection and paired-bed de-duplication; only the actual failed bed receives its own bounded cooldown. Other eligible beds may be tried after a 30-second resurvey; unconfirmed `player_flags` ACK is *not* treated as proof BDS refused or accepted the request. The dashboard `world` line and private acceptance log explain why a bed is unavailable. This cannot override FOLLOW/STOP, near-monster safety, night gate, missing chunks or an authoritative Bedrock sleep event. No live BDS sleep success has yet been verified.
+
+## 2026-10-21 — P0: correction-free Bedrock motion is unknown, not failed (staged)
+
+A fully traversed local Pathfinder scout that lacks optional Bedrock `correct_player_move_prediction` packets is classified as `evidence_gap`, not a broken motion transport. Mojang allows zero correction packets when player prediction is accepted. This does **not** prove accepted coordinates or increment exploration success. An endpoint remains excluded for the normal 20-minute anti-loop duration; read-only review is available after ~90s rather than an invalid 5–15 minute motion backoff. Real waypoint no-progress, hazard/noPath, STOP/FOLLOW, threats, night and cautious world-edit restrictions remain active. Historic invalid inferred motion cooldowns are ignored, not destructively purged; future true motion faults start with a fresh bounded backoff. Added safe non-identifying threat kind/tactic log evidence to separate wall-protected mobs from real creeper danger. This is only code-staged until Mint and BDS tests.
+
+## 2026-10-21 — Bedrock server login coordinate provenance (staged diagnostic)
+
+The Bedrock self entity is initialized from server `start_game.player_position`, not an Alice hardcoded spawn target. The passive movement observer now records that exact login-only `loginFeet` and emits a privacy-filtered spawn log, with no impact on client input or accepted movement, world saves or Minecraft backup. `loginFeet` is not evidence that later movement is server-accepted. Existing `received` counters count server self-position corrections; **zero corrections can be normal** for correct client prediction. Diagnosis requires independent BDS `querytarget` while running and a repeat after reconnect to distinguish live movement vs. saved spawn restoration. Unit JS verified; Mint and BDS acceptance pending.
+
+## 2026-10-21 — Bedrock terrain adaptation (staged; no BDS proof)
+
+The autonomous agent can now plan a **single** collision-verified JUMP_UP or STEP_DOWN transition before trying another route. It can observe a candidate to `DIG_SOIL` at a natural dirt bank or `PLACE_BRIDGE` across one bounded deep gap. Both mutation tools require fresh authoritative server self-location matching client feet and revalidated loaded geometry, no nearby build evidence, safe daylight, inventory ACK and no player STOP/FOLLOW/threat. Up to one block per action, five-minute action spacing; no automatic towers, tunnels, unknown chunk bridging or excavation underfoot. A verified block/inventory change is not server-verified travel. Ollama `adapt_terrain` is an allowlisted request with no coordinates or arbitrary script. This code is **staged** until Mint and BDS independent testing. The current zero-packet location observer may legitimately prevent edits entirely.
+
+## 2026-10-21 — Model-scout endpoint memory parity (staged)
+
+A model-requested `scout_safe` and a deterministic `自主探索` now
+share the same recent endpoint memory and motion/route cooldown gate.
+Unverified movement can no longer bypass the 20-minute attempt exclusion
+simply because the planner selected it. No new movement primitives or
+relaxed safety thresholds. Requires Mint tests and BDS coordinate checks.
+
+## 2026-10-21 — Proactive autonomous exploration (staged)
+
+- Daylight all-WALK corridor: accept two to eight completely verified block transitions, refuse one-cell stubs and unknown support, hazards, enemy routes, jumps, digs, placement and bridges.
+- Fully equipped `OBSERVE` does not mean an indefinite stop; autonomous Alice can scout verified new local terrain even with no Ollama URL. Inference on its healthy event/budget hold does not block independently validated deterministic safe travel.
+- No safe action: visible `idleHold` reason and next read-only review in approximately 30 seconds; existing longer motion/bed/wood/safety cooloffs still prohibit risky world actions.
+- Attempted vs server-confirmed endpoint, inventory, player STOP/FOLLOW, threats and BDS validation boundaries unchanged. Real Mint and Bedrock acceptance pending.
+
+## 2026-10-21 — Strict server attestation for exploration (staged source)
+
+A new endpoint is confirmed only with matching successful scout endpoint, explicit `serverMovementVerified:true`, and measured server delta >=0.25 blocks. A local physics estimate or a detached numeric `serverMovedBlocks` cannot promote a recent attempt to a visit. The runtime's visited counter and dashboard progress now reuse the same checked outcome. Source parser + isolated in-memory counterexample tests passed; full Mint Node24 suite and real BDS evidence have not been obtained here. See `HANDOFF_2026-10-21_PROVENANCE.md`.
+
+## 2026-10-21 — Autonomous progress/memory, retreat corridor, verified wood→sword closure (staged source, pending Mint/BDS)
+
+Source of need: `AliceAI-Acceptance-20261020-234048.zip`, previously analyzed in conversation: 331 status samples + 297 classified events over ~22:40–23:40 SGT; 15 Granite requests all `observe`; 4 bounded EXPLORE tasks none BDS-attested, and repeatedly selected local A/B endpoints around [-1261,98,656] and [-1265,98,652] with local-only 5–6 block motions. 63/68 retreat results yielded `no_verified_safe_tile` under an endpoint-only retreat heuristic. No actual inventory-verified wood pickup or sword crafting was recorded. The client-side pose is NOT reliable independent evidence of server-accepted motion; zero Bedrock correction packets is inconclusive. This task does not redefine that trust boundary.
+
+New `src/exploration_progress.cjs`: bounded private `~/.alice-bedrock-control/exploration-progress.json` (mode 0600; avoids symlink target) stores up to 48 unique endpoint keys, TTL 20 minutes for attempted/blocked/unverified and 60 minutes for *server-confirmed* endpoints. An autonomous EXPLORE job records its candidate endpoint *when it actually starts*; when it finishes, `outcome` remains `unverified` unless both `ok`, matching `confirmedEndpoint` and a real server position delta exist. All recent attempts are excluded from `selectSafeWalkingCandidate` along with existing verified visits and route-specific failures. This breaks repeated attempts to the same A/B local-only endpoints without fabricating confirmed travel; if all routes are excluded Alice stays put and waits for new observation/expiry rather than wandering into unknown space. The new `explorationProgress` summary and `endpoint attempt/feedback` events are published with explicit proof distinction. This memory has bounded lifetime, not a global semantic map or authoritative player location.
+
+New `src/retreat_routes.cjs` uses **the same collision-shape-aware Bedrock voxel scanner** (loaded complete-footprint support and headroom, no unknown blocks, hazardous tiles, jumps or unsupported elevations) to consider multiple fully WALK routes. It selects a corridor that does not approach the observed threat and gains at least 1.25 blocks over an up-to-four-step prefix; physical retreat uses only the **first** confirmed-geometry adjacent cell in A* with dig/parkour/doors disabled, max 3-second deadline. If there is no verifiable corridor, it reports a specific reason instead of guessing three distant endpoint tiles. Even if the local position changes, outcome remains `retreat_local_only_server_unverified`, **never claims BDS-verified escape**. Existing exported `chooseRetreat` API stays location-or-null for old tests. It does NOT solve all safety cases or introduce unsafe native pulses.
+
+New `src/resource_opportunity.cjs`: a bounded read-only three-column/natural-tree survey reuses the existing **strict** `inspectNaturalTree` proof (trunk, canopy, known block data and nearby construction veto). When the existing autonomy policy genuinely needs resources and world is safe daylight (health >=16, no movement-failure cooldown), Alice can start exactly **one** autonomous GATHER even if Granite returns only `observe`. When observed inventory materials suffice, it can start exactly one wooden-sword CRAFT using the existing recipes. Both call `runVerifiedResourceStep`, wrapping the old gather/craft executor and measuring before/after Bedrock inventory counts; *no actual delta means no success*, regardless of a claimed tool return. Failed GATHER uses existing site cooldown, failed CRAFT gets an independent ten-minute cooldown to avoid infinite repeats. New `[Alice mission] resource opportunity`, `inventory milestone`, and `craft deferred` evidence is privacy-filtered; no arbitrary structures may be dug and no client-estimated movement is accepted as item proof.
+
+Tests: new 4 exploration memory tests, 4 retreat corridor tests, 5 resource opportunity tests, 3 runtime integration tests, and 2 JSONL/status telemetry regressions. 9 route/resource unit cases passed in isolated JS V8 harness after correcting an invalid wall-fixture expectation, and 5 memory invariants passed via a mocked private filesystem (including 20-minute expiry and symlink refusal). The modified .cjs JS source parses; **the full Mint Node24 suite, Mac Python suite, Bedrock BDS gameplay, and any actual wood/sword outcomes HAVE NOT been run by assistant**. No world, credentials, backups, BDS state or player-owned structures were modified. These are staged code changes, not in-game completion.
+
+Required next validation after synchronization: run Mac `python3 -m unittest discover -s games/minecraft-ai/tests -v`; rsync changes to Mint without `--delete`; Mint Node24 `node --test test/exploration_progress.test.cjs test/retreat_routes.test.cjs test/resource_opportunity.test.cjs test/runtime.test.cjs test/acceptance_log.test.cjs test/live_control.test.cjs`, then `npm test`, `npm run production:check` and restart only the one Alice process preserving original verified auth/world/backup/Ollama environment. Keep BDS and dashboard server unchanged. On Mac download ZIP with existing `collect-alice-acceptance-mac.sh 1`. Confirm anti-loop candidate exclusions, retreat path results, Bedrock inventory deltas and ideally independent BDS `querytarget @a` before/after movement. Never claim safe exploration or crafted sword without evidence.
+
+## 2026-10-20 — 3D 控制台管理员指令 / 生命与世界信息（源码已提交，等待 Mint 实机验收）
+
+用户从 3D World 页面提出两个需求：（1）增加死亡次数、个人重生点的可信状态与坐标、昼夜/天气；（2）从控制台向 Alice 发送指令并有明确执行反馈。特别确认：**控制台是管理员，不是 Minecraft 游戏角色**。控制台发 `跟着我`、`保护我` 必须返回 `missing_target`，不自行绑定任何玩家；`跟随 Steve` / `保护 Steve` 只有当 Bedrock 当前 `bot.players` 中确有同名并关联实体位置时才可进入 FOLLOW/GUARD 意图。实体/在线状态缺失时返回 `target_not_online_or_locatable`，不改变正在运行的任务。游戏内玩家发送的 `跟着我` 依然沿用 `onChat(sender,...)` 绑定真实消息发送者，两个来源不混用。
+
+新完整控制通路：Mac 本机 Web `#world` -> `POST /api/control/command` -> Mac 本地 Python `server.py`（同源、JSON、Host、长度限制）-> 固定 SSH `python3 - command <base64url-json>` -> Mint `dashboard/remote_control.py`（严格语法解析，mac 命令 `stop`、`follow/guard` 显式名字、`gather_wood` 1–32、`craft_sword`、`eat`、`status`）-> 私有 0600 `~/.alice-bedrock-control/command.json` -> 单一在运行的 Alice Node 进程 `src/console_commands.cjs`（900ms 轮询、30s TTL、只处理一次 command ID）-> 类型化 `runCommand` 重用既有 FOLLOW/安全控制/资源操作 -> 私有 `command-result.json` 回执，经 `GET /api/control/status` 返回给页面。回执区分 `queued`（仅写入）、`received`（Alice 已取件）、`started`（建立跟随意图或启动任务）、`completed` / `failed`（任务实际回报）、`rejected`；**跟随意图 started 不等于服务端确认走到了目标**。其他文本拒绝，不走命令行、Minecraft OP、聊天冒用、任意 JS、世界编辑或 LLM 任意规划。Nginx 对该写入口加独立 `allow 127.0.0.1; deny all`，LAN 访问控制台仍只读。页面明确显示控制服务状态和可观察在线名单，未选择目标的快捷跟随/保护按钮不可用。
+
+`src/life_observer.cjs` 在 Alice 第一次 `spawn` 开始只记录 **本安装开始以来**的死亡事件，私有 `life.json` 计数，每次生命周期 dedupe，持久化重启不丢。**不是 Xbox/Minecraft 账号历史总死亡数**；不会在尚未安装时虚报历史。`set_spawn_position` 中明确标为 `spawn_type:'player'` 且存在安全整数 `player_position` 的 Bedrock 服务端包才可显示个人重生点，非个人 `world` spawn 或床靠近不算；老会话历史值须注明 `last_observed_prior_session`，完全没有这种包时展示 `not_verified`（不假装 `false`）。昼夜/天气从原有 `worldRoutine` 观察数据读取，未同步则未知。状态仍由原 Alice 2s 心跳写入 4KiB 私有 `status.json`。命令结果和死亡/复活记录进入隐私过滤验收 JSONL，不采集原文聊天和 Xbox 凭据。
+
+测试新增 `test/console_commands.test.cjs`、`test/life_observer.test.cjs`、`tests/test_dashboard.py` 中的命令 API/权限/SSH/语法/反馈回归和状态 compaction 校验。源码语法及有限的纯 JS smoke 检查已通过；**Mac Python 测试、Mint Node24 全量测试、实际生产单 Alice 与 BDS 实机指令验收仍未执行**。不要将 staged 说成已在游戏实测。
+
+部署顺序：Mac 仓库 `git status --short && git pull --ff-only origin main`，Mac `python3 -m unittest discover -s games/minecraft-ai/tests -p test_dashboard.py -v`，`bash -n games/minecraft-ai/scripts/run-dashboard.sh`；非破坏性 `rsync -av --exclude node_modules --exclude __pycache__ games/minecraft-ai/ tedz@<verified Mint IP>:~/minecraft-ai/`；Mint 停止**现有唯一 Alice**，Node24 `node --test test/console_commands.test.cjs test/life_observer.test.cjs test/live_control.test.cjs && npm test && npm run production:check`，保留既有生产备份/Xbox/Ollama 环境启动单 Alice；Mac 原控制台会话 Ctrl+C 再 `bash games/minecraft-ai/scripts/run-dashboard.sh`，不能重启 BDS、清凭据或删除 worlds。Mac 打开 `http://127.0.0.1:8788/#world` 测试：`跟着我`=missing_target、离线名字=target_not_online_or_locatable、明确在线玩家=started 意图、`停止`=completed、木材/制作须有后续实际结果；从 LAN 地址访问应读到页面却收 403 不可下发。死亡/重生点是观测数据，不修改床/重生点。
+
+## 2026-10-20 22:21 SGT — First observed door passage and local motion; unverified vertical displacement safety (source staged)
+
+Grounded acceptance: uploaded `AliceAI-Acceptance-20261020-222103.zip`; manifest covers 21:21:10–22:20:57 SGT, **517 records** (331 samples, 186 classified events). From 22:17:30–22:17:31, the new A* failed-waypoint selector correctly identified door block [-1261,98,655], `doorOpenObserved:true`, and the existing guarded open-door executor issued **six forward pulses**. It recorded `door_passage_local_only_server_unverified`; one later 22:19:31 scout yielded ~4.47 blocks client-local movement but ended `scout_server_endpoint_unconfirmed`. At ~22:20:25–22:20:45 the client-local predicted feet fell from ~Y=97.94 to Y=73.00, across COMBAT/IDLE states, while health stayed 20. The 22:20:57 3D snapshot places Alice near ladders in a deep shaft; the *mechanism* (ladder traversal, actual falling or local-physics desync) is not proven. `movementEvidence.received=0` cannot prove BDS rejected motion: the Bedrock fork may not send continuous self-corrections. User observed visually that Alice appeared to leave the building. **No independent BDS querytarget comparison has been provided; success remains user-observed and client-predicted, not server-attested.**
+
+New source `src/vertical_motion_watch.cjs` records **local-only** abrupt 4+ block Y drops within <=12 seconds at the existing safety controller's 300ms cadence; supplies a 90s temporary **autonomous exploration hold**, plus ladder/vine/scaffolding nearby *observation only*, no inferred safe climbing. It logs `[Alice safety] vertical displacement observation:` with from/to Y, drop, duration, onGround, nearbyClimbable, server position packet count, trust boundary and hold length; exposes `worldRoutine.verticalSafety` in the control heartbeat and private 10s acceptance ZIP. An active autonomous EXPLORE job is stopped and its Core state resumed to IDLE; human FOLLOW/STOP and emergency RECOVER/COMBAT/SURVIVE are **not** canceled merely because local Y changed. The hold prevents new autonomous jobs for 90s; resets on new spawn/dimension and expires automatically. The direct Bedrock probe remains flat only; no new jump/dig/place/ladder/step-down world actions. The goal is to prevent an unknown vertical episode from silently launching yet another unverified autonomous traversal, not to identify actual BDS height/terrain.
+
+Five independent `test/vertical_motion_watch.test.cjs` tests passed in an isolated JS harness; two new `test/runtime.test.cjs` integration tests cover preempted EXPLORE/RECOVER preservation, staged for Mint Node24. Source and test JS syntax checked in assistant environment. **Mint integration, BDS independent XYZ verification, real-world safety acceptance and any continuous multi-segment autonomous navigation remain pending.** Do not claim this finishes Minecraft autonomy. Do not reset/destroy existing world, learning, auth or backups. For next acceptance, run a short safe session, export Mac ZIP and look for `verticalSafety` and the new safety event; BDS `querytarget @a` before/after remains the source-of-truth movement check.
+
+## 2026-10-20 21:03 SGT — A* is the movement-blocking layer; bounded physical Bedrock diagnostic staged
+
+User's ZIP `AliceAI-Acceptance-20261020-210348.zip` has manifest window **20:03:49–21:03:41 SGT**, 411 rows, 338 samples and 73 events; 10 Ollama proposals, all `observe`. **Four genuine autonomous `EXPLORE` jobs started** after the earlier Observe/wood-failure/route-choice source changes, at ~20:57:29, 20:59:29, 21:01:19, 21:03:19. All four immediately failed with **`No path to the goal!`**, no completed segment and `movementEvidence.received=0`. The latest world state shows 57 reachable voxel cells, 6-step fully observed WALK-only candidate to [-1257,98,656], and `walkSelection.reason:verified_flat_corridor_clear_of_known_hostiles` despite 19 observed hostiles, whereas Mineflayer A* `pathfinder.goto(new GoalNear(...,0))` rejects its first adjacent waypoint. The earlier no-action bottleneck is fixed; **this is a navigation transport incompatibility**. A* may reject a Bedrock collision shape or the endpoint zero-radius contract; do not invent which without an A* debug trace. The no-packet stream alone cannot prove the BDS world rejected position: the pinned Bedrock client `Pix3lPirat3/mineflayer@b24015aeeec68a5c94f54444f104f0e563595a30` sends client-simulated `player_auth_input` at 20Hz, and `correct_player_move_prediction` is a correction signal, not guaranteed continuous server XYZ. Independent read-only BDS `querytarget` before/after is still needed.
+
+Committed runtime patch after root cause inspection: new `src/direct_flat_step.cjs` provides a **single** non-destructive Bedrock physical input diagnostic **only** when a wholly WALK-only voxel candidate reaches `boundedScout`, A* explicitly raises `No path to the goal!`, the first adjacent tile is genuinely observed and supported for the full 0.6m body, the entire sub-block corridor is clear, Alice is grounded, and START/STOP/FOLLOW/danger/daylight/health/job gates still hold. It checks Bedrock collision shapes at <=0.16-block sampling intervals, denies unloaded/unknown blocks, doors, lava/hazards, partial floors, walls and vertical changes, aims at the adjacent cell center, pulses `setControlState('forward', true)` for <=5x100ms with release between pulses, and never chains a second cell from an unverified local estimate. On preemption it releases controls and returns false; if server position evidence is missing it reports `scout_local_movement_not_server_verified` or `direct_flat_no_local_motion` without claiming success. Distinguish `[Alice movement] A* noPath physical input probe:` fields `attempted`, `pulses`, `physicsTicks`, `localEstimateBlocks`, `serverMovementVerified`, `serverEvidenceReason` in the private acceptance journal. Repeated local-only physics is cooled down by the existing `motion` failure policy; `No path to the goal!` is now recognized as an A* route failure, not a generic probe failure. One server-confirmed step triggers a fresh survey and never falsely completes the multi-step route.
+
+Tests added: 6 `test/direct_flat_step.test.cjs` tests (clear/unknown/door/wall/vertical, pulse release, no motion, STOP, server-proof boundaries), 2 `test/runtime.test.cjs` integration regressions (A* noPath probes physically, unreadable world refuses), 1 `test/world_routine.test.cjs` classifier regression. **Six direct step tests passed via an isolated JavaScript harness, not the full Mint Node24 suite or real BDS.** No world block edits, bypass of safety gates or server actions were made. Next action is a single careful production deployment preserving Xbox credentials, backup manifest, BDS, and one Alice client; check tests before restart. Let Alice run 5–10 minutes in a known safe area and export the 1h ZIP. If physicsTicks=0, diagnose Bedrock client physics timer; if pulses>0 and localEstimateBlocks=0, diagnose collision/player_auth_input path; if localEstimateBlocks>0 but no server packets, independently compare BDS `querytarget @a` before/after (corrections may be absent on valid movement) before making transport claims.
+
+## 2026-10-20 20:46 SGT — one-hour acceptance: safe flat route exists, but action denied (staged fix)
+
+Grounded source: user-supplied `AliceAI-Acceptance-20261020-204656.zip` (`manifest.json` plus `events.jsonl`, `status.json`, `world-view.json`). Local timestamp window **2026-10-20 19:46:59–20:46:54 (SGT)**; 382 records = 342 status samples and 40 classified events. There were 7 Ollama suggestions, **all `observe`**; no `EXPLORE` job or server-verified successful movement. Only one sample had `RECOVER` active; three additional job-result events show failed bed recovery, with recurrent sleep rejection reason indicating not-night/sleep not accepted. Across all samples `movementEvidence.received=0`; local coordinates were stable near (-1260.5,91,653.5) for 308 samples, then after client restart at 20:41:06 near (-1260.84,98,653.62). Neither local value is independently verified Bedrock player XYZ.
+
+Before restart, voxel map had only 2 reachable cells and WALK candidate length 1: no authorized path can execute. After restart, at **20:41:21** the observed voxel map had 45 reachable cells; 8-step best mixed WALK/STEP_DOWN route, plus an independently verified geometry **7-step WALK-only** alternative ending [-1257,98,656]. Nevertheless `[Alice autonomy] model observe without local action` at 20:41:23 reported `no_verified_flat_walk_candidate`: the status name was **misleading** because the geometry route existed but execution authorization was separately rejected. The 20:46 latest world-view includes a nearby skeleton at [-1259.46,98,648.25], ~5.54 blocks from Alice and ~8.13 blocks from the previously reported WALK target, inside the existing 9-block endpoint exclusion. This is strong evidence for a **plausible** hostile veto, **not proof it occupied the same location at 20:41** (the world-view was taken five minutes later). Safety must not be weakened to force motion.
+
+Root source inspected: previous `src/runtime.cjs` created one `walkingCandidate(voxel)` and excluded it whenever *any* observed hostile was within 9 blocks of its terminal voxel; it then dropped the candidate entirely without preserving the reason. There was no attempt to select another locally observed, all-WALK corridor. `src/voxel_actions.cjs` also stored only one best flat route, so safe alternatives were impossible to compare.
+
+**Committed staged fix:** `src/voxel_actions.cjs` now runs a second bounded WALK-only BFS with the same observed collision, support, hazard and chunk-loading safety rules and the original 640-read/96-node budgets, keeping a bounded list of distinct flat routes. `selectSafeWalkingCandidate` rejects recent failed/visited endpoints, tests hostiles against the *full proposed route*, preserves the 9-block standoff and disallows approaching a nearby hostile even when the endpoint is far away. It selects an alternative route away from threats when one exists, otherwise returns the explicit `all_eligible_flat_routes_near_hostiles`, `flat_routes_recently_failed_or_visited` or `flat_routes_not_executable`. No movement is authorized from missing collision shapes, unknown chunks, jumps, step downs, dig or place. `runtime.cjs` records `voxelNavigation.walkSelection` with counts and one `[Alice exploration] flat route selection` event per changed gate; in the model OBSERVE path it rechecks known threats after asynchronous Ollama to reject newly exposed routes. `acceptance_log.cjs` now retains `walkSelection` fields via privacy-filtered historical JSONL snapshots.
+
+Tests: 4 new pure voxel cases (multiple options, safe detour, exposed-all, failed-endpoint exclusion); 2 new runtime regression cases (model OBSERVE with viable detour, no unsafe action when threatened); 1 acceptance log reason whitelist test. All **12 voxel action tests passed in a pure JavaScript harness inside the assistant environment**; this is **not** the full production Node24/Mint integration test nor authoritative Bedrock execution. Pending: Mac `git pull --ff-only`, rsync code to Mint, `node --test` for affected tests and `npm test`, restart only existing Alice preserving world/auth/backup, run 10–20 min and export ZIP. If `serverPackets` stays zero, use independent BDS `querytarget` measurements for movement proof and inspect `pathfinder_no_path` and `walkSelection` before any further motion-path changes.
+
+## 2026-10-20 — OBSERVE model short-circuit prevented safe local navigation (staged root-cause fix)
+
+Source evidence (former `src/runtime.cjs`): `idleTick()` had `if (this.planner?.url) { await runAutonomousModelStep(...); return }`, so an accepted Ollama `observe` proposal skipped every deterministic `SCOUT` and `WAIT` executor, including the already-guarded wooden-door path. This matches the prior observation of repeated `observe` and no attempted movement but **does not alone prove the cause of each real-world noPath or zero server-position packets**.
+
+New source behavior: `runAutonomousModelStep` returns an explicit reason (`observe`, `handled`, `blocked`, `unavailable`, `interrupted`). The parent loop may continue after **observe only**, and only when an existing wood-site failure exists, movement-failure cooldown is absent, and either `SCOUT` has a verified safe candidate or `WAIT` has a fresh local wooden-door survey under `FIND_ROOM_EXIT/OBSERVE_ROOM`. All original safety/health/player-command/daylight/path/inventory gates still apply. An unavailable model, rejected action, stop, follow or priority interrupt does **not** authorize hidden fallback. Unknown/height-changing/unsupported geometry remains non-executable, including player's actual one-block door approach which currently fails validation. When the guarded continuation happens, a new journal event `[Alice autonomy] verified local skill after model observation:` distinguishes proposed vs attempted action.
+
+Four regression tests appended to `test/runtime.test.cjs`: model `observe` + eligible safe daylight scout, unknown blocks deny motion, Ollama failure cannot silently launch a job, and model `observe` cannot block existing guarded indoor-door interaction. These are **GitHub source + syntax staged, not yet Mint Node24/full-suite or real Bedrock verified**. Critical next evidence: deploy and restart **one Alice only**, run `npm test` first, then collect a recent `AliceAI-Acceptance-*.zip` via `scripts/collect-alice-acceptance-mac.sh`; inspect `modelRequests`, `voxel`, `verified local skill`, `noPath`, `serverPackets` and BDS querytarget before claiming movement. No BDS/world/auth changes.
+
+## 2026-10-20 — Acceptance journal and observed flat route fallback (source staged)
+
+Alice production now writes a privacy-filtered rolling behavior journal on Mint and a 10-second
+status sample, independently of the UI's latest-only 4KiB status. The Mac SSH collector downloads
+a read-only ZIP to Desktop with manifest, time-windowed events, and latest safe snapshots.
+Voxel planner keeps a WALK-only alternate route when an otherwise preferred candidate
+includes a proposed JUMP_UP; status compaction preserves voxelNavigation summaries.
+No new dig/place, jump or speculative Bedrock server movement claims.
+Added Node tests for journal, voxel route, 4KiB status and Python export tests.
+Source is committed, NOT deployed or acceptance-tested on Mint or Mac.
+See [ACCEPTANCE_LOGGING.md](ACCEPTANCE_LOGGING.md) for complete machine-specific commands.
+## 2026-10-20 — Collision-aware voxel planning M0/M1a staged source
+
+Real first implementation following `docs/ALICE_BLOCK_WORLD_ACTION_PLANNER.md`: `src/voxel_actions.cjs` observes a bounded radius-4 region with <=640 Bedrock `blockAt` reads and <=96 BFS states. Its support/clearance evaluation reads **actual registry collision shapes** instead of excluding floors on the basis of a natural-grass/stone whitelist. It proposes explicit, **not yet executable** WALK, JUMP_UP and STEP_DOWN waypoints, including half-slab height. Unknown blocks/shapes, hazards, unsupported 0.6m player footprint and unverified collision cause rejection. The proposed route never mutates the world.
+
+In `runtime.idleTick` the survey is taken once at an eligible idle cycle, sent as a bounded `voxelNavigation` summary to the existing Ollama planner, and published under `worldRoutine.voxelNavigation` in the 4KiB live status (subject to existing status compaction). Logs `[Alice voxel] collision-aware route observed` on meaningful survey change. Previously `observe` returned with no new world evidence; it now records read-only collision observations and suppresses identical observation-only model calls for 20 min **unless health, inventory, route/voxel evidence, safe daylight or scout availability changes**. This is not a claim of a successful physical action.
+
+A fully **flat WALK-only** corridor of 3–8 verified waypoints can act as a backup `scout_safe` candidate when the natural-only scout route fails, the day/health/wood-failure/movement cooldown guards allow exploration, the target is not a recent failed/visited route, and no known hostile is within 9 blocks of its endpoint. It still passes through the existing bounded Bedrock `boundedScout` action, with no dig/place, no door interaction and mandatory server movement evidence before claiming progress. The new planner does **not** send jump, descending, mining or placing inputs: those have additional execution/physics and building protection requirements.
+
+Seven independent `test/voxel_actions.test.cjs` cases cover built floors, one-block rise, half-slab, hazards, unloaded chunks, protected dig/place non-use, collision uncertainty and bounded reads. A matching local isolated Node22 prototype passed its earlier six behavioral cases; the **final Mint Node24 full suite and real BDS position/physics tests are pending**. No BDS/world/backups/Xbox data changed by this source commit.
+
+**Block-world direction (pending implementation):** Alice should reason from observed Bedrock voxel geometry and a bounded graph of walk/jump/climb/dig/place affordances, not room-specific coordinates or ever-growing block-name allowlists. Design, safety and milestone acceptance: [ALICE_BLOCK_WORLD_ACTION_PLANNER.md](ALICE_BLOCK_WORLD_ACTION_PLANNER.md).
+
+## 2026-10-20 — Bedrock player logout cancels stale FOLLOW (implementation staged)
+
+The user reported 15 status samples spanning ~30s with Alice online, IDLE, `followTarget:null`, fixed **local** position -1261.4,99,654.5, `movementEvidence.received:0`. This is consistent with no active FOLLOW but does **not** establish that the correct player-offline signal was received. User requests: if the human *truly disconnects* from BDS, cancel FOLLOW/GUARD; if merely distant/out of loaded entity range, keep the instruction.
+
+Verified the **exact pinned** `Pix3lPirat3/mineflayer@b24015aeeec68a5c94f54444f104f0e563595a30`: Bedrock `lib/bedrock_plugins/entities.js` lines 42–49 / 346–352 removes `bot.players[username]` on `player_list remove` and emits `playerLeft(player)`. A Bedrock `remove_entity` / `change_dimension` removes the entity only, emits `entityGone`, and may leave the player roster intact. This distinguishes **server roster departure** from **range unload** without polling and without guessing logout on missing coordinates.
+
+The Bedrock runtime now subscribes to `playerLeft` while started and detaches on stop. It only revokes a matching active FOLLOW/GUARD owner after confirming no case-insensitive same-name roster entry remains (protect rapid rejoin). It abandons old last-seen coordinates, only stops a FOLLOW-owned path/input, resets durable intent to IDLE and records a bounded `lastFollowEnd` in private live status. It does NOT cancel an unrelated active human task, interfere with SURVIVE/COMBAT escape, drop other players' follow ownership, or interpret `entityGone` as a logout. Rejoined users must explicitly re-command FOLLOW/GUARD; no silent auto-resume. Existing model/idle safety policy continues. No BDS/world/login cache/backup changes.
+
+New tests cover playerLeft routing, unrelated departure, entityGone, rapid rejoin, safety preemption, temporary job preservation, and listener cleanup. **No real Mint tests or Minecraft acceptance has been performed by this source commit**; use Node24 tests, restart only the single Alice bot and test actual join/leave/rejoin while querying local status. The prior noPath/door-level physics and missing Bedrock self-correction packets remain separate unresolved concerns.
+
+## 2026-10-20 — Mac Python suite: 4 failures / 2 errors root-caused (source fix staged)
+
+User-supplied **Mac** `python3 -m unittest discover -s games/minecraft-ai/tests -v`: 46 tests, 4 failures, 2 errors, 3 skipped. Five cases arose from macOS `/var/folders` versus real `/private/var/folders`: `find_worlds` resolved each world but compared against an unresolved root, and sandbox/stage/log tests compared raw temp path text with canonical paths. Fix `find_worlds` by resolving the root **before** the existing strict `is_relative_to(root)` containment gate, then assert canonical results in tests. Add a cross-platform symlink-alias fixture and verify an external symlinked world still gets rejected. No security bypass, no backup policy change, no world mutation.
+
+The sixth failure used a stale assertion about the old **three** editable settings. Replace that prose assertion with an exact fixed-SSH-script assertion. While investigating, found a real M1 regression: Mac `dashboard/server.py` still rejected the new `agentMode` field before forwarding to Mint. Add the same two-value allowlist (`companion`, `autonomous`) at the Mac backend; retain all other strict type/bounds, localhost/Origin and JSON protections; exercise valid and invalid mode writes via HTTP tests. The optional `_aliceMessageEpoch` warning is a separate integration limitation, not one of these six failures.
+
+This commit is **source/test/documentation only**. Python suite has NOT been re-run on user's macOS, and Mint Node24, Ollama real requests, Bedrock BDS 17879, wood-door collision and Minecraft movement are NOT tested or redeployed here. The `Installed successfully` line is from an isolated `test_install` temporary directory, not verified production deployment. Never restart BDS, clear auth/learning data, or infer movement success from this test report.
+
+
+**Ollama status truthfulness:** An endpoint configured on Mint is initially `unverified`, **not** `ready`; `ready` requires a real successful valid model response. Rejected/failed requests report `error`, and a cancelled in-flight request returns to `unverified`. The model name is included in the private status heartbeat (never an endpoint credential or prompt). Mac 127.0.0.1:11435 is historical, so check local Ollama and the private Mint SSH reverse tunnel before enabling autonomous mode. Do not start a second Alice login to test model reachability. Added regression coverage for the unverified-to-ready transition.
+
+
+**Safety correction to staged M2 (2026-10-20):** An explicit player STOP cancels active plans and temporarily locks out new autonomous idle work until an explicit mode re-selection; it cannot be undone merely by an environment tick or a task-result event. This STOP latch is runtime-only (M3 still needs durable human-cancel semantics over process restarts). The 300ms survival loop directly aborts pending model requests when an actual danger or low health is observed, without waiting for the model response. Added separate STOP/re-selection and runtime suppression tests. All behavior still requires Node24/Mint and real BDS acceptance.
+
+
+## 2026-10-20 — M1/M2 source staged; never claimed deployed
+
+- Dual mode: companion is the default for missing agentMode on legacy three-field configs; autonomous opt-in uses the same Xbox identity, Bedrock executor, and learning state. Runtime, Mint Python and Mac localhost UI all accept the new bounded key and retain applied revision acknowledgement.
+- The companion mode stops new idle resource jobs; fast SURVIVE/FOLLOW/player work and safety maintenance remain independent. In autonomous with an Ollama endpoint, the registered single ModelGoalScheduler plans only on new-goal, mode-change, observed-world change and task-outcome events. One pending request, 90s minimum spacing, 12/hour autonomous budget, 12s timeout; no 300ms/1s/5s LLM polling.
+- Model responses may suggest only observe, gather_wood, craft_wooden_sword, scout_safe. One validated step passes through the pre-existing Bedrock job executor with fresh guards; never authorize raw coordinates, direct mining, BDS commands or arbitrary JavaScript. Model output can never assert a BDS-verified success. No model endpoint means legacy deterministic autonomous work, shown as fixed-safety; configured Ollama failure is reported and does not silently switch to fake model planning.
+- One OllamaPlanner transports human chat and autonomous proposals with a shared busy lock. Human chat cancels/waits for pending autonomous requests; STOP and safety preempt pending work. Mac dashboard agent heartbeat reports bounded status/trigger/tool/rejection/budget, no prompt or auth tokens.
+- Code and regression cases are committed, NOT deployed. Node24 suite, Python suite, Mint BDS 17879 querytarget and wooden-door collision repair acceptance remain pending. World backups, Xbox auth, protected structures and learning files unchanged; do not restart BDS.
+
+## 2026-10-20 — 双模式 Agent C：方向确定，尚未实现（pending）
+
+| 目标能力 | 设计 | 当前证据 |
+|---|---|---|
+| `companion` 智能队友 / `autonomous` 自主生活 | 同一个 Alice 进程、同一模型、同一记忆与已验证工具，支持可热切换模式 | 用户选定 C；控制台与执行器尚未实现双模式切换 |
+| 真正的大模型高层自驱 | Ollama 在新目标/失败/环境重大变化时按需输出受约束的合法计划；现有安全执行器执行并返回真实证据 | `planner.cjs` 目前只处理不能解析的聊天；`idleTick` 仍为固定策略 |
+| 资源预算 | 平时无 LLM tick 轮询；建议并发1、非人工频率间隔90秒/每小时最多12次，有限上下文；支持空闲卸载 | 产品目标，尚未进行 Mac M1 Pro 实机内存/延迟测量 |
+| 长期目标与世界记忆 | 已证实的位置/路线/资源/失败经验持久保存；不能以客户端本地位移宣称服务器确认 | 会话 `SelfDriveJournal` 已有，跨重启计划未实现 |
+
+详细契约、上线里程碑与验收边界见 `docs/ALICE_DUAL_MODE_AGENT_ARCHITECTURE.md`；不能把选择 C 误报为 AI 已开始自己推理。
+
+## 2026-10-20 — 自驱目标层 Phase A（已提交源码，实机待验收）
+
+用户在 Minecraft 中观察 Alice 已离开房子，但只站在外面；新日志显示她自房内18个可达格转移到新地点91个可达格、出现已知开放前沿、原来房门回程10格，却继续反复尝试旧房门，夜里又进入 WAIT / 床失败 / 采木失败循环。
+
+| 能力 | 现有实现 | 验收状态 |
+|---|---|---|
+| 有证据的场景切换 | `self_drive.sceneFromSurvey` 仅用已观察可达格数与前沿区分局部开放区、房间限制区、未知；不臆断室外 | 10项隔离策略测试通过；真实场景待验收 |
+| 目标随环境持续推进 | 开放区域不再总追旧门；白天安全路线对应 DISCOVER_RESOURCES，夜晚 PREPARE_DAYLIGHT；室内可执行木门仍 FIND_ROOM_EXIT；服务器运动未确认先 VERIFY_MOVEMENT | 源码集成+运行时回归已新增；Mac/Mint npm test 待运行 |
+| 目标与实际执行分离 | 新目标层纯只读，不自行发包/拆房/走夜路；实际 SCOUT/DOOR 安全路径、STOP/FOLLOW/生存/敌对抢占照旧负责 | 既有安全边界保留，Mint 待复验 |
+| 动作反馈与可见性 | 会话内 goal journal 发目标转移和任务结果；完成、未证实及阻挡区别报告；状态查询增加当前目标 | 隔离测试通过，实机待验收 |
+
+目前 **尚非** 自己连续制作工具、采集资源或在夜里自动外出冒险的完整 Agent。下一阶段要修复客户端本地位移与 BDS 位置证据分离、建立跨区安全路线与持久经验，并将本地 LLM 仅用于受约束的高层规划建议。设计与反例详见 `docs/ALICE_SELF_DRIVE_ARCHITECTURE.md`。
+
+## 2026-10-20 — Alice 木门穿越卡住：被动物理碰撞与服务端坐标诊断（staged）
+
+新的真实 BDS 日志已经确认 Alice 经过室内读图/木门优先级判断，启动 EXPLORE，选定木门 [-1261,98,655] 及其后方 [-1261,98,656]，执行前进输入5次后报 crossing_no_local_forward_progress，serverMovementVerified=false；并未显示走出房间。固定 Bedrock 客户端 send() 把控制意图转换为 player_auth_input，物理模拟又读取 bot.blockAt(...).shapes；开放的 Bedrock 木门如存在错误的碰撞形状，可能阻塞本地物理，但尚无实体证据证明就是根因。
+
+新增只读 door_motion_diagnostics.cjs 探针，仅在门口短程移动时挂载 physicsTick 监听并在最终结果返回时解除；本地连续位移、真实前进控制期间的 physics tick、水平碰撞、门上下半 open_bit/shapes、yaw 与期望方向、角色落地/速度、是否启用物理及是否乘车、Bedrock 服务器位置包前后数目与时间分别记录。只有 crossing_no_local_forward_progress、端点验证失败或离开安全走廊时，在日志打印 [Alice exploration] doorway movement diagnostic；绝不包装网络 queue、注入坐标、修改已打开的门或增加试走次数。源码静态检查与独立模拟通过；Mint Node24 npm test 和 BDS 真实坐标仍待验收。诊断不等于已经修好了穿门。
+
+## 2026-10-20 — 木门优先级判断布尔值错误与白天/夜晚回归修复（staged）
+
+Mac Node24 `npm test` 最新现场 223 项测试、221 通过，2 个新增运行时断言失败。第一个是生产源码 `freshDoor` 被整个 `... && age<=25000` 布尔表达式赋值，不是门候选对象；可执行的门被错误地当作“无门”，日间自然安全路线 `SCOUT` 因而抢占室内脱困。现将新鲜度判断和门对象拆开，优先级判断使用真实 `door.approach.waypoints` 与守卫验证的门状态/路线。第二个测试在夜间 `timeOfDay=13000` 却断言白天移动冷却原因；将目标测试设为白天 `6000`，新增独立夜间场景和门状态未知不得抢占 SCOUT 的回归。
+
+已用最新仓库模块进行 V8 隔离执行，证实四组路径：可执行门→WAIT/FIND_ROOM_EXIT；未知门→SCOUT；白天 `motion` 冷却→WAIT/无任务；夜晚限制→WAIT/无任务。**尚需在 Mac 与 Mint 完整执行 npm test，并对照 BDS querytarget 验证 Alice 真正出门**；这不是完成游戏内脱困的声明。安全、采集保护及备份前置条件均未放宽。
+
+## 2026-10-20 — 采木被保护拒绝后及时启动室内脱困（代码 staged）
+
+真实 Mint Alice 登录/出生后因附近 103 段原木、0 片树叶且周围有玩家木板/熔炉而正确拒绝采木，记录 wood 区域冷却，随即 GATHER → IDLE；**没有房间扫描或移动日志**。根因是首次自主 GATHER 设置的全局约2分钟普通任务冷却未因现场采木失败而调整。现在在不取消 wood 10分钟位置保护的情况下，将下一次**只读室内观察**安排为失败后约5秒的自主调度可执行时刻，并保留5秒控制器频率及安全检查；室内门的检查置于普通 SCOUT 选择之前，可行动木门优先，无法验证的门不得阻断已经可行的自然地形路径。已有 motion 未确认暂停仍禁止室内动作，不能越过健康、STOP、FOLLOW 和危险守卫。
+
+新增运行时回归覆盖失败后扫描调度、可执行木门优先、服务器运动不确定禁止物理脱困。源码与测试静态语法已校验；需要 Mint npm test、BDS 门状态/坐标以及实际穿门完成验收。该进度不是已经走出房子。
+
+## 2026-10-20 — 门后已知阻挡的预检查与实测回归修复（staged）
+
+Mint Node24 测试现场：219 项中 217 项通过、2 项运行时测试失败；8 项独立木门穿越测试均通过。第一处失败暴露「打开门后直接执行短距离门前寻路，虽门后已观察到石墙/未知方块」的安全缺口。现 `escape_crossing.validatePassageGeometry` 在任何接近动作前检查已打开木门上下半、门前/门下/另一侧支撑、门另一侧脚/头空间，拒绝确认不可穿越的通道；与 `validateCrossing` 的当前位置/着地判断分别保持。第二处失败是异步测试在真实 120ms 前进脉冲完成前过早读取状态，已改为限时等待动作结果。新检查与测试仅通过隔离 V8 语法/模拟核验，**修复后 Mint 全量 `npm test` 尚待重新执行**。不改变 STOP/威胁优先权，也不把本地预计位移当成服务器确认。
+
+## 2026-10-20 — Alice 木门跨越脱困（代码 staged）
+
+| 能力 | 证据与实现 | 状态 |
+|---|---|---|
+| 房间门口短距离接近 | 复用 BFS 已加载完整地板路线，至多6格相邻步；途中重新检查地形与安全抢占；失败后重新扫描并受限冷却 | 源码/隔离测试；Minecraft 真机待验收 |
+| 验证木门并单次打开 | 木门下半、上半 Bedrock `open_bit/upper_block_bit` 严格为0/1或布尔；从不猜测未知门态或挖掘墙壁 | 源码/隔离测试；真实开门待验收 |
+| 通过已经打开的木门 | 新 `escape_crossing.cjs` 确认门前/门下/另一侧已加载安全地面和头部空间；通过至多8次短时 `player_auth_input` 前进输入尝试，不用会再次 `useOne` 点击门的 Pathfinder；STOP/危险/FOLLOW 会释放输入 | 代码 + V8 简单模拟；真实跨门待验收 |
+| 门后位置真实性 | `escapeSurvey.passageAction` 独立显示本地尝试、服务端最近自身坐标证据、目标格；服务器确认跨门仍不等于已出房屋 | 源码实现；需 BDS `querytarget` 和 3D 观察器验证 |
+
+这不是生存/战斗 `No path to the goal!` 的根因修复。若最新实机日志仍反复 COMBAT，真实危险优先于探索，不能绕过安全抢占。详见 `docs/ALICE_ESCAPE_REASONING.md`。
+
+## 2026-10-20 — Bedrock Alice server-session lifecycle (code staged)
+
+| 能力 | 实现 / 证据 | 状态 |
+|---|---|---|
+| 安全停止 Xbox 客户端 | 自主版 + 原生聊天版共用 `session_lifecycle.cjs`，停止控制器、显式发 Bedrock `disconnect`，无即时 `process.exit(0)`，超时仅本地关闭，绝不宣称 BDS 已离线 | code + tests; Mint real shutdown pending |
+| 防止旧 BDS 会话尚在线时立即新登录 | 可选的严格 MCSManager `InstanceLog` 会话检查，需要显式正确 Gamertag + 精确只读日志文件；最后 `connected/Spawned` 或无可靠证据就拒绝启动，且在创建 Xbox transport 前检查 | code + tests; opt-in & Mint permissions pending |
+| 登录拒绝原因追踪 | Oct 19 客户端 `server_id_conflict` 两次均在 BDS 同一玩家断开之前 4–5 秒；时序冲突假设合理，但 BDS 内部身份验证根因尚未证实 | observed correlation; root cause unresolved |
+
+详细现场证据、配置与完整验收步骤：`docs/BEDROCK_SESSION_LIFECYCLE.md`。
+
+# Capability matrix
+
+## 2026-10-19 — Bedrock wooden door bit representation fix (staged)
+
+真实 Alice 日志显示室内木门观察有效但交互被 `door_open_bit_unverified` 拒绝。现在门状态检查严格兼容 Bedrock `open_bit` / `upper_block_bit` 的整数 0/1 与布尔 true/false；对于门上半格、未知或字符串状态继续拒绝，且开门后核对已观察的状态变化。控制台 `escapeSurvey.doorAction.stateFormat` 显示安全格式摘要，能区分数值状态与缺失字段。独立测试 9/9 PASS；Mac/Mint 完整测试与真实服务器验收仍 staged，不表示 Alice 已走出房间。
+
+## 2026-10-19 — Nearby wooden-door interaction (staged)
+
+真实脱困观察找到 `[-1261,98,653]` 附近一个单步可接近木门 `[-1261,98,655]`，夜晚普通资源探索仍 WAIT。新增独立 `escape_door_action.cjs`：只有确认同层短路线、方块无未知、木门 `open_bit:false`、角色无危险且无人类命令抢占时，允许尝试一次 `activateBlock`，并观察更新后的 `open_bit:true`；10分钟同门重复操作保护。记录在原控制台 `escapeSurvey.doorAction` 与行为日志。**不会挖矿、挖墙、路径穿门、爬梯或声称已脱困**，服务端真实路径仍需 MCManager/BDS 验收。完整 Mac/Mint npm 测试尚未运行，能力仅 `staged`。
+
+## 2026-10-19 — Indoor wooden-door approach observation (staged)
+
+来自真实 Alice 控制台：床/采集循环期间，脱困扫描发现 36 个已知可站立格、下层木门 `(-1261,98,655)` 和梯子 `(-1260,98,653)`，但普通只接受天然地面的探索器输出 `current_ground_unverified`。新增 `door.approach` 输出通向候选门旁安全格子的限长 BFS 路线、台阶高度变化与 `routeComplete` 标记；服务端运动仍是未验证，门候选 `permitted:false`，没有自动移动、开门、拆墙。新增下层木门纯测试，Mint 实机仍待验收；只有真实安全通行验证后才能升级状态。
+
+## 2026-10-19 — Alice confined-space recognition (staged)
+
+新增只读小房间脱困评估器 `experiment/src/escape_survey.cjs`。当前只在自主采集失败转 WAIT 时限频检测人工完整地板的已知连接通道、上下整格通行可能、木门、楼梯/梯子等未验证形状、未知区块、可能阻挡方块，并通过既有日志与状态心跳发布简要结果；不自动开门、移动、挖掘或放置方块。严禁用“可识别方块”冒充“能破坏这个玩家建筑”；必须额外核实所有权、工具/硬度、危险和 BDS 服务端验证才允许未来有限授权的破坏性恢复。单独 9 项 Node22 离线模型测试通过，Mac/Mint 整体 `npm test` 和真实 BDS 逃生仍 pending。设计和验收清单在 `docs/ALICE_ESCAPE_REASONING.md`。
+
+## 2026-10-19 Alice 3D Local Observer（staged）
+
+新增只读 Mac 控制台 `#world`，使用 Alice 当前 Bedrock 已缓存方块数据、小型11×11×8三维视野、附近实体、客户端人物坐标和朝向、服务器自身包（若存在）确认坐标、实时行为时间线。每约1秒更新人物/行为，地形同区块中心4秒缓存，可拖动旋转、缩放、屋顶透视；不依赖外部 Three.js CDN 或额外 Xbox 登录。未知方块与空气分离，复杂碰撞形状和纹理暂作方块近似。服务器位置未收到时人物仍可能由客户端物理预测移动，必须写明“本地估算”；离线/SSH超时不展示假实时画面。只读 SSH `GET /api/world`，无 Minecraft 操作权限、认证数据或玩家聊天。测试已加、Mint/MCManager 实机未确认前保持 `staged`。详见 `docs/ALICE_WORLD_VIEW_3D.md`。
+
+## 2026-10-19 · 旧探索失败历史兼容与精准路径退避（staged）
+
+来自 Mint 用户实际调查：新版3D规划器已部署并在16:02:17随 Alice 进程加载，但旧 `scout:-79,12,40`（`no_verified_safe_corridor`，第4次失败）让 `idleTick` 在调用规划器之前持续返回 WAIT。现在不删除旧私有记录，把旧 scout 区域封锁转为只读审计；新路线失败只冻结出错的 waypoint 方块，允许寻找其他完全加载的安全通道；未知地形为 probe 观察、每30秒重新评估，服务器运动未确认则用单独 motion 安全冷却，绝不靠盲走掩盖 P0。控制台据实显示这三类状态和旧记录忽略标志。新增测试只证明静态/隔离逻辑，用户 Mint 的 Node24 suite/BDS 真实行走仍待验收。
+
+## 2026-10-19 动态三维分段探索（staged）
+
+Bedrock 原固定 6 格、同高、四方向直线探测已升级为**动态下一段预算**（依据剩余白天、生命、食物，单段安全封顶12步），有限三维 BFS 搜索经地形验证的可拐弯、上下单整格自然地面路线。路径分段按相邻 waypoint 验证，无已加载支撑、2格陡坎、危险地形、未知碰撞形状、近敌均拒绝；需要服务端自身位置和本地收敛才记录段成功并启动下一段（成功端点会做有限去重），客户端模拟不算。楼梯/半砖的细分碰撞通行未验收，不能宣称全部Minecraft地形可通行；本轮尚未 Mint/BDS 现场验收。控制台已展示确认段数与动态结果。
+
+> **2026-10-19 无玩家在线的自主循环改进（staged）**：用户日志证实独自在线时反复 `LEARN_WEAPON` 和三次床入睡失败，无真实移动证据。Bedrock `world_routine.cjs` 现在把被失败地点阻止的资源任务明确转成 `FIND_NEW_RESOURCE_AREA`：只有安全、自然、已加载平地可进行 6 格有限侦察，否则记录具体天气/昼夜/着地/路径冷却原因而 WAIT，不再每120秒刷同一武器标签；没有实现无边界寻路。睡床执行器返回选中床的精确坐标和导航/服务器交互两个不同错误阶段，对同一床20分钟及同地区12分钟节流；未改变多人公共床所有权风险。Mac `#control` 新增实际自主目标与床失败状态。Mint/npm 全量测试及 BDS 真实运动尚未运行，不能把这些改进标记 observed。
+
+
+
+> **2026-10-19 Movement Stage 1（staged、非 BDS 实测）**：读固定 Bedrock 1.26 `player_auth_input`/服务端纠偏实现。新增被动监听 BDS 自身位置包的 `movement_evidence.cjs`（真服务器包与本地估算分开）、noPath 仅对安全已加载水平通道尝试最多400ms前进的 `safe_follow_step.cjs`；在 P0 用户/危险任务中立即停止。Mac 控制台 `#control` 显示最近服务端证据及地面快照。完整真实跟随/浮空仍需 Minecraft 服务器坐标验证，不能从本地自测宣告成功。
+
+> **2026-10-19 Bedrock 日常生存新阶段（代码已接入，尚未实机）**：全天候实时阶段/雷暴睡眠、床周围怪物感知、工作失败地点退避、只在白天已验证天然通道里最多 6 格侦察（8 秒限时）。没有可确认移动/地形时保持原地；采木/睡床/侦察退避写入独立私有 `routine-failures.json`，重启后未过期记录可复用；不是模型权重训练。重生点可靠设置、床所有权和真正探索地图均为 pending；跟随 `noPath` 未因本轮解决。详见 `world_routine.cjs` 与 Dashboard `#control`。
+
+> **2026-10-19 身份连接防护（阶段性源码）：** 两条原生 Bedrock 客户端共享本地独占登录锁，避免更新后同时启动同一个 Xbox 账号；被动匿名比较登录请求结构、证书有效期桶和退出状态，并由 AliceAI 控制台只读展示最近六次，不保留账号标识和令牌。正式 Mint 尚未验收，间歇性 `server_id_conflict` 的服务器根因仍未知；本项仍是 staged，不标记为 observed。
+
+> **2026-10-19 最新 FOLLOW 实机回归失败**：玩家 `MolarParsley191` 被正确跟随意图识别，Alice 超出半径 6～7 格依旧多次 `partial/noPath`，真实跟随失败。新增轻量 `follow_diagnostics.cjs` + `main.cjs` 只读状态上报，记录脚底/四邻方块加载与可站立证据、坐标 Y 和区块支持信息，供控制台 `#control` 查看。状态 **staged：实机诊断尚待验收**；不能认定修复了真实移动/浮空，也不能把 `pathMoving` 或本地位移估计当作 MCManager 服务器位移。
+>
+
+> **2026-10-19 Alice 控制台动态配置（代码已接入；Mint 未验收）**：Mac 8788 控制台现在有原生 Bedrock 实时运行页（健康/坐标/状态/跟随目标/心跳），30 项真实能力与 13 条聊天指令按实证状态分组。可编辑 `followDistance`（2～12，默认3）、`occludedDistance`（2～12，默认4）和 `autonomyEnabled`，由 Mac localhost POST、Mint SSH 受限桥、Node24 动态配置读取 + 私有状态文件组成；每次保存和应用有不同 revision。LAN 读视图不要求认证，但写接口仅允许 Mac 127.0.0.1，并有同源/JSON/长度/字段校验。**尚未在用户 Mac/Mint 上完整启动验收**，因此不能声称开关已实机生效或跟随移动修复。Xbox 登录及真实可见已被用户观察，自动跟随路线 `noPath` / 浮空独立待修复。
+
+| 新控制台能力 | 代码 | 实测状态 |
+|---|---|---|
+| 能力目录和指令表 | `dashboard/catalog.json` | 当前 Bedrock 30 项/13 命令，分类状态有证据，UI 待 Mac 实测 |
+| 运行状态与心跳 | `bedrock-native/experiment/src/main.cjs` + `live_control.cjs` → dashboard `remote_control.py` | Node 状态 2 秒更新，10 秒未刷新显示离线；Mint 实测待办 |
+| 在线设置跟随距离（含遮挡） | `runtime.cjs` + Mac API/Mint 配置 | 2～12 格、版本确认；与物理移动成功分开验收 |
+| 在线启停空闲自主任务 | `runtime.cjs` → idleTick | 不停止用户任务和安全层；等待现场验证 |
+| 安全限制 | Mac Nginx ACL、同源 JSON、Python+Node 参数校验 | 不支持关闭护卫/低血防护、不提供执行任意 shell/MC 命令；静态测试已写 |
+
+> **2026-10-18 FOLLOW 新问题**：真实用户使用单原生连接模式成功 spawn 且看到 Alice，但执行 `跟着我` 时路径频繁 `partial/noPath/timeout`，且只有 Mineflayer 本地位置估算，未验证服务器位移。新增 `bedrock_player_coordinates.cjs` 修正 pinned Bedrock fork 在其他玩家 `add_player` 初始 Y 与 `move_player` Y 处理不一致，4 项本地单元测试已过；Mint 实际跟随和服务端坐标验证仍待完成。不算已修复跟随。
+
+> **2026-10-18 Bedrock 登录 A/B**：原聊天客户端在真实 17879 成功生成，真人确认看到 Alice；新版自主客户端同账号/Profile 出现 pre-spawn `server_id_conflict`。已新增 opt-in `ALICE_BEDROCK_CLIENT_MODE=legacy-native-injected`（单一原生 bedrock-protocol 客户端注入 Mineflayer，默认方式未变）。4 项本地逻辑单测通过；**新路径尚无 Mint/游戏结果，不得标成已修复或可见性已通过**。
+
+| Feature | Module | Current evidence/status |
+|---|---|---|
+| Eight core states | `core.js` | Code authored; not yet re-tested after packaging |
+| Bedrock user name recognition | Mint fast router | Previously observed; Mint-owned integration |
+| Follow player | `movement.js` / Mint bridge | Prior live follow observed |
+| Repath when stuck | `movement.js` | Prior live success; new modular code pending Mint test |
+| Jump / obstacle dig / safe descent | `movement.js` | Implemented experimental actions; not validated in world |
+| Scaffold/pillar paths | `movement.js` + Pathfinder | Enabled only after blocked path; real placement unverified |
+| Combat/self-preservation | Mindcraft modes + `core.js` | Prior GUARD transition observed |
+| Gather nearby logs | `tasks.js` | Known pathfinder failures; now bounded, needs verification |
+| Make workbench, sticks, sword | `tasks.js` | Recipe chain authored; needs real resource testing |
+| Learning outcomes | `learning.js` | Prior JSON persistence observed; new implementation pending |
+| Autonomous idle work | `autonomy.js` | Implemented with cooldown, real idle test needed |
+| Follow after death | Mint event bridge | Local patches proposed; versioned adapter pending |
+| Stale LLM reply cancellation | Mint message bridge | Local patches proposed; versioned adapter pending |
+| Complex mining/iron tools | LLM planning | Not implemented as deterministic recipe chain |
+| Self-modifying code | None | Deliberately disabled |
+
+## Phase 0.2 safety and crafting changes (pending in-game validation)
+
+| Feature | Implementation | Status |
+|---|---|---|
+| Personal damage reaction | health/entityHurt + hostile proximity, `safety.js` | policy tested, real Mint pending |
+| Player protection | owner entity + recent damage/nearby hostile, `safety_policy.js` | policy tested, real Mint pending |
+| Tool selection for logs | Mineflayer tool plugin and `equipment.js` | logic tested, real Mint pending |
+| Sword before combat | `equipment.js` equips an available sword | selection tested, real Mint pending |
+| Wood task continuation after defense | remaining count + message epoch and safety-owned retry | experimental; live preemption race pending |
+| Workbench recipe study | `crafting.js` discovers recipe, checks actual item delta, stores knowledge | implementation present; live recipe execution pending |
+| Mac one-command update/start | `scripts/deploy-and-run.sh` and Mint helper | authored, remote Mint execution pending |
+
+The hard global ordering `SURVIVE > SELF_DEFENSE > GUARD > commands` is a design target; the current safety module preempts tasks, but existing Mindcraft command entry points can still interrupt active combat until we migrate the central action admission bridge.
+
+## Phase 0.3 — terrain and survival
+
+| Capability | Implementation | Status |
+|---|---|---|
+| Observe narrow 1-block paths / cliff edges | `terrain.js` + pure `terrain_policy.js` | logic authored and unit-testable; in-game observation pending |
+| Prevent blind recovery jumps into missing support | `movement.js` checks advance before manual jump | staged; in-game validation pending |
+| No parkour/sprinting during FOLLOW | cautious Pathfinder movement settings | authored; must verify on Paper |
+| Follow to recently observed remote waypoint | `tracking.js` + `GoalNear` | authored; actual long-range travel pending |
+| Real-time distant-player coordinates | optional allowlisted Paper plugin | **requires separate build, configure and restart; not enabled** |
+| Health-based escape/evade/counter | `safety_policy.js` and `safety.js` | tactic logic tests only; live combat pending |
+| Eating when hungry and separated from enemy | `safety.js` | authored; in-game food test pending |
+
+Remote player dimension changes, river crossing, cave navigation, loaded-chunk transitions and unknown-block routes remain limitations rather than solved problems.
+
+## Optional epoch compatibility
+
+The message generation/epoch feature is optional in the first Mint deployment. If absent, the installer warns and installs the modular runtime if every required adapter is present; the Alice smart wood task never queues an automatically resumed old request after combat. This prioritizes fresh commands from **any player** over stale background work. It does not add a player ownership restriction or change Mindcraft's original `only_chat_with` configuration.
+
+## Phase 0.4 social capabilities
+
+| Feature | Implementation | Verification |
+|---|---|---|
+| "你在干嘛？" / "当前任务" instant response | `social.js` / `activity.js` | code + tests; Mint run pending |
+| Report source of current command | match incoming sender and action label | best-effort; unknown source never guessed |
+| MC jokes and social chat | `social_policy.js`, existing Mindcraft LLM by default | in-game response pending |
+| Optional separate Ollama chat model | `alice_social.json` / `ALICE_CHAT_MODEL` | opt-in; no model automatically installed |
+| Autonomous short MC comments | idle-only, nearby-player, danger-aware and rate-limited | live observation pending |
+| Non-interference with FOLLOW / GATHER / COMBAT | read-only status, chat-only calls, action-free output | unit tests authored; real integration pending |
+
+## 0.3.1 incident regression fixes
+
+| Problem | Change | Status |
+|---|---|---|
+| Legacy self_preservation collides with AliceSafety | Core disallows broken legacy mode | code + regression tests; Mint pending |
+| Retreat loops around distant zombie | narrower threat radius plus 4-second cooldown with damage override | code + pure test; Mint pending |
+| CollectBlock delays safety | cancellation request to plugin before ActionManager takeover | code; Mint plugin timing pending |
+| Negative log count after respawn | clamp to nonnegative inventory delta and skip death reward | code + test |
+| Craft reports undefined swords | wait for observable inventory increase before learning success | code + test |
+| Harvest with dirt/sword/rotten flesh | prefer axe, otherwise clear held junk before hand harvest | code + test |
+| Mac Ollama reachable but Mint 11435 refused | optional automatic SSH reverse localhost tunnel while bot session runs | code; real SSH pending |
+| Legacy follow-router wrongly ignores command while gathering | **not fixed**: exact Mint router source required | outstanding |
+| MaxListenersExceededWarning | underlying plugin shutdown still to verify; do not increase max listeners | outstanding |
+
+- Idle autonomy does not start optional gathering/crafting when Alice is wounded (health below 14) or detects a current hostile; this is fixed survival priority, not trained policy.
+
+## Mint adapter capture (post-0.3.1 engineering preparation)
+
+| Feature | Implementation | Verification |
+|---|---|---|
+| Read-only capture of exact Mint integration source and SHA256 | `scripts/capture-mint-adapters.sh`, `scripts/export-adapters.py` | 4 fake-target unit tests + Bash syntax; SSH/Mint not yet tested |
+| Resume FOLLOW from GATHER when a player repeats "跟着我" | Mint-local fast router / ActionManager | **Still open** pending review and versioning of exact local source; no runtime change in this update |
+| No `skills.moveAway` / `MaxListenersExceededWarning` after 0.3.1 | safety + Mint adapter / collectblock | Requires Mint battle/harvest logs, not inferred from static checks |
+
+## Current staging: more useful teammate interactions
+
+| Request | Status | Evidence / boundary |
+|---|---|---|
+| `背包有什么` / `你在哪里` | Implemented in AliceSocial's message wrapper; Mint integration pending | exact inventory stacks and slot metadata; no guessed position |
+| Auto alert when all visible inventory slots occupied | Implemented, bounded | 5s monitoring and one alert per full episode; not equal to proof of inability to stack items |
+| `收集木头` → ask quantity → `10个` | Implemented via original Mindcraft command handler, unverified on Mint | per-player 45s clarification; upstream Mint fast router may intercept earlier |
+| Wood candidate work area, distances and failure reasons | Implemented, Mint pending | 18-block dual-origin leash for *observed candidates*; legacy skill may choose other coordinates |
+| Chinese repeated navigation failure notice + own location | Implemented, Mint pending | 3 consecutive failed recoveries, max once per 60s |
+| Per-start log persistence + download from Mac | Implemented, local unit tests; Mint pending | private logs; no chat/Drive direct upload |
+| Chest deposit/withdraw, raw-material procurement, craft-to-deliver, item toss | Not yet integrated | Requires Mint action ownership/adapter and Mineflayer container/recipe verification; do not misrepresent as working |
+
+## Standalone storage/crafting groundwork (not active player commands)
+
+| Primitive | State / boundary |
+|---|---|
+| `storeExtrasInNearbyChest(bot,block)` | Mock-tested; chest/barrel within 4.5 blocks, only eligible excess basic materials; no equipment/food auto storage; no pathfinding or chest placement |
+| `takeItemsForTrip(bot,block,name,count)` | Mock-tested; explicit item and amount, visible local chest; reject if zero empty slots or insufficient container inventory |
+| `tossItemNearVisiblePlayer(bot,name,item,count)` | Mock-tested; player <=4 blocks, bounded count, confirms items leave Alice's inventory but cannot prove recipient picked them up |
+| `planMaterialNeeds(...,recipeFor)` | Mock-tested deterministic dependency graph and missing ingredients; does not actually gather/craft |
+| Natural-language command dispatch / scheduling for these primitives | **Not wired** pending Mint adapter source and real container/recipe compatibility verification |
+
+- Chinese command **receipt** is implemented (deduplicated for observed fast route/handleMessage); real task acceptance and eventual completion feedback are pending the Mint ActionManager adapter.
+- Recipe planner reports `materialsAvailable`, not a verified craftable world action. Workbench placement/crafting permissions remain separate.
+
+## Alice Control Center (独立只读工具，未验证用户 Mint 访问)
+
+| 功能 | 状态和边界 |
+|---|---|
+| 本地能力图鉴/命令搜索与复制 | 静态页面从 `dashboard/catalog.json` 读取文档状态，不代表在线运行环境自动探测 |
+| Nginx 独立脚本 | `scripts/run-dashboard.sh`，127.0.0.1:8788，Python API 127.0.0.1:18788；本地测试通过 |
+| Mint 日志列表/预览/下载 | 固定只读 SSH 执行；严格文件名和 16 MiB 下载上限；本地模拟测试通过，真实 Mint SSH 未测试 |
+| Bedrock 玩家发 Alice 指令（现有 Paper/Geyser） | 历史日志有玩家 `.MolarParsley191` 跟随证据，新版本未完整回归 |
+| Alice 直接加入独立 Bedrock Dedicated Server | **不支持**；等待世界备份、协议适配与真实服务端测试 |
+| 备份世界工具 | `scripts/backup-world.py` 只可离线对已确定目录执行；模拟世界验证过，用户实际世界**没有备份** |
+
+- Instance selection: `ALICE_MINDCRAFT_NAME` now coordinates Mac deployment, Mint installation, adapter-source capture, latest-run export, and local control-center SSH logging. This is script routing only, not proof that the target Alice instance is compatible or already updated.
+
+- Mac deployment startup: fixed Bash 3.2 `set -u` empty-`tunnel` expansion in `deploy-and-run.sh`. Both no-Ollama-tunnel and SSH-reverse-tunnel paths are exercised by local fake-SSH PTY tests; user Mint install and new gameplay remain unverified.
+
+- Startup regression harness: no longer requires a pseudo-terminal for mocked foreground branch; preserves production tty restriction. Both SSH tunnel modes still have an explicit deadline and assertion; host test status pending.
+
+- Mint test-mirror compatibility: corrected selected-runtime dry-run unit test to execute against a disposable complete hero-skills-like checkout rather than the production-style Mint `~/minecraft-ai` rsync mirror. No runtime capability change; real deployment pending.
+
+- Local control center LAN access: Nginx now binds `0.0.0.0:8788` (available on reachable Mac IPv4 interfaces) while Python API remains `127.0.0.1:18788`. No authentication was requested or added; anyone able to access the frontend port can read/export Alice logs. Users must not publicly forward this port. Real LAN acceptance pending.
+
+- LAN dashboard startup: corrected Mac Bash 3.2 nounset expansion of unbraced `$WEB_PORT`/`$API_PORT` adjacent to full-width Chinese punctuation in startup status lines. Nginx remains `0.0.0.0:8788`, API loopback `127.0.0.1:18788`, no authentication; user Mac retest outstanding.
+
+## Bedrock-native transport — only staged
+
+| Feature | Status |
+|---|---|
+| MCManager bedrock-default live discovery | Read-only script; Mint not yet inspected |
+| Exact-world offline archive, SHA256, temporary restore | Code and fixture tests pass; real world NOT backed up yet |
+| Xbox-authenticated native BDS client | Code staged, protocol/login still unverified on Mint |
+| Chinese status/chat | Unit-tested only; game packets to verify |
+| Native movement/FOLLOW/gather/combat/inventory/crafting | Not connected; requires disposable-world testing |
+
+- Native Bedrock runtime preflight: requires Node >=24 for bedrock-protocol 3.60.1 and related modules; host Mint Node 20.11.0 is insufficient. `scripts/setup-node24-bedrock.sh` installs Node 24 in user-private Bedrock directory with official checksum and no sudo or system Node replacement. Unit and simulated archive install tested; Mint download/ABI compatibility pending.
+- Real bedrock-default world backup **verified** on 2026-10-18: 15 files, archive SHA256 11309cd4f5b4458ff031298156280eb2ec3c5c8db6bafb2509ba9e22e70d6761, isolated temporary restore complete. Manifest is in Mint ~/minecraft-world-backups/bedrock-default/minecraft-bedrock-20261018T000242906101Z.json. This does not demonstrate native bot compatibility or account authentication.
+
+## 2026-10-18 — Shared AliceAI Paper/Bedrock policy code (new native phase 1b)
+
+The native client now **imports** the actual, single-source Paper policies for inventory count/format, wood-count clarification, health/combat priority, terrain classification, recipe dependency planning, status recognition, and safe message epochs. Its new `bedrock-native/src/shared_brain.cjs` bridges selected Bedrock packet observations and returns honest Chinese read-only status/location/inventory answers; repeated requests for wood quantity are scoped to sender and age. `start_game` position is labeled spawn-only; any updated own position requires a matching `runtime_entity_id`; expired positions are not advertised as live. Health is taken only from matching own entity attributes, not guessed. Bedrock numeric inventory IDs are not yet normalized; until a verified registry/slot bridge exists, queries explicitly report unknown rather than a fake empty inventory.
+
+**Not parity yet:** shared movement strategy ≠ a functioning Bedrock player_auth_input executor; no native follow/dig/combat/crafting/container/toss packets are enabled, and no world-action success is claimed. Old Paper Mineflayer executors stay unchanged. The user's 1.26.51 native spawn is live evidence; phase 1b shared rules and Bedrock packet field observations still require Mint acceptance.
+
+## Bedrock autonomy discrepancy and isolated executor experiment (2026-10-18)
+
+- **Existing native on production 17879**: Xbox login+spawn verified by user, shared read-only policies only, no autonomous work, no pathfinder/motion. This is expected and was misleadingly described as an AI transplant before.
+- **Paper 1.21.11**: original safety/social/autonomy and skill execution remain; core idle decisions now use single `autonomy_policy.js` module shared with experimental Bedrock, preserving existing Paper timeouts and task precedence.
+- **Bedrock action experiment** (`bedrock-native/experiment`): pinned experimental Mineflayer/physics/pathfinder, gated strictly to cloned `minecraft-bedrock-alice-lab` UDP 17880. Sandbox-only high-level follow, one-log dig with inventory verification, idle look/social, low-health task stop. Fixture tests passed; no real Mint gameplay test. Retreat/combat, craft, food, containers, long-lived harvesting, Ollama planning and Paper-memory migration **not delivered**.
+
+
+## 2026-10-18 — Explicit user authorization for live 17879 autonomy (opt-in)
+
+The user explicitly requested **no separate experiment world; use the existing 17879 bedrock-default world directly**. The same experimental, not-yet-live-proven Mineflayer Bedrock executor can now be selected with `npm run production:check` / `npm run production` under `bedrock-native/experiment/`. These are distinct from `npm run check` / `npm start`, which still enforce disposable 17880. Production mode refuses without `ALICE_BEDROCK_PRODUCTION_CONFIRM=I_ACCEPT_WORLD_CHANGES` and the original verified backup manifest. It calls the original 17879 native startup checker, including matching online-mode, real server directory, backup SHA256 and temporary restoration. The old native chat-only connector is unchanged, so it is the rollback binary (stop autonomy, restart old launcher). The only 17879 action commands currently available are follow/stop and a bounded nearest-log dig attempt plus autonomous idle lookout; genuine combat/retreat/equipment/crafting/chests/Ollama action tools **remain absent**. Safety now polls every 300ms (independently from the 5s idle tick) and interrupts motion on threat/health <14, but it **does not move Alice away** and cannot promise survival. The backed-up world snapshot may be older than current world changes; it is not a live pre-launch snapshot. Validation of gameplay still requires users' live Mint logs.
+
+
+## 2026-10-18 — Shared-Paper-core autonomous Bedrock runtime (code merged; Mint acceptance pending)
+
+User explicitly approved real 17879 integration without a new world. The live `bedrock-native/experiment/src/main.cjs` entrypoint now **instantiates `AliceBedrockRuntime`**, not the previous small `NativeAutonomyExperiment`. It imports original canonical Paper `AliceCore` + `autonomy_policy`, `safety_policy`, `terrain_policy`, `wood_policy`, `social_policy`, and `inventory_policy`, and uses `BedrockOperations` to execute against the pinned community Mineflayer Bedrock adapter. Safety observes every 300ms; follow every second; idle autonomy every 5s after 20s idle grace. Code adds finite player-directed wood counts, bounded move/dig with server inventory delta, tree-leaf/build heuristics, inventory-observed recipe/crafting, cautious food recovery, tentative retreat and attack calls, stop/preemption with message epoch, independent edition learning path, and an **optional** allowlisted Ollama chat planner. All are code paths, not yet verified Minecraft gameplay.
+
+Production `npm run production:check` still requires validated world backup, exact 17879 port and `ALICE_BEDROCK_PRODUCTION_CONFIRM=I_ACCEPT_WORLD_CHANGES`; `npm run production` actually connects and may move/dig/consume/attack in the **real** world. Low-level `bedrock-native/npm start` retains the known-good chat-only fallback. This new runtime requires **health event + initial Bedrock inventory_content window='inventory'** before acting; unknown server state fails closed, which may leave Alice idle until correct packet observations are validated on Mint. Pure `node --test test/runtime.test.cjs`: 14 local tests pass; fork dependency installation, full npm test on Mint, live motion, crafting, food, combat and world preservation **not yet observed**. Existing Paper Mindcraft installation and memories are unchanged. Tree recognition is heuristic, **not full world-claim protection**. Prior Oct 18 verified backup predates possible recent gameplay changes; no new offline snapshot implied.
+
+
+## 2026-10-18 — Bedrock 1.26 prismarine-chunk startup failure (live Mint evidence)
+
+Real user Mint Node 24.22.0 log: `production:check` passed the verified world backup and Paper policy loading, but `production` crashed before spawning with `[Prismarine-chunk] No chunk implementation for bedrock 1.26 found` at `mineflayer/lib/bedrock_plugins/blocks.js:6`. **Confirmed cause:** Mineflayer's standard transitive `prismarine-chunk@^1.41.0` does not dispatch `bedrock 1.26` (only up to 1.21). Upstream PR [PrismarineJS/prismarine-chunk#338](https://github.com/PrismarineJS/prismarine-chunk/pull/338) adds 1.26 → shared Bedrock 1.18+ chunk implementation; pinned the contributor's exact #338 commit `02b4a4cc660d0ce6f8f08cbdb78926d7f7590ed3` as a direct dependency and root npm `overrides`, so nested Mineflayer copies use the same revision. `src/chunk_preflight.cjs` resolves chunk/registry through **Mineflayer's own Bedrock blocks.js module path** and checks real `bedrock_1.26.51` registry + chunk constructor + stone state read/write **before any server connection**, including in `npm run production:check`.
+
+Local Node fixture tests for pin/dispatch error/state round-trip: **4/4 pass**, alongside existing runtime tests **18/18 total**; JavaScript syntax passes. **No actual npm Git dependency install or server runtime verified on Mint yet**, so do not claim that world decoding, block hash translation or safe autonomous play now works. Related upstream open PRs **#337** (hashed state persistence) and **#335** (zero-bit palette) remain independent issues and are NOT merged into the pinned #338 code. If the check passes but live world block data is unavailable, diagnose runtime registry/chunk packet behavior rather than disabling the world check or spoofing actions. Preserve live 17879 server, backup, Xbox cache and the old chat-only client. No world changes in this code update.
+
+
+## 2026-10-18 — Live 17879 autonomy and combat state instability: source-tested fix (not Mint-verified)
+
+**Actual user Mint observation after fixed prismarine-chunk 1.26:** backup gate passed, Bedrock 1.26 registry + block roundtrip passed, native 1.26.51 spawn and controllers started. Native Alice chose `LEARN_WEAPON`, switched `IDLE -> CRAFT`, then `0/1 wood; no_verified_natural_tree`. Another real log shows follow intent for player `MolarParsley191` and repeated `FOLLOW -> GUARD/COMBAT -> FOLLOW` transitions; attempted attacks include `out_of_reach` and `ok:true,attempted:true,verifiedDamage:false`. **Following setGoal is NOT yet proof of actual server movement; sending attack is NOT damage/kill verification.** Source root causes: tree checker previously rejected a potential tree as soon as *any one* of roughly 200 peripheral `blockAt` reads returned unknown; safety immediately resumed following on a single clear 300ms sample and never applied a quiet-time hysteresis, leading to thrash near 3.5–4m threat boundaries.
+
+New `bedrock-native/experiment/src/operations.cjs` gathers up to 36 visible log candidates and groups by x/z trunk columns, examines lower known logs first, requires observed vertical trunk (>=2), actual leaves (>=3), and >=26 locally loaded near-base samples, and refuses close build markers or unsupported world block data. Peripheral missing/unloaded voxels no longer automatically disqualify all trees. Rejections are **diagnostic**, with `[Alice wood] tree search:` reporting observed logs, inspected columns, rejected reasons, sampled leaf/trunk/unknown counts and Bedrock block-read support; not a blanket authorization to destroy player structures. Attack response now uses `ok:false,attempted:true,verifiedDamage:false,reason:'damage_not_yet_verified'` until real hit observations exist.
+
+New `src/runtime.cjs` retains a **4.5 second continuous quiet window** following safety danger before resuming a FOLLOW intent; while waiting, follow task cannot reacquire the pathfinder. It reports local-follow-position progress every ~6.5s with `source:mineflayer_local_estimate_not_server_confirmed`, so real movement must still be verified in-game. Idle weapon preparation with insufficient wood starts an explicit `GATHER` task, no misleading `CRAFT` label. Local Node22 tests: **23/23 pass** including 5 added regression tests for missing peripheral block data, protected build, near-base coverage, 4.5s safety hysteresis and no-material GATHER, plus attack truthfulness. Static syntax passes. **Not yet deployed/tested on user's Mint; do not claim fix is validated in the real world.** Keep the original verified backup gate on port 17879, online-mode=true and known-good chat-only fallback; avoid 17880 unless user requests it. Next step: run `npm test`, `npm run production:check`, `npm run production`; capture `[Alice wood] tree search`, `[Alice follow] movement observation` and any `[Alice safety]` warnings; only then infer precise remaining chunk/physics/actor issues.
+
+
+## 2026-10-18 — Paper FOLLOW intent parity / user gameplay logs: live Bedrock corrections (awaiting Mint acceptance)
+
+**Observed on live 17879, user logs:** Xbox+Mineflayer 1.26.51 spawn and autonomous/safety loops succeeded. The spontaneous weapon preparation saw 36 visible logs in 13 columns, **all rejected as near_player_structure**; zero observed leaves, no unknown voxels, block data reported supported. These logs do not show a chunk decoding failure: the current area may be player-built and/or genuine trees may be farther away. Maintain tree/build protection and inspect real leaf names before claiming any tree can be harvested. Follow status displayed `localDistanceToTarget:1.89` and `localMovedBlocks:0`: with a configured three-block follow distance, no motion is expected while already that close. Confirm pathfinding by moving the human player 8-12 blocks away on unobstructed ground. Guard/combat generated numerous unverified attack packets; no observed server-side target damage/kill is in those logs.
+
+**Paper code review:** `AliceMovementController.follow()` uses persistent `core.setFollowIntent`, the recent 30s last-seen tracker, and a recovery loop; Paper tasks may run temporarily and then resume a retained FOLLOW intention, while reactive Safety has highest priority. Bedrock previously called `core.stop('gather ordered')` / `core.stop('craft ordered')`, permanently erasing FOLLOW. It also put explicit `保护我` immediately into permanent GUARD even during peace. Fix Bedrock `src/runtime.cjs`: explicit WOOD / CRAFT now **suspend, not clear** FOLLOW; when bounded job finishes, `core.resumeIntent()` re-enters FOLLOW; explicit STOP alone clears it. Protect command retains FOLLOW while marking guard intent; self-defence/nearby player guard still preempts it when a threat is observed. Owner guard selection restricted to when Alice is within 12 blocks of a *visible* owner; Alice can work independently farther away while retaining intent. Follow can navigate only to a trusted recently seen (up to 30s), same-dimension waypoint; on stale/unseen target she waits rather than guessing. The 1.89 block observation now explicitly prints `withinFollowRadius:true`.
+
+Fix attack-spam symptom: native Bedrock attacks remain **attempts, not verified hits**; target-specific exponential backoff (1.75s–12s) for unverified attacks, seven seconds after out-of-range, bounded 32-target memory; `entityHurt` resets backoff but is labeled an observed event **without proof Alice caused it**. No claim that this alone makes combat effective. Preserve 4.5s safety quiet-window and 300ms safety preemption.
+
+Wood search: manual and autonomous gathering scans within 18 blocks (Paper-style work-area radius), up to 128 nearby observed log candidates, rather than 12/36 overly favoring the closest construction. The entire bounded request must remain within 18 blocks of its starting location. Still requires loaded trunk+canopy evidence and refuses construction markers; diagnostic log now includes `searchRadius`, `originalWorkBound`, and sampled `buildTypes`. No guarantee of finding natural trees in an urban area. Do not loosen the build guard without user evidence.
+
+**Validation:** local Node22 `npm test`: 29/29 passing (including former suites); JavaScript syntax checks passed. New regression cases cover (1) FOLLOW→GATHER→FOLLOW, (2) FOLLOW→CRAFT→FOLLOW/STOP, (3) fresh/stale last-seen, (4) repeated unverified attack throttle and nonattributable hurt event, (5) wide search maintaining refusal of built logs, and (6) GUARD command following the owner in peacetime. **Not yet run on real Mint / actual player motion or combat verified.** Prior backup, original Paper files and Alice data, non-bedrock-default worlds, auth cache, and stable chat-only launcher remain untouched. Next need actual motion at distance >6, server change in observed inventory after collection, and `entityHurt` or server-side damage observation. NOTE: safety-interrupted GATHER currently cancels, it does NOT automatically restart unfinished gather when danger passes; that further parity feature needs a safe message-epoch + remaining-count implementation.
+
+
+## 2026-10-18 — 17879 Alice autonomy: survival, sight-follow, beds, chests, equipment
+
+User requested: health-first self-preservation, always face mobs before attacks, stop close 2-block following in favor of staying in view, independently use nearby beds at night, automatically consume carried food, withdraw/deposit specifically requested items from nearby chests, and equip better available armor/weapons.
+
+Implemented in `bedrock-native/experiment/` on the **existing authenticated 17879 production gate**:
+- Visible FOLLOW target distance 8 blocks; if optional Mineflayer `canSeeEntity` positively returns false (blocked line of sight), temporarily approach to 4 blocks. GoalFollow, long-lived intent and FollowProgress safe radius are aligned. This is a *pathfinding target*, not a proven server-side vision guarantee.
+- `BedrockOperations.attackOnce` now requires bounded `bot.lookAt(enemy upper body)` before `bot.attack(enemy)`. A queued hit is **not** confirmed server damage. Prior combat cooldown and low-health retreat remain; if a safe path is unavailable she can still be hurt or die.
+- New 5s safe maintenance independent from idle autonomy. Hunger <18 triggers safe food use even while FOLLOW and even at full HP (provided she carries a supported food; 30s retry cap). Low HP <14 interrupts regular jobs but an active safe RECOVER meal is not cancelled by health alone; nearby danger still preempts. Eating is confirmed only by server-observed hunger value increase. If food is unavailable and health does not regenerate, Alice may remain in SURVIVE.
+- Bedrock overworld night (clock 12542..23459) and *known unoccupied bed* within 12 blocks: bounded non-destructive goto + Bedrock `bot.sleep` (await actual sleep event); stays put while sleeping, resumes after wake. No bed means no sleep job or chat spam; retry >=120s. `AliceAI 起床` works and STOP cancels intent even if wake fails.
+- `AliceAI 从箱子里拿5个钻石` and `AliceAI 箱子存入3个铁锭` parse Chinese allowlist/common canonical `minecraft:item_id`, count 1..64. Search 12 blocks around job start, max 24 known chests/trapped chests/barrels, bounded path without digging or placing. Wait for **real Bedrock inventory_content Window**, ignore provisional container_open window, operate requested item ONLY, handle multiple stacks, check both player and chest quantity delta and close window. Partial moves must report partial, not full success; explicit player command temporarily suspends FOLLOW then resumes. Containers may be owned by another player: this code does not implement owner/claim permissions; it only uses in-game permissions.
+- `life_actions.cjs` uses Bedrock armor slots 5..8, chooses a strictly better tier and requires equipped slot confirmation. Weapon auto-selection imports the original Paper `equipment.chooseWeapon` function and requires observed held item change. Equipment checks every >=20s only while safe. Added a neutral `STORAGE` state to shared AliceCore; Paper Java execution remains otherwise unchanged.
+- Safety, inventory-sync, world backup + SHA256/restore, online-mode=true and dedicated Xbox auth gate remain. No new 17880 world created, no server/world files modified by this update.
+
+Static syntax checked in tool isolate for CommonJS changes; standalone pure command-parser smoke checks passed for Chinese transfer commands and night check. New Node tests were added/updated in `test/runtime.test.cjs`, `test/life_storage.test.cjs`, but **full Node 24 `npm test` has NOT run on Mint**, and actual sleep, transfer, facing, equipment and visible distance are **not yet verified in live Minecraft**. Do NOT report behavioral parity or service-side success until user gives real console + game observation. Pinned community Bedrock Mineflayer fork is experimental. Preserve old chat-only connector for recovery.
+
+## 2026-10-18 — General Minecraft item intent + durable learning, stage 1
+
+User clarified wood is just an example. Ultimate goal: understand arbitrary Minecraft item acquisition, retain factual game knowledge, learn from observed attempts, and persist across restarts. This is a staged agent goal, NOT a current universal collection claim.
+
+**Now implemented:**
+- Canonical Paper AliceLearningSystem now persists schema-v1 JSON on its first startup, not only on first successful episode. It loads old schema-v1 JSON without wiping it. Bedrock main passes a stable explicit memoryRoot. Production file: ~/.alice-bedrock-autonomy-state/bots/AliceAI-Bedrock/alice_learning.json. Lab and Paper data remain separate. Previous '[Alice learning] new memory' could repeat only because the file was not created before a verified task was saved; it did NOT alone prove previous memory loss. On next launch expect 'loaded persisted memory'.
+- Structured itemAlias + itemOutcomes records persist on verified item/count evidence; explicit 'AliceAI 记住：闪亮矿=diamond' teaches aliases only if the ID exists in the Bedrock registry; cannot override known built-in synonyms. 'AliceAI 记忆' shows summary counts. This is episodic/statistical learning, NOT training LLM weights or self-modifying code.
+- New item_knowledge.cjs normalizes '收集5个钻石', '挖钻石', '采集3个铁锭', '砍木头', '跟紧我', '吃东西/回血' into typed intents. Item IDs must resolve to the live bot.registry.itemsByName or verified alias. Aliases are a limited Chinese bootstrap, not full translations of all registry entries.
+- The production Bedrock executor only safely handles: (A) known natural log variants with tree-canopy/build-guard observations and target-specific inventory delta, and (B) server-supplied recipes with ingredients already in hand, via craftVerified and inventory delta. Other item goals may be understood/validated but require future purpose-built ore mining, smelting, farming, fighting, trade, chest/loot, and risk-aware navigation. Do not pretend 'collect diamond' succeeds by rerouting it to wood or inventing a recipe.
+- Optional Ollama (only when ALICE_OLLAMA_URL is provided) can emit validated collect_item/eat_food/reply/follow structured requests; runtime revalidates item and safety, and passes a small persisted memory summary to future prompts. Model output cannot directly dig, execute a shell command or assert a completed pickup. Without Ollama, deterministic parsing/known item aliases work, not open-ended Chinese understanding.
+- AliceCore long-lived FOLLOW survives an item task. Priority remains survival > safety > command > idle. No changes to 17879 BDS configuration/world, login cache, Paper bot, online-mode or 17880.
+
+**Validation:** GitHub source and CommonJS syntax verified. Isolate-mocked memory initialization/restart/alias persistence PASS; V8 parser and optional planner allowlist PASS; simulated Bedrock two-log acquisition with observed count PASS. Added regression tests learning_persistence.test.cjs, item_knowledge.test.cjs, generic_gather.test.cjs, planner_generic.test.cjs, runtime.test.cjs. Full user Mint Node24 npm test, in-world item collection, model connectivity and Minecraft gameplay are still UNVERIFIED.
+
+**Next stage:** chat → intent → server registry/recipe/drops/source graph → safe specialized skill selection (mining, smelting, farming, mobs, trade, containers) → executed inventory/world proof → durable indexed memory → model reuses trusted learned strategies. Learning does not authorize arbitrary or destructive moves.
