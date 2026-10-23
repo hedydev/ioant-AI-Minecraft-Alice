@@ -2878,6 +2878,15 @@ test('persistent IDLE gate diagnosis separates intentional companion mode, safet
   e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
   e.lastHumanAt=0;e.nextIdleAt=0
   assert.equal(e.idleGateReason(),'eligible_for_work')
+  // A missing independent BDS witness can also keep the startup flag active.
+  // Diagnose the specific witness hold, not an endless generic startup wait.
+  e.startupObservationPending=true
+  e.navigationHold='scout_bds_position_unavailable'
+  assert.equal(e.idleGateReason(),'position_witness_unverified')
+  e.navigationHold=null
+  assert.equal(e.idleGateReason(),'startup_observation_pending')
+  e.startupObservationPending=false
+  assert.equal(e.idleGateReason(),'eligible_for_work')
   e.liveBehavior.settings.agentMode='companion'
   assert.equal(e.idleGateReason(),'companion_mode')
   e.liveBehavior.settings.agentMode='autonomous'

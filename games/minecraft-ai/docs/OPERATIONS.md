@@ -1,3 +1,9 @@
+## 2026-10-23 — Startup IDLE diagnostic precedence (source only)
+
+- A read-only browser tab snapshot at 23:36:48 showed Alice alive (17/20), `IDLE`, 31×31×12 real cached block sampling, `independentSamples=0`, witness `stale_or_invalid_witness` and minute-spaced `idleGateReason=startup_observation_pending` since at least 23:26. The same page recorded a 23:25 zombie retreat failure (`retreat_pathfinder_error`); dashboard data is not a fresh independent BDS movement witness or a direct Mint PID check. Dashboard reported 490 persisted deaths since 2026-10-20, which must not be conflated with deathRecovery cycle count.
+- Source review: in `runIdleDecision`, `startupObservationPending` stays true while `scoutStartProof` fails, and `holdNavigation` sets the specific safety failure. The read-only `idleGateReason` checked the generic startup flag **before** `navigationHold`, hiding the more precise reason. Reorder only diagnostic precedence (position witness first) and add a regression for the simultaneous flags; neither startup admission nor scout/BDS safety proof is loosened.
+- Node test: `node --test games/minecraft-ai/bedrock-native/experiment/test/runtime.test.cjs`, followed by the canonical Mint Node24 regression through `alice-mac.sh sync` after Mac fetch/pull. The code is staged; no Alice restart, BDS restart, world mutation, behavior-pack activation or real movement claimed. The BDS witness remains the primary P0 for autonomous travel.
+
 ## 2026-10-23 — BDS 1.26.51 silent witness compatibility and bounded HTTP policy (source-only)
 
 - Static review found the staged `@minecraft/server-net` 1.x manifest paired with `@minecraft/server` 2.0.0; the 26.50 module peer requirement on the 2.x track starts at 2.9.0. Switch the staged behavior-pack manifest to stable `@minecraft/server` 2.10.0, which is available in 26.50/26.51; retain experimental net/admin `1.0.0-beta`. Live BDS beta-module loading and world Beta eligibility are still UNVERIFIED.

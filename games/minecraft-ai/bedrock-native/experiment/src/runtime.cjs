@@ -281,8 +281,8 @@ class AliceBedrockRuntime {
     if(this.lastSafetyAt>0&&this.clock()-this.lastSafetyAt<THREAT_CLEAR_MS)
       return 'post_threat_window';
     if(this.core.state!=='IDLE')return 'non_idle_state';
-    if(this.startupObservationPending)return 'startup_observation_pending';
     if(this.navigationHold)return 'position_witness_unverified';
+    if(this.startupObservationPending)return 'startup_observation_pending';
     if(this.clock()-this.lastHumanAt<this.p.autonomy_policy.AUTONOMY_GRACE_MS)
       return 'human_grace_period';
     if(this.clock()<this.nextIdleAt)return 'work_cooldown';
