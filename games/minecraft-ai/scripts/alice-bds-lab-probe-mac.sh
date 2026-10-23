@@ -51,6 +51,7 @@ enums={
              "lab_ready_not_observed","lab_script_load_error_observed",
              "lab_server_ready_module_unverified","lab_module_imports_observed"},
     "reason":{"none","missing_lab_beta_tool","lab_beta_not_enabled",
+              "lab_process_guard_unavailable",
               "lab_bds_binary_not_executable","refuse_root_python",
               "unsafe_lab_properties","duplicate_lab_property",
               "lab_port_world_or_auth_changed","unsafe_lab_allowlist",

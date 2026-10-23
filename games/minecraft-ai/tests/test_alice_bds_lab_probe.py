@@ -44,9 +44,66 @@ class LabStartupProbeTests(unittest.TestCase):
         self.file = file
         self.original = original
         self.gate = Mock()
+        # Keep the real function for a contract test. Most fixtures replace it
+        # to avoid touching actual Mint or launching a real BDS.
+        self.real_beta_gate = P.beta_gate
         self.auth = patch.object(P, "beta_gate", return_value=(self.gate, self.lab))
         self.auth.start()
         self.addCleanup(self.auth.stop)
+
+    def test_real_beta_gate_uses_lab_pack_guard_not_beta_module(self):
+        # Real importlib loading + pack_guard tuple, not the setUp mock:
+        # beta module owns pack_guard(), lab-pack owns process identity guard.
+        # No production files or processes are accessed by this fixture.
+        with tempfile.TemporaryDirectory() as tmp:
+            stubdir = Path(tmp)
+            stub = stubdir / "alice-bds-lab-beta.py"
+            world = self.lab / "worlds" / "Bedrock level"
+            world.mkdir(parents=True)
+            (world / "level.dat").write_bytes(b"fixture only")
+            binary = self.lab / "bedrock_server"
+            binary.chmod(0o700)
+            stub.write_text(chr(10).join([
+                "from pathlib import Path",
+                "class PackModule:",
+                "    def require_lab_stopped(self): return None",
+                "def pack_guard():",
+                "    return PackModule(), Path(" + repr(str(world)) + ")",
+                "",
+            ]))
+            with patch.object(P, "HERE", stubdir), patch.object(
+                P, "beta_api_experiment", return_value="enabled_in_level_dat"
+            ), patch.object(P.os, "geteuid", return_value=501):
+                gate, lab = self.real_beta_gate()
+                self.assertEqual(lab, self.lab)
+                self.assertTrue(callable(gate.require_lab_stopped))
+                self.assertEqual(gate.__class__.__name__, "PackModule")
+                # This previously raised AttributeError before startup.
+                with patch.object(P, "beta_gate", self.real_beta_gate):
+                    state, fields = P.run_action("check")
+                self.assertEqual(state, "ready_for_isolated_lab_probe")
+                self.assertFalse(fields["verifiedScriptModuleLoaded"])
+            self.assertFalse((self.lab / ".alice-lab-probe.lock").exists())
+
+    def test_missing_process_guard_fails_closed_without_launch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            world = self.lab / "worlds" / "Bedrock level"
+            world.mkdir(parents=True)
+            (world / "level.dat").write_bytes(b"fixture only")
+            (self.lab / "bedrock_server").chmod(0o700)
+            path = Path(tmp) / "alice-bds-lab-beta.py"
+            path.write_text(chr(10).join([
+                "from pathlib import Path",
+                "def pack_guard():",
+                "    return object(), Path(" + repr(str(world)) + ")",
+                "",
+            ]))
+            with patch.object(P, "HERE", Path(tmp)), patch.object(
+                P.os, "geteuid", return_value=501
+            ):
+                with self.assertRaisesRegex(ValueError, "lab_process_guard_unavailable"):
+                    self.real_beta_gate()
+            self.assertFalse((self.lab / ".alice-lab-probe.lock").exists())
 
     def test_checked_lab_insecure_lan_is_reported_without_file_changes(self):
         before = (self.lab / "server.properties").read_bytes()

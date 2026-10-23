@@ -40,7 +40,12 @@ def beta_gate():
         raise ValueError("missing_lab_beta_tool")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    _, world = module.pack_guard()
+    # pack_guard() returns (lab_pack_module, world), not (beta_module, world).
+    # The lab-pack module owns require_lab_stopped(); returning the beta
+    # module caused AttributeError before the first BDS launch.
+    lab_pack, world = module.pack_guard()
+    if not callable(getattr(lab_pack, "require_lab_stopped", None)):
+        raise ValueError("lab_process_guard_unavailable")
     if beta_api_experiment(world / "level.dat") != "enabled_in_level_dat":
         raise ValueError("lab_beta_not_enabled")
     lab = world.parent.parent
@@ -50,7 +55,7 @@ def beta_gate():
         raise ValueError("lab_bds_binary_not_executable")
     if os.geteuid() == 0:
         raise ValueError("refuse_root_python")
-    return module, lab
+    return lab_pack, lab
 
 
 def properties(path):
@@ -315,6 +320,7 @@ def main():
     except ValueError as exc:
         codes = {
             "missing_lab_beta_tool", "lab_beta_not_enabled",
+            "lab_process_guard_unavailable",
             "lab_bds_binary_not_executable", "refuse_root_python",
             "unsafe_lab_properties", "duplicate_lab_property",
             "lab_port_world_or_auth_changed", "unsafe_lab_allowlist",
