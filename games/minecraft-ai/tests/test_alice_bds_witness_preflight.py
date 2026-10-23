@@ -20,8 +20,7 @@ class PreflightTests(unittest.TestCase):
             self.assertFalse(state["bdsRootMatchesExpected"])
             self.assertFalse(state["safeToApplyWorldChanges"])
             self.assertFalse(state["targetWorldStructurallyPresent"])
-            self.assertEqual(state["betaApisExperiment"],
-                             "not_verified_requires_world_level_experiment_audit")
+            self.assertEqual(state["betaApisExperiment"], "unverified")
 
     def fixture(self, home, *, port="17879", name="Bedrock level", attached=False):
         root = home / "minecraft-bedrock"
@@ -69,6 +68,24 @@ class PreflightTests(unittest.TestCase):
             self.assertFalse(state["safeToApplyWorldChanges"])
             self.assertFalse(state["alreadyAttached"])
             self.assertEqual((root / "server.properties").read_bytes(), before)
+
+    def test_experiment_readout_still_cannot_authorize_world_edit(self):
+        import struct
+        with tempfile.TemporaryDirectory() as base:
+            home = Path(base)
+            root = self.fixture(home)
+            level = root / "worlds" / "Bedrock level" / "level.dat"
+            def named(tag, name, payload):
+                return bytes([tag]) + struct.pack("<H", len(name)) + name.encode() + payload
+            # Actual LE NBT compound with the Beta APIs 'gametest' flag.
+            inner = named(1, "gametest", bytes([1])) + bytes([0])
+            body = bytes([10,0,0]) + named(10, "experiments", inner) + bytes([0])
+            level.write_bytes(struct.pack("<II", 10, len(body)) + body)
+            state = CHECK.inspect(home)
+            self.assertEqual(state["betaApisExperiment"], "enabled_in_level_dat")
+            self.assertEqual(state["betaModulesLoaded"],
+                             "not_verified_without_bds_log_or_runtime_witness")
+            self.assertFalse(state["safeToApplyWorldChanges"])
 
     def test_wrong_port_or_world_disallows_install(self):
         with tempfile.TemporaryDirectory() as base:

@@ -10,6 +10,7 @@ from pathlib import Path
 import stat
 import sys
 import time
+from alice_bds_level_metadata import beta_api_experiment
 
 PACK_UUID = "e39b740e-fb97-47e5-b1e7-f61f5a8b87de"
 MODULE_UUID = "49abe19c-5c2e-4cd4-b826-d8e935ed9932"
@@ -150,7 +151,13 @@ def inspect(home):
         "receiverPrivateConfigExists": receiver_config,
         "receiverPrivateTokenExists": receiver_token,
         "receiverLoopbackPortConfigured": receiver_port_ok,
-        "betaApisExperiment": "not_verified_requires_world_level_experiment_audit",
+        # Read only bounded metadata from this precise world; never edit NBT
+        # and never infer that the experimental modules themselves loaded.
+        "betaApisExperiment": (
+            beta_api_experiment(world / "level.dat")
+            if correct_world else "unverified"
+        ),
+        "betaModulesLoaded": "not_verified_without_bds_log_or_runtime_witness",
         "verifiedOfflineWorldBackup": "not_verified_requires_backup_and_restore_test",
         "processes": bounded_processes(root) if correct_root else {"state": "unknown", "count": None},
         "safeToApplyWorldChanges": False,
