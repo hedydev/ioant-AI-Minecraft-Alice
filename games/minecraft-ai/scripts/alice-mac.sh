@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
   cat <<'HELP'
 Usage: ALICE_SSH_TARGET=user@host bash alice-mac.sh ACTION [--dry-run]
-Actions: status diagnose check test start restart logs capture-config sync deploy report witness-preflight witness-lab-check witness-lab-prepare witness-lab-pack-check witness-lab-pack-stage witness-lab-pack-stage-verified witness-lab-beta-check witness-lab-beta-enable
+Actions: status diagnose check test start restart logs capture-config sync deploy report witness-preflight witness-lab-check witness-lab-prepare witness-lab-pack-check witness-lab-pack-stage witness-lab-pack-stage-verified witness-lab-beta-check witness-lab-beta-enable witness-lab-startup-check witness-lab-startup-probe
 sync: copy Git-tracked Alice files with backups, then run Mint tests; no restart.
 deploy: sync + tests + restart the existing Alice; requires an active client.
 report: 3-hour read-only sanitized status, diagnose, events and source hashes -> Mac Desktop ZIP.
@@ -16,12 +16,14 @@ witness-lab-pack-stage: stage 17880-only pack WITHOUT Beta NBT, secrets or HTTP.
 witness-lab-pack-stage-verified: explicit interactive sudo-v for read-only proc cwd audit; pack writes as unprivileged Mint user.
 witness-lab-beta-check: validate an already-staged 17880 lab and exact reversible NBT patch, with no world writes.
 witness-lab-beta-enable: explicitly enable gametest ONLY in stopped 17880 lab with preserved original level.dat and no BDS start.
+witness-lab-startup-check: read-only 17880 readiness and isolation settings audit, no BDS start.
+witness-lab-startup-probe: explicit 17880-only short BDS launch + graceful stop and sanitized module-import evidence.
 Other actions call the corresponding Mint CLI. --dry-run does no SSH or writes.
 Git is never pulled/reset/stashed automatically. See docs/OPERATIONS.md.
 HELP
 }
 action="${1:-}"
-case "$action" in -h|--help|'') usage; exit 0;; status|diagnose|check|test|start|restart|logs|capture-config|sync|deploy|report|witness-preflight|witness-lab-check|witness-lab-prepare|witness-lab-pack-check|witness-lab-pack-stage|witness-lab-pack-stage-verified|witness-lab-beta-check|witness-lab-beta-enable) ;; *) usage >&2; exit 2;; esac
+case "$action" in -h|--help|'') usage; exit 0;; status|diagnose|check|test|start|restart|logs|capture-config|sync|deploy|report|witness-preflight|witness-lab-check|witness-lab-prepare|witness-lab-pack-check|witness-lab-pack-stage|witness-lab-pack-stage-verified|witness-lab-beta-check|witness-lab-beta-enable|witness-lab-startup-check|witness-lab-startup-probe) ;; *) usage >&2; exit 2;; esac
 [[ $# -le 2 && ( $# -eq 1 || "${2:-}" == --dry-run ) ]] || { usage >&2; exit 2; }
 target="${ALICE_SSH_TARGET:-}"
 [[ "$target" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.-]*@[a-zA-Z0-9][a-zA-Z0-9.:-]*$ ]] || {
@@ -39,6 +41,12 @@ if [[ "${2:-}" == --dry-run ]]; then
   exit 0
 fi
 # Report collection is read-only: no Mint deploy, process restart or BDS change.
+if [[ "$action" == witness-lab-startup-check || "$action" == witness-lab-startup-probe ]]; then
+  mode=check
+  [[ "$action" != witness-lab-startup-probe ]] || mode=probe
+  bash "$scripts/alice-bds-lab-probe-mac.sh" "$mode"
+  exit $?
+fi
 if [[ "$action" == witness-lab-beta-check || "$action" == witness-lab-beta-enable ]]; then
   mode=check
   [[ "$action" != witness-lab-beta-enable ]] || mode=enable
