@@ -47,3 +47,11 @@ witness. A pack that loads but does not POST signed samples is NOT sufficient
 for verified navigation. Test after BDS is safely enabled: 2+ fresh
 `bds_script_api` observations, login-bound identity, and real BDS-coordinate
 movement; otherwise remain fail-closed and collect logs.
+
+## Bedrock 1.26.51 compatibility gate (not an activation)
+
+The original staged manifest specified `@minecraft/server` 2.0.0, outside the 2.x peer range documented for `@minecraft/server-net` around Bedrock 26.50. It now specifies stable `2.10.0` (available in 26.50/51), while the BDS-only net/admin modules remain beta. This is **not** proof that the installed BDS 1.26.51 loads those betas or that world Beta APIs are enabled.
+
+For the 1.26.20+ HTTP policy the *module-scoped* `permissions.json` includes `allowed_uris=["http://127.0.0.1:18781/v1/position"]`, `force_tls=false`, `max_body_bytes=512` and `max_concurrent_requests=1`. Cleartext HTTP is permitted **only over IPv4 loopback** to the existing token-authenticated receiver. If the private receiver uses a non-default port, manually change both the private `variables.json` URL and this allowlisted URI before any future approved activation. Never modify `config/default` to enable net.
+
+Before proposing a BDS install, run `python3 -m unittest discover -s games/minecraft-ai/tests -p test_bds_script_witness.py -v`. This only validates repository configuration; it does not test the live server.

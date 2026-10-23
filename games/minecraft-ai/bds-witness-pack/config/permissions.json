@@ -3,5 +3,15 @@
     "@minecraft/server",
     "@minecraft/server-admin",
     "@minecraft/server-net"
-  ]
+  ],
+  "module_permissions": {
+    "@minecraft/server-net": {
+      "allowed_uris": [
+        "http://127.0.0.1:18781/v1/position"
+      ],
+      "force_tls": false,
+      "max_body_bytes": 512,
+      "max_concurrent_requests": 1
+    }
+  }
 }

@@ -1,3 +1,10 @@
+## 2026-10-23 — BDS 1.26.51 silent witness compatibility and bounded HTTP policy (source-only)
+
+- Static review found the staged `@minecraft/server-net` 1.x manifest paired with `@minecraft/server` 2.0.0; the 26.50 module peer requirement on the 2.x track starts at 2.9.0. Switch the staged behavior-pack manifest to stable `@minecraft/server` 2.10.0, which is available in 26.50/26.51; retain experimental net/admin `1.0.0-beta`. Live BDS beta-module loading and world Beta eligibility are still UNVERIFIED.
+- The 1.26.10 BDS HTTP configuration supports `module_permissions`, and 1.26.20 renamed `force_https` to `force_tls`. The witness module's `permissions.json` now explicitly restricts only its net module to `http://127.0.0.1:18781/v1/position`, `force_tls=false`, 512 request bytes and 1 concurrent request; never grant net in `config/default`. A custom receiver port requires a matching private `variables.json` URL and allowlisted URI.
+- Source regression: `python3 -m unittest discover -s games/minecraft-ai/tests -p test_bds_script_witness.py -v`. Source changes, contract tests and GitHub commit are NOT Mint Node24, BDS Script API or gameplay proof. Do not activate a pack, edit the world, restart BDS/Alice, start a second Xbox session, enable legacy querytarget, or relax the independent navigation guard.
+- References: https://learn.microsoft.com/en-us/minecraft/creator/documents/update1.26.10 ; https://learn.microsoft.com/en-us/minecraft/creator/documents/update1.26.20 ; https://www.minecraft.net/en-us/article/minecraft--bedrock-edition-26-50-changelog .
+
 ## 2026-10-23 — 生产重启预检查与位置见证解耦（仅 Alice，未部署）
 
 - **发现的阻塞：** 新仓库 `world_view.cjs` 明确为 `RADIUS=15,BELOW=6,ABOVE=5`，但 Mint 实时 `world-view.json` 仍为 `radius=5,below=3,above=4,scanned=968`。同时 `bds-position-witness.json` 是历史 `mcsm_querytarget` 数据，文件已有约 59,292 秒未更新。测试通过 / 文件同步不会热替换已经运行的 Node 模块，因此旧进程可能继续写入旧半径。不能单凭截图认定旧仓库仍在用，也不能用累计位置样本证明新鲜。

@@ -99,6 +99,31 @@ class SilentWitnessTests(unittest.TestCase):
         self.assertIn('("127.0.0.1", cfg["port"])', server)
         self.assertNotIn("subprocess", server)
 
+    def test_1_26_51_pack_dependencies_and_loopback_http_policy(self):
+        pack = Path(__file__).resolve().parents[1] / "bds-witness-pack"
+        manifest = json.loads((pack / "manifest.json").read_text(encoding="utf-8"))
+        versions = {item["module_name"]: item["version"]
+                    for item in manifest["dependencies"]}
+        # server-net 1.x on 26.50/51 requires @minecraft/server 2.9+
+        # on the 2.x track; stable 2.10.0 ships with 26.50.
+        self.assertEqual(versions["@minecraft/server"], "2.10.0")
+        self.assertEqual(versions["@minecraft/server-net"], "1.0.0-beta")
+        self.assertEqual(versions["@minecraft/server-admin"], "1.0.0-beta")
+        self.assertEqual(manifest["modules"][0]["uuid"], "49abe19c-5c2e-4cd4-b826-d8e935ed9932")
+        permissions = json.loads((pack / "config" / "permissions.json").read_text())
+        self.assertEqual(set(permissions["allowed_modules"]), set(versions))
+        self.assertEqual(set(permissions["module_permissions"]), {"@minecraft/server-net"})
+        net = permissions["module_permissions"]["@minecraft/server-net"]
+        url = "http://127.0.0.1:18781/v1/position"
+        self.assertEqual(net["allowed_uris"], [url])
+        self.assertIs(net["force_tls"], False)
+        self.assertEqual(net["max_body_bytes"], bridge.MAX_BODY)
+        self.assertEqual(net["max_concurrent_requests"], 1)
+        variables = json.loads((pack / "config" / "variables.example.json").read_text())
+        self.assertEqual(variables["aliceWitnessUrl"], url)
+        self.assertTrue(url.startswith("http://127.0.0.1:"))
+
+
 
 if __name__ == "__main__":
     unittest.main()
