@@ -18,7 +18,7 @@ trap 'rm -f "$tmp"' EXIT
 ssh -o BatchMode=no -o ConnectTimeout=10 "$target" \
   'python3 "$HOME/minecraft-ai/scripts/alice-bds-witness-preflight.py"' > "$tmp"
 python3 - "$tmp" <<'PY'
-import json, pathlib, sys
+import json, pathlib, sys, time
 p = pathlib.Path(sys.argv[1])
 raw = p.read_bytes()
 if len(raw) > 16384:
@@ -32,6 +32,15 @@ if (not isinstance(obj, dict) or
     obj.get("readOnly") is not True or
     obj.get("safeToApplyWorldChanges") is not False):
     raise SystemExit("Preflight could not establish the read-only contract.")
+if (type(obj.get("schemaVersion")) is not int or obj["schemaVersion"] != 2 or
+    obj.get("betaApisExperiment") not in (
+        "enabled_in_level_dat", "disabled_in_level_dat",
+        "not_declared_in_level_dat", "unverified") or
+    obj.get("betaModulesLoaded") != "not_verified_without_bds_log_or_runtime_witness"):
+    raise SystemExit("Mint returned OLD witness preflight format; first update and sync current main. No Desktop report saved.")
+seen = obj.get("observedAtUnix")
+if type(seen) is not int or abs(int(time.time()) - seen) > 900:
+    raise SystemExit("Mint witness preflight timestamp missing or stale; check Mac/Mint clocks. No Desktop report saved.")
 # Prevent unrecognized Mint output (including private paths, usernames or
 # credentials) from being copied into a desktop report, even after a bad sync.
 bool_fields = (
@@ -47,6 +56,7 @@ enums = {
     "verifiedOfflineWorldBackup": {"not_verified_requires_backup_and_restore_test"}
 }
 clean = {"audit": "ALICE_BDS_SILENT_WITNESS_READ_ONLY",
+         "schemaVersion": 2, "observedAtUnix": seen,
          "readOnly": True, "safeToApplyWorldChanges": False}
 for key in bool_fields:
     if type(obj.get(key)) is bool:
@@ -65,4 +75,5 @@ PY
 mv "$tmp" "$out"
 trap - EXIT
 echo "Saved to Mac Desktop: $out"
-echo "Upload this JSON to ChatGPT. No BDS process or world was changed."
+echo "NEW version-2 report, generated now. Upload this exact Desktop JSON (not any filename ending in (1))."
+echo "No BDS process or world was changed."

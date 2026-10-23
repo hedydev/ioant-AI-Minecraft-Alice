@@ -134,6 +134,7 @@ def inspect(home):
                             and 3 <= len(parsed["gamertag"]) <= 16)
     result = {
         "audit": "ALICE_BDS_SILENT_WITNESS_READ_ONLY",
+        "schemaVersion": 2,
         "observedAtUnix": int(time.time()),
         "readOnly": True,
         "bdsRootMatchesExpected": correct_root,
@@ -175,6 +176,7 @@ def main():
         return 0
     except (ValueError, OSError, TypeError):
         print(json.dumps({"audit": "ALICE_BDS_SILENT_WITNESS_READ_ONLY",
+                          "schemaVersion": 2,
                           "readOnly": True, "state": "cannot_complete_safely",
                           "safeToApplyWorldChanges": False}))
         return 2

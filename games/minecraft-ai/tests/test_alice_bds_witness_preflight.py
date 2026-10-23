@@ -19,6 +19,8 @@ class PreflightTests(unittest.TestCase):
                 state = CHECK.inspect(Path(base))
             self.assertFalse(state["bdsRootMatchesExpected"])
             self.assertFalse(state["safeToApplyWorldChanges"])
+            self.assertEqual(state["schemaVersion"], 2)
+            self.assertIs(type(state["observedAtUnix"]), int)
             self.assertFalse(state["targetWorldStructurallyPresent"])
             self.assertEqual(state["betaApisExperiment"], "unverified")
 
@@ -94,6 +96,14 @@ class PreflightTests(unittest.TestCase):
             state = CHECK.inspect(home)
             self.assertFalse(state["propertiesMatchProduction17879BedrockLevel"])
             self.assertFalse(state["safeToApplyWorldChanges"])
+
+    def test_mac_preflight_rejects_legacy_format_and_includes_timestamp(self):
+        mac = Path(__file__).resolve().parents[1] / "scripts" / "alice-bds-witness-mac.sh"
+        source = mac.read_text(encoding="utf-8")
+        self.assertIn('obj["schemaVersion"] != 2', source)
+        self.assertIn('abs(int(time.time()) - seen) > 900', source)
+        self.assertIn('"schemaVersion": 2, "observedAtUnix": seen', source)
+        self.assertIn("Mint returned OLD witness preflight format", source)
 
     def test_pack_already_attached_is_reported_without_changes(self):
         with tempfile.TemporaryDirectory() as base:
