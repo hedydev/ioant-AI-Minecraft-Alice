@@ -45,4 +45,20 @@ class SandboxPreparationTests(unittest.TestCase):
             self.assertEqual(json.loads((clone/'.alice-sandbox.json').read_text())['source'],str(source.resolve()))
             with self.assertRaisesRegex(ValueError,'already exists'):
                 lab.prepare(source,manifest,clone,run_verify=lambda m,s:{'worlds':['worlds/Bedrock level'],'sha256':sha})
+    def test_refuses_nested_symlink_in_live_installation_without_clone(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home=Path(tmp)
+            source=home/'minecraft-bedrock'
+            (source/'config').mkdir(parents=True)
+            (source/'bedrock_server').write_bytes(b'BDS binary')
+            (source/'server.properties').write_text('server-port=17879\nlevel-name=Bedrock level\n')
+            (source/'config'/'external').symlink_to(home)
+            archive=home/'backup.json'
+            archive.write_text(json.dumps({'archive':'no-file.tar.gz','files':{}}))
+            labdir=home/'minecraft-bedrock-alice-lab'
+            with self.assertRaisesRegex(ValueError,'nested server symlink'):
+                lab.prepare(source,archive,labdir,
+                            run_verify=lambda *a:{'worlds':['worlds/Bedrock level'],'sha256':'f'*64})
+            self.assertFalse(labdir.exists())
+
 if __name__=='__main__': unittest.main()

@@ -39,11 +39,19 @@ def prepare(source, manifest_file, destination, *, run_verify=mod.verify):
     archive=manifest_file.parent/info['archive']
     tmp=Path(tempfile.mkdtemp(prefix='.alice-bedrock-lab-staging-',dir=destination.parent))
     try:
+        # Never follow nested symlinks into private files or a different world
+        # while copying a LIVE BDS installation's non-world runtime assets.
         for entry in source.iterdir():
             if entry.name in ('worlds','logs',MARKER):continue
             if entry.is_symlink():raise ValueError('Refusing to copy server symlink: '+entry.name)
             target=tmp/entry.name
-            if entry.is_dir():shutil.copytree(entry,target,symlinks=False)
+            if entry.is_dir():
+                for base, dirs, files in os.walk(entry, followlinks=False):
+                    parent=Path(base)
+                    if parent.is_symlink() or any((parent/name).is_symlink()
+                                                  for name in dirs+files):
+                        raise ValueError('Refusing nested server symlink')
+                shutil.copytree(entry,target,symlinks=False)
             elif entry.is_file():shutil.copy2(entry,target)
         with tarfile.open(archive,'r:gz') as tar:
             members=tar.getmembers()

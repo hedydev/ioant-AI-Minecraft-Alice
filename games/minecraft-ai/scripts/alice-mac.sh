@@ -4,17 +4,19 @@ set -euo pipefail
 usage() {
   cat <<'HELP'
 Usage: ALICE_SSH_TARGET=user@host bash alice-mac.sh ACTION [--dry-run]
-Actions: status diagnose check test start restart logs capture-config sync deploy report witness-preflight
+Actions: status diagnose check test start restart logs capture-config sync deploy report witness-preflight witness-lab-check witness-lab-prepare
 sync: copy Git-tracked Alice files with backups, then run Mint tests; no restart.
 deploy: sync + tests + restart the existing Alice; requires an active client.
 report: 3-hour read-only sanitized status, diagnose, events and source hashes -> Mac Desktop ZIP.
 witness-preflight: inspect BDS 17879 world, packs and beta prerequisites -> Mac Desktop JSON; no BDS writes.
+witness-lab-check: verify private existing world backup via isolated restore; no BDS write.
+witness-lab-prepare: explicitly create NEW 17880 sandbox from verified backup; never start BDS.
 Other actions call the corresponding Mint CLI. --dry-run does no SSH or writes.
 Git is never pulled/reset/stashed automatically. See docs/OPERATIONS.md.
 HELP
 }
 action="${1:-}"
-case "$action" in -h|--help|'') usage; exit 0;; status|diagnose|check|test|start|restart|logs|capture-config|sync|deploy|report|witness-preflight) ;; *) usage >&2; exit 2;; esac
+case "$action" in -h|--help|'') usage; exit 0;; status|diagnose|check|test|start|restart|logs|capture-config|sync|deploy|report|witness-preflight|witness-lab-check|witness-lab-prepare) ;; *) usage >&2; exit 2;; esac
 [[ $# -le 2 && ( $# -eq 1 || "${2:-}" == --dry-run ) ]] || { usage >&2; exit 2; }
 target="${ALICE_SSH_TARGET:-}"
 [[ "$target" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.-]*@[a-zA-Z0-9][a-zA-Z0-9.:-]*$ ]] || {
@@ -32,6 +34,12 @@ if [[ "${2:-}" == --dry-run ]]; then
   exit 0
 fi
 # Report collection is read-only: no Mint deploy, process restart or BDS change.
+if [[ "$action" == witness-lab-check || "$action" == witness-lab-prepare ]]; then
+  mode=check
+  [[ "$action" != witness-lab-prepare ]] || mode=prepare
+  bash "$scripts/alice-bds-lab-mac.sh" "$mode"
+  exit $?
+fi
 if [[ "$action" == witness-preflight ]]; then
   bash "$scripts/alice-bds-witness-mac.sh"
   exit $?
