@@ -1,3 +1,7 @@
+## Explicit UDP lab port owner audit — staged (2026-10-24)
+
+`alice-mac.sh witness-lab-port-owner` is an opt-in, interactive, read-only diagnostic distinct from regular `witness-lab-port-check`: after human sudo authentication, Mint executes exactly the filtered `/usr/bin/ss` UDP 17880/17881 query and retains only bounded PID/process names when the kernel exposes them. It does not start or stop BDS, mutate worlds or authorize any corrective action. Normal `witness-lab-port-check` stays non-privileged. If owner PID remains hidden or sudo fails, return unavailable/unknown, never guess a process identity. Real Mint owner identification remains pending.
+
 ## 2026-10-24: Read-only UDP lab owner hints
 
 Maintained `witness-lab-port-check` now adds best-effort `socketOwners` derived from a strictly filtered `ss` read-only UDP query to help identify what blocks IPv4 17880. It retains only target port, family and optionally safe-bounded process name/PID, not raw addresses, unrelated sockets or command lines. A hidden process owner is represented as unknown; no privilege escalation, process control or lab startup occurs. Requires operator acceptance of updated Mac Python tests and actual Mint JSON before claiming an owner. Existing 17880 one-shot and production 17879 gates remain untouched.

@@ -1,3 +1,7 @@
+## 2026-10-24: Explicit read-only owner audit required for 17880
+
+Live operator JSON: 628/628 Mint tests, `ipv4_17880=in_use`, `ipv6_17881=available`, 17880 socket record but `ownerVisible=false` without root privileges. All disposable clone one-shot marker booleans false. Cause not yet identified; do not infer a service or perform any process control. Added a separate Mac `witness-lab-port-owner` action: interactive Mint sudo validation, followed by a *fixed read-only* `sudo -n /usr/bin/ss` filtered strictly for local UDP 17880/17881, parsed into name/PID only. Does not grant privilege to Python or OpenClaw, does not modify production/lab process, world or port config, does not launch BDS and does not repeat one-shot startup. Extended mock tests; Mac full tests and live owner evidence pending. Require explicit operator action and sanitized JSON before remediation.
+
 ## 2026-10-24: Exact Mint UDP 17880 occupancy found; owner still unknown
 
 Live operator ran full Mac Python/Mint sync and got Mint Node tests 628/628 passed. The non-destructive port diagnostic reported `ipv4_17880=in_use`, `ipv6_17881=available`, `bothAvailable=false`, disposable lab directory present, and no clone config backup/script backup/advisory lock markers. The earlier lab startup did **not** observe server readiness or Script API imports; current evidence points to the first UDP-availability gate before clone config/lock creation. No process identity has yet been demonstrated.

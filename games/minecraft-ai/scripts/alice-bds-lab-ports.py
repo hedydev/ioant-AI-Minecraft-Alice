@@ -6,6 +6,7 @@ import re
 import socket
 import subprocess
 import time
+import sys
 from pathlib import Path
 
 AUDIT = "ALICE_BDS_LAB_UDP_PORT_CHECK"
@@ -59,7 +60,7 @@ def preparation_markers(home=None):
 
 
 
-def socket_owners(run=subprocess.run):
+def socket_owners(run=subprocess.run, elevated=False):
     """Best-effort read-only owner hints for fixed UDP ports only.
 
     ss output is never returned directly: addresses, users, commands and
@@ -67,6 +68,10 @@ def socket_owners(run=subprocess.run):
     """
     args = ["ss", "-H", "-u", "-a", "-n", "-p",
             "(", "sport", "=", ":17880", "or", "sport", "=", ":17881", ")"]
+    if elevated:
+        # -n refuses any sudo password prompt. This only reads the existing
+        # kernel socket table; root access is never given to project Python.
+        args = ["sudo", "-n", "/usr/bin/ss", *args[1:]]
     try:
         proc = run(args, capture_output=True, text=True, check=False, timeout=5)
     except (OSError, subprocess.SubprocessError):
@@ -98,7 +103,7 @@ def socket_owners(run=subprocess.run):
     return {"status": "observed", "sockets": candidates}
 
 
-def make_report(inspector=inspect_port, now=time.time):
+def make_report(inspector=inspect_port, now=time.time, elevated=False):
     result = {name: inspector(family, address) for name, family, address in TARGETS}
     if any(state not in VALID for state in result.values()):
         raise ValueError("invalid_port_probe_state")
@@ -111,10 +116,14 @@ def make_report(inspector=inspect_port, now=time.time):
         "ipv6_17881": result["ipv6_17881"],
         "bothAvailable": all(state == "available" for state in result.values()),
         "preparation": preparation_markers(),
-        "socketOwners": socket_owners(),
+        "socketOwners": socket_owners(elevated=elevated) if elevated else socket_owners(),
+        "ownerAuditRequested": elevated,
         "note": "point_in_time_not_process_ownership_proof",
     }
 
 
 if __name__ == "__main__":
-    print(json.dumps(make_report(), separators=(",", ":")))
+    if sys.argv[1:] not in ([], ["--owner-audit"]):
+        raise SystemExit("Usage: alice-bds-lab-ports.py [--owner-audit]")
+    print(json.dumps(make_report(elevated=(sys.argv[1:] == ["--owner-audit"])),
+                     separators=(",", ":")))

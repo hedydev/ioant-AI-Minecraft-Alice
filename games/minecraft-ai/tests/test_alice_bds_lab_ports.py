@@ -158,6 +158,47 @@ class LabPortCheckTests(unittest.TestCase):
         owner.assert_called_once_with()
         self.assertEqual(result["socketOwners"]["sockets"], [])
 
+    def test_elevated_audit_runs_only_fixed_read_only_ss_under_sudo_n(self):
+        source='UNCONN 0 0 0.0.0.0:17880 0.0.0.0:* users:(("ownedsvc",pid=739,fd=8))\n'
+        seen=[]
+        def run(args, **opts):
+            seen.append((args, opts))
+            return SimpleNamespace(returncode=0, stdout=source)
+        observed=P.socket_owners(run=run, elevated=True)
+        self.assertEqual(seen[0][0],[
+            "sudo", "-n", "/usr/bin/ss", "-H", "-u", "-a", "-n", "-p",
+            "(", "sport", "=", ":17880", "or", "sport", "=", ":17881", ")"])
+        self.assertEqual(seen[0][1]["timeout"],5)
+        self.assertEqual(observed["sockets"][0]["owners"],[{"pid":739,"process":"ownedsvc"}])
+        self.assertEqual(observed["sockets"][0]["port"],17880)
+
+    def test_elevated_audit_reports_unavailable_without_privilege_bypass(self):
+        def denied(args,**opts):
+            return SimpleNamespace(returncode=1,stdout="",stderr="fixture denied")
+        result=P.socket_owners(run=denied,elevated=True)
+        self.assertEqual(result,{"status":"unavailable","sockets":[]})
+
+    def test_elevated_report_says_requested_and_regular_does_not(self):
+        with patch.object(P,"socket_owners",return_value={"status":"observed","sockets":[]}) as owner:
+            with patch.object(P,"preparation_markers",return_value={}):
+                report=P.make_report(inspector=lambda fam,addr:"available", elevated=True)
+            owner.assert_called_once_with(elevated=True)
+            self.assertTrue(report["ownerAuditRequested"])
+        with patch.object(P,"socket_owners",return_value={"status":"observed","sockets":[]}) as owner:
+            with patch.object(P,"preparation_markers",return_value={}):
+                report=P.make_report(inspector=lambda fam,addr:"available")
+            owner.assert_called_once_with()
+            self.assertFalse(report["ownerAuditRequested"])
+
+    def test_new_owner_action_is_separate_from_unprivileged_diagnostics(self):
+        entry=(SCRIPT.parent / "alice-mac.sh").read_text()
+        branch=entry.split('if [[ "$action" == witness-lab-port-owner ]]')[1].split("fi")[0]
+        self.assertIn("ssh -tt",branch)
+        self.assertIn("sudo -v && python3",branch)
+        self.assertIn("--owner-audit",branch)
+        self.assertNotIn("kill",branch)
+        self.assertNotIn("restart",branch)
+
     def test_existing_17880_action_gate_is_unchanged(self):
         entry=(SCRIPT.parent / "alice-mac.sh").read_text()
         self.assertIn("witness-lab-port-check",entry)
