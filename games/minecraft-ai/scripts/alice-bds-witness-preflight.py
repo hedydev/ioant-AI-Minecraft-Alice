@@ -83,6 +83,84 @@ def bounded_processes(root):
             "count": len(found)}
 
 
+def isolated_lab_readiness(home, production_root):
+    """Observe only the existing Alice disposable lab, never create or edit it."""
+    lab = home / "minecraft-bedrock-alice-lab"
+    if not directory(lab):
+        return "absent"
+    # Match the canonical Bedrock experiment gate, including expected ports,
+    # exact source and marker; a folder with a similar name is not a lab.
+    marker = json_file(lab / ".alice-sandbox.json")
+    props = properties(lab / "server.properties")
+    if not isinstance(marker, dict):
+        return "unverified"
+    try:
+        valid = (marker.get("version") == 1
+                 and marker.get("kind") == "alice-disposable-bedrock-lab"
+                 and marker.get("source") == str(production_root.resolve(strict=True))
+                 and marker.get("port") == 17880
+                 and marker.get("world") == WORLD
+                 and props.get("server-port") == "17880"
+                 and props.get("online-mode") == "true"
+                 and props.get("level-name") == WORLD
+                 and directory(lab / "worlds" / WORLD)
+                 and regular(lab / "worlds" / WORLD / "level.dat"))
+        # The lab's secondary port must also be distinct from production.
+        second = properties_portv6(lab / "server.properties")
+        return "isolated_metadata_verified" if valid and second == "17881" else "unverified"
+    except (OSError, ValueError):
+        return "unverified"
+
+
+def properties_portv6(path):
+    if not regular(path, 65536):
+        return None
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("server-portv6="):
+                return line.partition("=")[2].strip()
+    except (OSError, UnicodeError):
+        return None
+    return None
+
+
+def operator_backup_manifest_state(home, production_root):
+    """Private configuration presence and intended source only, no archive claims."""
+    private = home / ".alice-bedrock-control"
+    config = private / "operator-env.json"
+    try:
+        if not directory(private) or not regular(config, 16384):
+            return "not_verified"
+        st = config.stat()
+        if st.st_uid != os.getuid() or st.st_mode & 0o077:
+            return "not_verified"
+        raw = json_file(config)
+        if not isinstance(raw, dict) or raw.get("version") != 1:
+            return "not_verified"
+        settings = raw.get("settings")
+        if not isinstance(settings, dict):
+            return "not_verified"
+        candidate = settings.get("ALICE_BEDROCK_BACKUP_MANIFEST")
+        if not isinstance(candidate, str) or not candidate.startswith("/"):
+            return "not_verified"
+        manifest = Path(candidate)
+        if not regular(manifest, MAX_JSON):
+            return "not_verified"
+        metadata = json_file(manifest)
+        if not isinstance(metadata, dict):
+            return "not_verified"
+        expected_source = str(production_root.resolve(strict=True))
+        if (metadata.get("kind") != "bedrock"
+                or metadata.get("source") != expected_source
+                or "worlds/" + WORLD not in metadata.get("worlds", [])):
+            return "not_verified"
+        # The manifest may describe an old or inconsistent backup. No checksum
+        # or isolated restore has been performed here, and we never call it safe.
+        return "configured_manifest_present_not_restore_verified"
+    except (OSError, ValueError, TypeError):
+        return "not_verified"
+
+
 def inspect(home):
     root = home / "minecraft-bedrock"
     world = root / "worlds" / WORLD
@@ -160,6 +238,10 @@ def inspect(home):
         ),
         "betaModulesLoaded": "not_verified_without_bds_log_or_runtime_witness",
         "verifiedOfflineWorldBackup": "not_verified_requires_backup_and_restore_test",
+        "operatorBackupManifest": operator_backup_manifest_state(home, root)
+            if correct_root else "not_verified",
+        "isolated17880Lab": isolated_lab_readiness(home, root)
+            if correct_root else "absent",
         "processes": bounded_processes(root) if correct_root else {"state": "unknown", "count": None},
         "safeToApplyWorldChanges": False,
         "note": "Read-only metadata only; no BDS pause/restart, experiment, token, world DB or MCSManager operation.",

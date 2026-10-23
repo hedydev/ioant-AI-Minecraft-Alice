@@ -94,6 +94,55 @@ class PreflightTests(unittest.TestCase):
                              "not_verified_without_bds_log_or_runtime_witness")
             self.assertFalse(state["safeToApplyWorldChanges"])
 
+    def test_disposable_lab_requires_matching_sandbox_marker_and_distinct_ports(self):
+        with tempfile.TemporaryDirectory() as base:
+            home = Path(base)
+            production = self.fixture(home)
+            lab = home / "minecraft-bedrock-alice-lab"
+            (lab / "worlds" / "Bedrock level").mkdir(parents=True)
+            (lab / "worlds" / "Bedrock level" / "level.dat").write_bytes(b"level")
+            (lab / "server.properties").write_text(
+                "server-port=17880\nserver-portv6=17881\n"
+                "online-mode=true\nlevel-name=Bedrock level\n")
+            marker = {"version": 1, "kind": "alice-disposable-bedrock-lab",
+                      "source": str(production.resolve()), "port": 17880,
+                      "world": "Bedrock level"}
+            (lab / ".alice-sandbox.json").write_text(json.dumps(marker))
+            s = CHECK.inspect(home)
+            self.assertEqual(s["isolated17880Lab"], "isolated_metadata_verified")
+            self.assertFalse(s["safeToApplyWorldChanges"])
+            marker["port"] = 17879
+            (lab / ".alice-sandbox.json").write_text(json.dumps(marker))
+            self.assertEqual(CHECK.inspect(home)["isolated17880Lab"], "unverified")
+
+    def test_private_backup_manifest_is_metadata_only_not_restore_proof(self):
+        import os
+        with tempfile.TemporaryDirectory() as base:
+            home = Path(base)
+            production = self.fixture(home)
+            private = home / ".alice-bedrock-control"
+            private.mkdir(mode=0o700)
+            archive = home / "offline-backup.json"
+            archive.write_text(json.dumps({
+                "kind": "bedrock", "source": str(production.resolve()),
+                "worlds": ["worlds/Bedrock level"], "verified": True,
+                "files": {}, "archive": "missing-snapshot.tar.gz"
+            }))
+            settings = private / "operator-env.json"
+            settings.write_text(json.dumps({
+                "version": 1,
+                "settings": {"ALICE_BEDROCK_BACKUP_MANIFEST": str(archive)}}))
+            os.chmod(settings, 0o600)
+            s = CHECK.inspect(home)
+            self.assertEqual(s["operatorBackupManifest"],
+                             "configured_manifest_present_not_restore_verified")
+            self.assertEqual(s["verifiedOfflineWorldBackup"],
+                             "not_verified_requires_backup_and_restore_test")
+            self.assertFalse(s["safeToApplyWorldChanges"])
+            self.assertNotIn(str(archive), json.dumps(s))
+            os.chmod(settings, 0o644)
+            self.assertEqual(CHECK.inspect(home)["operatorBackupManifest"], "not_verified")
+
     def test_wrong_port_or_world_disallows_install(self):
         with tempfile.TemporaryDirectory() as base:
             home = Path(base)

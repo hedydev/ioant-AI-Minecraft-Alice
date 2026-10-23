@@ -53,7 +53,9 @@ enums = {
     "targetWorldPackListState": {"valid", "missing", "unreadable_or_unexpected"},
     "betaApisExperiment": {"enabled_in_level_dat", "disabled_in_level_dat", "not_declared_in_level_dat", "unverified"},
     "betaModulesLoaded": {"not_verified_without_bds_log_or_runtime_witness"},
-    "verifiedOfflineWorldBackup": {"not_verified_requires_backup_and_restore_test"}
+    "verifiedOfflineWorldBackup": {"not_verified_requires_backup_and_restore_test"},
+    "operatorBackupManifest": {"not_verified", "configured_manifest_present_not_restore_verified"},
+    "isolated17880Lab": {"absent", "unverified", "isolated_metadata_verified"}
 }
 clean = {"audit": "ALICE_BDS_SILENT_WITNESS_READ_ONLY",
          "schemaVersion": 2, "observedAtUnix": seen,
