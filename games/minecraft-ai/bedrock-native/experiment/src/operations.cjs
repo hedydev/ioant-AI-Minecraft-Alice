@@ -313,9 +313,18 @@ class BedrockOperations {
         signal,timeoutMs:Math.min(3000,deadlineMs),
         onAbort:()=>{try{this.bot.pathfinder.stop?.()}catch{}}})
     }catch(e){
-      return {ok:false,reason:/No path to the goal!/.test(String(e.message))?
-        'retreat_pathfinder_no_path':'retreat_pathfinder_error',
-        attempted:true,serverMovementVerified:false,
+      // The shared independent-BDS admission guard rejects BEFORE the native
+      // Pathfinder sends any movement. Do not mislabel this as an attempted
+      // path or obscure its exact safe refusal behind pathfinder_error.
+      const admission={
+        navigation_scout_bds_position_unavailable:'retreat_bds_position_unavailable',
+        navigation_scout_client_server_position_diverged:'retreat_bds_client_position_diverged',
+        navigation_scout_client_position_unavailable:'retreat_client_position_unavailable'
+      }[String(e?.message||'')]
+      return {ok:false,reason:admission||
+        (/No path to the goal!/.test(String(e?.message||''))?
+          'retreat_pathfinder_no_path':'retreat_pathfinder_error'),
+        attempted:!admission,serverMovementVerified:false,
         candidates:plan.candidates,firstWaypoint:tile}
     }
     cancelled(signal)
