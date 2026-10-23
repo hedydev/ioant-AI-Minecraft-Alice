@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AliceAI · 控制台</title>
+<link rel="stylesheet" href="./style.css">
+<link rel="stylesheet" href="./world.css">
+<script src="./app.js" defer></script>
+<script src="./world_entities.js" defer></script>
+<script src="./world_camera.js" defer></script>
+<script src="./world_timeline.js" defer></script>
+<script src="./world.js" defer></script>
+</head><body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-symbol">A<span>✦</span></div><div><strong>Alice<span>AI</span></strong><small>MINECRAFT COMPANION</small></div></div>
+    <div class="side-label">工作台</div>
+    <nav aria-label="页面导航">
+      <button class="nav active" data-page="overview"><span>⌂</span> 能力总览</button>
+      <button class="nav" data-page="control"><span>⚙</span> 实时状态与行为设置</button>
+      <button class="nav" data-page="world"><span>◈</span> Alice 3D 世界</button>
+      <button class="nav" data-page="commands"><span>⌘</span> 命令手册</button>
+      <button class="nav" data-page="logs"><span>▤</span> 运行日志</button>
+      <button class="nav" data-page="bedrock"><span>⛏</span> 基岩兼容</button>
+    </nav>
+    <div class="sidebar-bottom"><div class="mini-status"><i></i> Bedrock Alice</div><p>局域网可查看状态<br>仅 Mac 本机可修改安全行为设置</p></div>
+  </aside>
+  <main>
+    <header class="topbar"><div class="crumb">本地工具 <span>/</span> <strong id="crumb">能力总览</strong></div><div class="right"><span id="api-indicator" class="dot-label">连接检查中</span><span class="avatar">A</span></div></header>
+    <div class="content">
+      <section id="page-overview" class="page active">
+        <div class="intro"><div><div class="eyebrow">YOUR WORLD, YOUR COMPANION</div><h1>认识你的 AI 队友 <em>Alice</em><span class="spark">✳</span></h1><p>技能、状态与实际可用程度，一眼看清。</p></div><div class="intro-art" aria-hidden="true"><span>✦</span><div class="pixel-face"><i></i><i></i><b></b></div></div></div>
+        <div class="notice" id="catalog-notice">正在读取能力目录…</div>
+        <div class="live-summary"><div><span class="live-led" id="overview-led"></span><strong id="overview-live">正在检查正式世界 Alice…</strong><small id="overview-task">将显示实时状态，不以日志推测在线</small></div><button class="primary" data-go-control>打开行为控制台 →</button></div>
+        <div class="stat-grid"><div class="stat"><span>能力项目</span><strong id="total-features">—</strong><small>已记录的技能</small></div><div class="stat"><span>已获实机证据</span><strong id="observed-count">—</strong><small>以真实游戏结果为准</small></div><div class="stat"><span>仍待验证 / 开发</span><strong id="remaining-count">—</strong><small>不代表现在可用</small></div><div class="stat"><span>命令示例</span><strong id="commands-count">—</strong><small>点击可复制</small></div></div>
+        <div class="section-head"><div><h2>能力图鉴</h2><p>按模块探索 Alice 的技能</p></div><label class="search"><span>⌕</span><input id="feature-search" placeholder="搜索能力…" autocomplete="off"></label></div>
+        <div id="feature-filters" class="chips"></div>
+        <div id="features" class="feature-grid"></div>
+      </section>
+      <section id="page-control" class="page">
+        <div class="page-heading"><div class="eyebrow">ALICE RUNTIME CONTROL</div><h1>实时状态与行为设置 <span>⚙</span></h1><p>连接正式基岩世界 Alice；修改安全参数，无需重启机器人。记录保存版本与运行时生效版本。</p></div>
+        <div class="control-status-grid">
+          <article class="stat"><span>连接状态</span><strong id="control-online" class="live-state">读取中</strong><small id="control-lastseen">通过 Mint SSH 获取</small></article>
+          <article class="stat"><span>当前行为</span><strong id="control-state" class="live-state">—</strong><small id="control-job">等待运行数据</small></article>
+          <article class="stat"><span>跟随对象</span><strong id="control-target" class="live-state">—</strong><small id="control-position">暂无坐标</small></article>
+          <article class="stat"><span>生存指标</span><strong id="control-health" class="live-state">—</strong><small id="control-world">正式世界 / 等待同步</small></article>
+        </div>
+        <div class="control-columns">
+          <section class="control-panel"><div class="section-head"><div><h2>🧭 跟随行为</h2><p>距离以 Minecraft 方块为单位；墙体遮挡时单独设置</p></div></div>
+            <label class="control-field" for="setting-follow"><span><strong>正常跟随距离</strong><small>建议 2～4 格；可选 2～12 格</small></span><span class="number-unit"><input id="setting-follow" type="number" min="2" max="12" step="1" value="3"> 格</span></label>
+            <label class="control-field" for="setting-occluded"><span><strong>遮挡时的距离</strong><small>木门/墙壁附近给寻路预留空间</small></span><span class="number-unit"><input id="setting-occluded" type="number" min="2" max="12" step="1" value="4"> 格</span></label>
+            <label class="control-field" for="setting-mode"><span><strong>AI 工作模式</strong><small>智能队友默认低资源；自主生活按事件唤醒 Ollama</small></span><select id="setting-mode"><option value="companion">🤝 智能队友</option><option value="autonomous">🌿 自主生活</option></select></label>
+            <label class="control-field" for="setting-autonomy"><span><strong>空闲时主动执行任务</strong><small>关闭后不再自动开始新空闲任务；已运行的任务不被强制取消</small></span><input id="setting-autonomy" type="checkbox" checked></label>
+            <p class="control-fixed">🛡️ 战斗安全、低血保护、不得破坏建筑、账号认证和世界备份不可通过控制台关闭。</p>
+            <div class="control-actions"><button class="primary" id="save-settings">保存并应用</button><button id="refresh-control">↻ 刷新状态</button></div>
+            <p id="control-feedback" class="control-feedback" role="status">正在查询 Mint 上已保存的设置…</p>
+          </section>
+          <section class="control-panel"><div class="section-head"><div><h2>📡 生效情况</h2><p>不是单纯的网页滑块，而是运行进程的确认</p></div></div>
+            <div class="revision-row"><span>Mint 已保存版本</span><strong id="saved-revision">—</strong></div>
+            <div class="revision-row"><span>Alice 已加载版本</span><strong id="applied-revision">—</strong></div>
+            <div class="revision-row"><span>设置生效状态</span><strong id="revision-result">待查询</strong></div>
+            <div class="revision-row"><span>当前状态来源</span><strong>Mint 正式 Bedrock 进程</strong></div>
+            <div class="notice">如果 Alice 不在线，新值仍可保存到 Mint，下次运行时读取。服务器、世界与玩家安全策略保持不变。</div>
+            <p class="control-fixed">🔐 控制台仍允许局域网设备查看，但行为修改限定 Mac 本机地址 127.0.0.1:8788，远程访问不开放写入。</p>
+          </section>
+        </div>
+        <section class="control-panel" aria-label="AI 模式与推理证据" style="margin-top:22px">
+          <div class="section-head"><div><h2>🧠 Agent 与 Ollama</h2><p>只显示真实运行时回报，不能把固定策略当成模型推理。</p></div></div>
+          <p id="agent-summary" class="control-feedback">等待新版本运行进程的 Agent 状态。</p>
+          <pre id="agent-detail" class="control-diag">暂无已确认的模型规划记录。</pre>
+        </section>
+        <section class="control-panel" aria-label="跟随与地形诊断" style="margin-top:22px">
+          <div class="section-head"><div><h2>🧭 跟随与地形诊断</h2><p>只读：从 Mint Alice 实时 noPath 事件读取地面方块、坐标及区块信息。不会改变行动或世界。</p></div></div>
+          <p id="follow-diag-summary" class="control-feedback">等待最近一次 noPath 诊断。日志有规划状态不代表角色已移动。</p>
+          <pre id="follow-diag-detail" class="control-diag">暂无地形快照。在游戏中触发跟随失败后自动出现。</pre>
+        </section>
+        <section class="control-panel" aria-label="封闭空间出口诊断" style="margin-top:22px">
+          <div class="section-head"><div><h2>🔍 Alice 脱困观察</h2><p>只读环境评估：附近人工地板、可走边界、木门、垂直通路及可能的阻挡方块。观察到候选不代表实际能通过。</p></div></div>
+          <p id="escape-survey-summary" class="control-feedback" role="status">等待受阻后的环境扫描；不会自动挖墙或修改世界。</p>
+          <pre id="escape-survey-detail" class="control-diag">尚无房间出口观察结果。需要后续真实游戏验证通行、开门和上下楼梯。</pre>
+          <p class="control-fixed">🛡️ 默认禁止拆改玩家建筑。当前只诊断可疑出口；实际移动必须有安全路线和服务器验证，挖掘还需独立权限与工具检查。</p>
+        </section>
+        <section class="control-panel" aria-label="Bedrock 服务端移动证据" style="margin-top:22px">
+          <div class="section-head"><div><h2>📍 服务端移动验证</h2><p>仅接收 BDS 发来的 Alice 自身位置包；本地路径模拟不会冒充游戏服务器确认。</p></div></div>
+          <p id="server-move-summary" class="control-feedback" role="status">等待 Alice 进入世界并收到 Bedrock 服务器位置数据。</p>
+          <pre id="server-move-detail" class="control-diag">暂无服务器自身移动证据；真实位置最终以 MCManager querytarget 为准。</pre>
+          <p class="control-fixed">🧭 noPath 时只允许已加载、安全平地上的短时输入恢复，不传送、不破坏方块。未收到位置修正包不等于服务器没有移动。</p>
+        </section>
+        <section class="control-panel" aria-label="世界日程与探索" style="margin-top:22px">
+          <div class="section-head"><div><h2>🌤️ 世界日程与探索</h2><p>根据 Bedrock 的实际时间、天气、当前风险与失败位置调整行为；安全和玩家命令始终优先。</p></div></div>
+          <div class="control-status-grid">
+            <article class="stat"><span>昼夜阶段</span><strong id="routine-phase">—</strong><small id="routine-clock">时间未同步</small></article>
+            <article class="stat"><span>天气</span><strong id="routine-weather">—</strong><small id="routine-sleep">睡眠条件待同步</small></article>
+            <article class="stat"><span>资源工作</span><strong id="routine-wood">—</strong><small>同地点失败后限时退避</small></article>
+            <article class="stat"><span>地形复查记录</span><strong id="routine-scout">—</strong><small>仅用于日志节流，不封锁新安全路线</small></article>
+          </div>
+          <div class="revision-row"><span>🧠 最近自主目标</span><strong id="routine-goal">等待真实决策</strong></div>
+          <p class="control-feedback" id="routine-decision" role="status">如果未发现已验证的安全路线，Alice 会说明受阻原因并在条件改变后重新评估。</p>
+          <div class="revision-row"><span>🛡️ 服务器移动确认暂停</span><strong id="routine-motion">待检测</strong></div>
+          <p class="control-feedback" id="routine-route-memory" role="status">旧版本探索地点冷却不会封锁新的三维路径；单条失败路线和未确认的服务器移动分别处理。</p>
+          <div class="revision-row"><span>🧭 分段探索进度（需服务端确认）</span><strong id="routine-scout-progress">尚无确认记录</strong></div>
+          <p class="control-feedback" id="routine-scout-detail" role="status">探索距离动态变化；识别安全转弯及上下整格通道。未知、半砖或碰撞数据不足时暂停。</p>
+          <div class="revision-row"><span>🛏️ 最近一次休息结果</span><strong id="routine-bed-result">暂无记录</strong></div>
+          <p class="control-fixed">🛏️ 重生点确认与床归属尚未实现。当前夜间/雷暴睡眠仍可能使用附近空床；请给 Alice 准备独立床位，避免覆盖其他玩家的重生点。</p>
+        </section>
+        <section class="control-panel" aria-label="Xbox 连接历史" style="margin-top:22px">
+          <div class="section-head"><div><h2>🔐 Bedrock 登录历史</h2><p>自动记录成功和失败连接的匿名握手校验结果；不会记录账号、XUID、JWT、设备标识或令牌。</p></div></div>
+          <p id="login-history-summary" class="control-feedback" role="status">正在读取 Mint 上的匿名连接历史…</p>
+          <div id="login-history-list" class="login-history-list"><p class="empty">更新后的 Alice 第一次登录才会开始留下记录；不需要重新执行旧版 A/B 测试。</p></div>
+        </section>
+      </section>
+      <section id="page-world" class="page">
+        <div class="page-heading">
+          <div class="eyebrow">ALICE / LIVE WORLD OBSERVER</div>
+          <h1>Alice 的 3D 世界 <span>◈</span></h1>
+          <p>以 Alice 为中心观察 Bedrock 方块空间、状态与行动记录。Mac 本机可以发送有限的管理员命令；局域网设备仍然只读。</p>
+        </div>
+        <div class="world-headline">
+          <div><span class="world-live-dot" id="world-live-dot"></span><strong id="world-connection">等待 Mint 世界快照…</strong><small id="world-lastseen">角色约每秒同步；地形最多缓存 4 秒</small></div>
+          <div class="world-tools"><button type="button" id="world-reset">↺ 重置视角</button><button type="button" id="world-roof" aria-pressed="false">⌑ 透视屋顶：关</button><button type="button" id="world-follow" aria-pressed="true">◎ 跟随 Alice：开</button></div>
+        </div>
+        <div class="world-command-panel">
+          <div class="world-command-world">
+            <div class="world-stat-title">🌞 生存与世界</div>
+            <div class="world-control-stats">
+              <div><span>☀ 昼夜阶段</span><strong id="world-day-phase">—</strong></div>
+              <div><span>☁ 天气</span><strong id="world-day-weather">—</strong></div>
+              <div><span>☠ 死亡次数</span><strong id="world-deaths">—</strong><small id="world-deaths-note">从新版开始记录</small></div>
+              <div><span>🛏️ 重生点</span><strong id="world-respawn-status">未验证</strong><small id="world-respawn-position">坐标未知；不以床的位置猜测</small></div>
+            </div>
+          </div>
+          <div class="world-command-input">
+            <div class="world-stat-title">⌘ 管理员指令 <span id="world-command-readonly">仅 Mac 本机可发送</span></div>
+            <form id="world-command-form">
+              <div class="world-input-row"><label for="world-command-text">告诉 Alice</label><input id="world-command-text" maxlength="80" autocomplete="off" placeholder="如：收集3个木头、跟随 玩家名、停止"><button type="submit" class="primary" id="world-command-send">发送</button></div>
+              <div class="world-target-row"><label for="world-command-target">在线目标</label><select id="world-command-target"><option value="">未选择玩家</option></select>
+                <button type="button" id="world-quick-follow">跟随选中玩家</button>
+                <button type="button" id="world-quick-guard">保护选中玩家</button>
+                <button type="button" id="world-quick-stop">停止</button>
+                <button type="button" id="world-mode-autonomous">自主模式</button>
+                <button type="button" id="world-mode-companion">队友模式</button>
+              </div>
+            </form>
+            <p id="world-command-result" class="world-command-result" role="status" aria-live="polite">控制台没有游戏角色，发送“跟着我”会反馈“缺少目标”，不会自动选择玩家。</p>
+          </div>
+        </div>
+        <div class="world-layout">
+          <div class="world-stage">
+            <div class="world-hud" aria-live="polite" aria-label="Alice 实时状态栏">
+              <div class="world-hud-vitals"><span id="world-hud-health">❤️ —/20</span><span id="world-hud-food">🍗 —/20</span></div>
+              <div id="world-hud-action">⏳ 等待 Alice 状态</div>
+              <div id="world-hud-thinking">🧠 模型思考：尚无记录</div>
+            </div>
+            <canvas id="world-canvas" aria-label="Alice 附近 Minecraft 方块的可旋转三维视图" tabindex="0"></canvas>
+          </div>
+          <aside class="world-sidebar" aria-label="Alice 当前位置与附近实体">
+            <div class="world-stat-title">◈ Alice 实时位置</div>
+            <div class="world-coordinates" id="world-local-position">X — / Y — / Z —</div>
+            <div class="world-position-trust" id="world-position-trust">等待位置证据</div>
+            <div class="world-server-position" id="world-server-position">服务端坐标：未确认</div>
+            <div class="world-stat-grid">
+              <div><span>行为状态</span><strong id="world-state">—</strong></div>
+              <div><span>正在执行</span><strong id="world-job">—</strong></div>
+              <div><span>生命 / 饥饿</span><strong id="world-vitals">—</strong></div>
+              <div><span>采样 / 非空气方块</span><strong id="world-blocks">—</strong></div>
+            </div>
+            <div class="world-sample-detail" id="world-sample-detail" role="status">正在读取实际观察范围…</div>
+            <div class="world-idle-reason" id="world-idle-reason" role="status">⏳ 检查 Alice 当前任务门禁…</div>
+            <div class="world-stat-title">🧠 死亡经验与结论</div>
+            <p id="world-death-learning" class="world-death-learning">尚无死亡原因记录</p>
+            <div class="world-stat-title">附近实体 · 同类合并，显示最近一个的坐标</div>
+            <div id="world-entities" class="world-entities">尚无数据</div>
+            <p class="world-privacy-note">地形为客户端已收到的局部方块数据，并非未经验证的服务器全景；客户端移动与服务器确认状态明确区分。此页面只适合可信的家庭局域网使用。</p>
+          </aside>
+        </div>
+        <div class="world-event-panel">
+          <div class="world-event-header"><div><h2>📋 Alice 行为时间线</h2><p>只展示结构化行动与耗时；不包含玩家聊天或账号认证内容。</p></div><button type="button" id="world-export" class="world-export">📦 导出 3 小时 ZIP</button><span id="world-event-count">0 条记录</span></div>
+          <ol id="world-events" class="world-events" aria-live="polite"><li>等待 Alice 的运行输出…</li></ol>
+        </div>
+      </section>
+      <section id="page-commands" class="page"><div class="page-heading"><div class="eyebrow">COMMAND LIBRARY</div><h1>命令手册 <span>⌘</span></h1><p>在 Minecraft 聊天框直接发送。尚未接入的命令会清楚标注。</p></div><div class="toolbar"><label class="search"><span>⌕</span><input id="command-search" placeholder="搜索命令或用途…"></label><select id="command-status"><option value="all">全部状态</option><option value="observed">已有实机证据</option><option value="staged">代码已写·待实测</option><option value="prototype">仅有底层接口</option><option value="pending">尚未实现</option></select></div><div id="commands" class="command-list"></div></section>
+      <section id="page-logs" class="page"><div class="page-heading"><div class="eyebrow">DIAGNOSTICS</div><h1>运行日志 <span>▤</span></h1><p>从 Mint 只读获取最近的运行记录。日志可能包含玩家聊天，请谨慎分享。</p></div><div class="log-toolbar"><button class="primary" id="refresh-logs">↻ 刷新日志</button><button class="primary" id="export-acceptance" type="button">📦 导出 Bedrock 近 3 小时日志 ZIP</button><span id="log-status" role="status">尚未加载</span></div><div class="log-layout"><div class="log-list" id="log-list"><p class="empty">点击「刷新日志」读取 Mint 运行记录。</p></div><div class="log-view"><div class="log-view-head"><div><strong id="log-name">未选择日志</strong><span id="log-detail">仅预览末尾 96 KiB</span></div><div class="log-actions"><label class="search"><span>⌕</span><input id="log-filter" placeholder="过滤当前预览"></label><button id="download-log" disabled>↓ 下载完整日志</button></div></div><pre id="log-text">选择左侧日志，查看 Alice 在做什么。</pre></div></div><p class="disclaimer">⚑ 下载的日志保留原始内容，不会自动上传 ChatGPT。完整日志超过 16 MiB 时需要单独导出。</p></section>
+      <section id="page-bedrock" class="page"><div class="page-heading"><div class="eyebrow">BEDROCK & JAVA</div><h1>基岩兼容计划 <span>⛏</span></h1><p>当前正式服务器已经通过 Bedrock 1.26.51 原生客户端接入。这里区分已验证的连接与尚待实测的行动。</p></div><div class="roadmap"><article><div class="step">01</div><h3>现有 Paper + Geyser 世界</h3><span class="tag observed">历史实测</span><p>基岩版玩家已经通过 Geyser/Floodgate 向 Java AliceAI 发送过跟随指令。下一步重点验证中文聊天、玩家名映射和命令抢占。</p></article><article><div class="step">02</div><h3>备份当前世界</h3><span class="tag pending">必须先完成</span><p>准确确认当前运行的 Paper / Bedrock 世界目录，停止对应游戏服务器，离线归档并验证可恢复后，才允许改变协议或部署策略。</p></article><article><div class="step">03</div><h3>原生 Bedrock 1.26.51 Alice</h3><span class="tag observed">已实测登录</span><p>正式服务器 UDP 17879，Xbox 账号已认证、Alice 已生成且能被真人看到。当前使用 legacy-native-injected 连接模式；实际跟随移动仍须用服务器坐标验证。</p></article></div><div class="notice">世界备份和角色认证沿用正式基岩生产门槛。实时控制只修改有限的行为参数，不提供服务器重启、游戏命令注入或世界修改。</div></section>
+    </div>
+  </main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body></html>

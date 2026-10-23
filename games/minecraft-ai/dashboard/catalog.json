@@ -1,0 +1,639 @@
+{
+  "version": "Bedrock native 1.26.51 / control-center 0.4",
+  "asOf": "2026-10-23",
+  "notice": "2026-10-23：非刷屏 BDS Script API 见证系统已写入源码但未部署：Mint 私有回环鉴权、BDS 可选只读行为包及双来源安全校验。因 1.26.51 Beta API/世界配置未验收，当前自主采集仍可能因 BDS 坐标见证失效而停滞。",
+  "statusNames": {
+    "observed": "已有实机证据",
+    "staged": "代码已接入·待验收",
+    "prototype": "仅有工具或诊断",
+    "pending": "尚未实现"
+  },
+  "capabilities": [
+    {
+      "name": "BDS 无控制台刷屏的服务器坐标见证（未启用）",
+      "icon": "📍",
+      "group": "运维与可观测性",
+      "status": "staged",
+      "detail": "可选 BDS Script API 每40 tick 只读采样，Mint 回环服务令牌鉴权、登录会话身份/单调序号/4秒新鲜度校验，两个可信样本且偏差≤0.75格才可启动 Pathfinder。需核实 BDS 1.26.51 的 server-net Beta 模块；当前未安装任何行为包、未启动接收端、未重启BDS。"
+    },
+    {
+      "name": "长期 IDLE 原因诊断及稳定复制行为时间线",
+      "icon": "🔎",
+      "group": "运维与可观测性",
+      "status": "staged",
+      "detail": "显示 Alice 自主任务因队友模式、STOP、低血量、敌怪、缺少坐标见证或冷却被阻止的原因，最多每分钟记录一次相同 IDLE 门禁。行为时间线未变化不重建；选中文本时暂停列表更新，复制不被破坏。没有擅自放松真实移动安全门禁。"
+    },
+    {
+      "name": "死亡原因观察与持久风险记忆",
+      "icon": "🧠",
+      "group": "自主生存",
+      "status": "staged",
+      "detail": "死亡时保存最近受伤、附近敌怪、饥饿等匿名证据，最多32次；不假定怪物就是致命攻击者。六小时内两次遭遇同类敌怪并死亡，会促使下次优先考虑安全退路；实际降低死亡率尚未在 BDS 验证。"
+    },
+    {
+      "name": "行为执行耗时与 Ollama 规划计时",
+      "icon": "⏱️",
+      "group": "运维与可观测性",
+      "status": "staged",
+      "detail": "GATHER/CRAFT/EXPLORE 等已登记任务记录完成、失败或取消耗时；Ollama 保存规划请求往返耗时而非内部模型思维过程。3D HUD 显示正在执行的任务年龄与最近模型耗时。"
+    },
+    {
+      "name": "3D 半径15格（31×31）完整相机取景与 Minecraft HUD",
+      "icon": "❤️",
+      "group": "控制台与可视化",
+      "status": "staged",
+      "detail": "GitHub 采样配置半径15格，垂直脚下6/头上5（31×31×12）。侧栏按 Mint 实际运行快照显示半径、采样格数、非空气数量，旧代码直接警告。边缘渐隐不编造外部地形。Mint 部署前不能把源代码目标当作运行事实。"
+    },
+    {
+      "name": "Mac 本地一键导出 Bedrock 验收 ZIP",
+      "icon": "📦",
+      "group": "运维与可观测性",
+      "status": "staged",
+      "detail": "日志页与3D页可将近三小时的结构化、匿名验收数据打包ZIP下载；沿用已有Mint allowlist exporter，通过Mac loopback Nginx限制访问。不导出Xbox令牌、原始认证日志和世界存档。"
+    },
+    {
+      "name": "BDS复活就绪后最终确认与受困自卫",
+      "icon": "🛡️",
+      "group": "自主生存",
+      "status": "staged",
+      "detail": "PID3125378实机日志：05:42成功上线和复活，05:44:33遭蜘蛛攻击死亡；05:44:45补发两包后82ms BDS才回复ReadyToSpawn、缺失最终spawn。新版12秒单次补发先只请求ready，必须等BDS真正Ready才发送final player_action，若已Ready仅补发动作；重复Ready/关闭不会多发包，保留30秒stalled和单实例。12/12独立复活测试通过，Mint全套与自然死亡验收待做。若蜘蛛/僵尸近身且所有观察路线均不安全，允许带冷却的一次自卫反击；不攻击苦力怕、不把伤害归因为Alice、不放宽地形安全。"
+    },
+    {
+      "name": "复活握手完整补发和当前会话日志",
+      "icon": "💀",
+      "group": "自主生存",
+      "status": "staged",
+      "detail": "Mint PID3045722实测35分钟死亡卡死且没有服务器ReadyToSpawn。新版本12秒时在同一会话内仅一次按官方依赖的顺序补发respawn state2 + player_action；已见server ready则仅补发动作，30秒失败仍报告stalled、绝不自动新开第二Xbox客户端。修复了床记忆测试缺失log方法及diagnose显示旧日志而非当前PID的顺序问题。9项独立复活回归通过；Mint完整测试和BDS实机复活验收待执行。"
+    },
+    {
+      "name": "BDS意外下线原因保留",
+      "icon": "📡",
+      "group": "运维与可观测性",
+      "status": "staged",
+      "detail": "独立记录server_disconnect/server_kicked/transport_closed/transport_ended与死亡复活阶段；底层close无end时也刷新最终离线心跳。Mac/Mint status显示sessionExit，diagnose额外仅导出最近私有日志的匿名生命周期事件、PID和时间戳，绝不复制Xbox设备码。需要先同步新脚本，当前实际断线原因尚无现场证据。"
+    },
+    {
+      "name": "床地标记忆与生存优先决策",
+      "icon": "🛡️",
+      "group": "自主生存",
+      "status": "staged",
+      "detail": "将床转为昼夜均可被动记住的世界地标，最多32个私有坐标，60秒限频，跨Alice重启保留，不能代表已设置重生点。食物、装备、防身木剑和可执行庇护所优先；只有记住的床仍在附近且无怪物、可睡、无更急迫生存工作时才利用，不再每5秒夜间搜床。Mint完整测试和BDS实机验收待运行。"
+    },
+    {
+      "name": "夜间安全复查与等待原因透明化",
+      "icon": "🌙",
+      "group": "自主生存",
+      "status": "staged",
+      "detail": "夜间不再让普通采集的2分钟冷却妨碍安全路线复查：每15秒重新评估BDS位置一致、危险、健康、天气和完整碰撞数据，只在存在已验证的两格平坦路线且不影响找床/建造/防身制作的前提下执行短程转移，成功尝试仍遵守120秒冷却。PREPARE_DAYLIGHT/WAIT事件附加nightSafetyReason显示真实阻断理由；危险不明时不会盲目行走。Mint Node24全量测试和BDS实机验收待确认。"
+    },
+    {
+      "name": "紧急撤退与 Bedrock 战斗策略修复",
+      "icon": "🛡️",
+      "group": "自主生存",
+      "status": "staged",
+      "detail": "安全控制器仍以300ms响应，实测生命下降现在能激活6.5秒最近受伤记忆与共享EVADE_COUNTER撤退战术。紧急撤退允许完整观察验证的1～2格平坦避险路线（普通探索不放宽），BDS返回的新鲜位移需≥0.25格、远离目标且和客户端位置一致才算成功。消除'本地已经移动仍输出原地待命'的假判断；不绕过位置护栏、不允许未知碰撞、挖掘或跳跃。纯地形及退路回归21/21通过；Mint全套Node24及真正怪物战斗/脱险仍待实机验收。"
+    },
+    {
+      "name": "时间戳日志与 Alice 重复进程排查",
+      "icon": "🕒",
+      "group": "运维与可观测性",
+      "status": "staged",
+      "detail": "原生 Bedrock 生产日志按真正写入时刻为每一行添加 Mint 本地 ISO8601 时间（带时区）及 PID，涵盖 stdout、stderr、Node 警告，旧日志不补造时间。Mac/Mint 新增 diagnose 只读列举同用户 Node24 Alice 精确命令进程、当前独占锁 PID、当前后台日志与最近8份日志；不重启、不读取凭据、不变动 BDS。仍须 Mint 全量测试和重启新生产进程后验收。"
+    },
+    {
+      "name": "死亡复活握手与一次有界补发",
+      "icon": "💀",
+      "group": "自主生存",
+      "status": "staged",
+      "detail": "真实 P2992409 进程仍有心跳、生命0、SURVIVE，但此前 connected=false 实为未生成而非确证断网。独立显示 sessionEstablished 和 deathRecovery：12秒仍死亡最多在同一登录会话补发一次既有 player_action respawn，30秒仍无新 spawn 标记 respawn_stalled；不无限重试、不重启BDS、不发第二个Xbox登录。协议阶段及状态只输出匿名固定枚举。独立测试7/7通过，Mint Node24及实机自然死亡恢复待验收；撤退失败/连续死亡仍是未解决P0。"
+    },
+    {
+      "name": "固定Mac/Mint运行入口与安全重启",
+      "icon": "🛠️",
+      "group": "运维与可观测性",
+      "status": "observed",
+      "detail": "scripts/alice-mac.sh和alice-mint.py统一维护启动、重启、检查、测试和日志；已有Alice时start明确拒绝，restart等待BDS确认退出后再启动。已实测完成后台进程替换并重新登录；启动参数保存在Mint私有白名单JSON中。维护规范见docs/OPERATIONS.md及AGENTS.md。"
+    },
+    {
+      "name": "原生注入连接的加载完成流程",
+      "icon": "🔌",
+      "group": "移动与导航",
+      "status": "observed",
+      "detail": "补齐注入连接漏掉的加载完成流程，撤销错误输入编号改写。Mint BDS独立确认累计3.02格，客户端/服务器坐标一致；一次夜间短程任务返回server_verified_scout_endpoint，20个移动包审计一致。完整539项通过；不能据此宣称采集建造已完成。"
+    },
+    {
+      "name": "启动即评估目标与导航依赖恢复",
+      "icon": "⚡",
+      "group": "自主生存",
+      "status": "observed",
+      "detail": "Mint实测一次登录100毫秒确定持续目标，状态不齐时明确等待坐标/落地，不消耗两分钟行动冷却。位置依赖错误不再当成树木或勘测地点失败；五秒周期检查恢复。只读见证器已由systemd用户服务托管。Node24完整531项通过；后续登录修复已确认真实行走；采集和建房仍未验收。"
+    },
+    {
+      "name": "夜间无床生存决策与短程安全转移",
+      "icon": "🌙",
+      "group": "自主生存",
+      "status": "staged",
+      "detail": "晚上依次考虑安全进食/装备维护、附近床位、已验证材料搭建庇护所、背包木材制作防身武器；仍没有有效方案时，只有BDS独立位置见证新鲜且与客户端一致、生命≥16、地面已确认、无12格内敌怪、无恶劣天气时，才尝试已观测同高度WALK路径的前两步。不能构成安全移动则记录明确阻断原因，不会无边界夜游或伪报行走成功。纯逻辑6/6及语法检查通过，已修复第二路径点重新计算起点造成的误拦截，Mint Node24/BDS实测待验收。"
+    },
+    {
+      "name": "Alice Bedrock 每帧移动输入同步",
+      "icon": "🎮",
+      "group": "移动与导航",
+      "status": "staged",
+      "detail": "已修复 Codex 二次复现的 physicsTick -> Pathfinder fullStop 私自吸附坐标/清零速度：每帧物理计算后保存真实 position/velocity/contact，回调结束恢复，避免同一 Tick 发包和下一帧物理起点被污染。新增真实依赖 GoalNear/取消/转向跳跃回归待 Mint 验收；服务器仍未确认移动。"
+    },
+    {
+      "name": "Alice BDS 路线起点一致性检查",
+      "icon": "🛡️",
+      "group": "移动与导航",
+      "status": "staged",
+      "detail": "已把先前仅 EXPLORE 的 BDS 起点校验推广到生产 GATHER / EXPLORE / FOLLOW 的 Pathfinder goto/setGoal；FOLLOW 拒绝返回 false，GATHER 保留精确拒绝分类。等待 Mint 实测。"
+    },
+    {
+      "name": "Bedrock 2193 稳定版输入编号校验",
+      "icon": "🧩",
+      "group": "移动与导航",
+      "status": "observed",
+      "detail": "已撤销此前错误的63项编号覆盖。BDS 1.26.51.1实际数值确认原66项映射正确：前进10、开始跳跃31；旧official_2193开关现在只验证，不改写。实际协议编码回归及完整539项通过，本次实机已出现BDS确认移动与完整短程终点。"
+    },
+    {
+      "name": "Bedrock 移动包与 Tick 诊断",
+      "icon": "📡",
+      "group": "运维与可观测性",
+      "status": "observed",
+      "detail": "Mint 真实验收已见 2229/2229 player_auth_input 成功入队/序列化，RakNet sendReliable 2353 次调用，异常0；但 BDS 实际坐标未确认移动。这是传输观测成功，不是行走成功。 修正模拟向量修正器与审计器的包裹顺序，防止将正常输入转换误报为analog_mismatch；匹配编码仍不等于服务器接受移动。"
+    },
+    {
+      "name": "GATHER 四阶段诊断",
+      "icon": "🪵",
+      "group": "自主与学习",
+      "status": "staged",
+      "detail": "天然树扫描、Pathfinder 接近、dig、拾取四阶段均记录开始/完成/匿名失败原因，并在异常中报告具体失败阶段；保留原动作超时、地形和背包安全条件。尚待 Mint Node24 全量测试及真实背包增量验收。"
+    },
+    {
+      "name": "独立 BDS 位置见证",
+      "icon": "📍",
+      "group": "移动与导航",
+      "status": "observed",
+      "detail": "Mint 真实 BDS querytarget 连续取样已验证：22 条有效权威样本，坐标稳定 (0.5,69,0.5)；客户端预测位置偏差约 64 格。此能力可观测，但 Alice 真实走路仍未成功。只读见证不授予修改世界权限。"
+    },
+    {
+      "name": "双模式与事件触发模型目标",
+      "icon": "🧠",
+      "group": "自主与学习",
+      "status": "staged",
+      "detail": "已补齐 Mac API + Mint 双侧 agentMode 白名单验证，可控 companion/autonomous 模式、统一 Ollama 短目标建议、受限工具执行和预算心跳，尚未 Mint Node24 与真实 BDS 验证；不把固定回退或本地位移当作模型/服务器确认。"
+    },
+    {
+      "name": "原生 Bedrock 1.26.51 登录",
+      "icon": "🎮",
+      "group": "连接与运行",
+      "status": "observed",
+      "detail": "Mint 正式 BDS 17879 已实际 login_success、spawn_confirmed，真人确认看见 Alice；使用单原生连接注入模式。"
+    },
+    {
+      "name": "Xbox 账号持久认证",
+      "icon": "🔐",
+      "group": "连接与运行",
+      "status": "observed",
+      "detail": "Alice 专用微软账号已恢复并重新成功登入。控制台不会管理、刷新或展示凭据。"
+    },
+    {
+      "name": "跟随目标识别",
+      "icon": "🧭",
+      "group": "移动与导航",
+      "status": "observed",
+      "detail": "实测接受 MolarParsley191 的跟随指令、能识别同世界目标；新增 playerLeft 下线后释放 FOLLOW/GUARD（已提交待 Mint 真人退出/重进验收）。实体视野卸载不算下线；全程步行仍未确认。"
+    },
+    {
+      "name": "玩家位置与遮挡识别",
+      "icon": "👁️",
+      "group": "移动与导航",
+      "status": "staged",
+      "detail": "Bedrock add_player 初始 Y 已统一到脚底坐标；障碍物与视线有代码逻辑，仍待实际场景验收。"
+    },
+    {
+      "name": "寻路、门口通行与脱困",
+      "icon": "🚪",
+      "group": "移动与导航",
+      "status": "staged",
+      "detail": "真实日志已证明房内→开放局部区域的观察变化（18→91个已知可达格），用户游戏画面看到出房，BDS纠正证据仍缺；新增目标策略在看见开放安全前沿且旧门已尝试时，不再主动追10格外的旧木门。底层安全/日夜门槛不改，真实自驱连续行为尚待验收。"
+    },
+    {
+      "name": "动态跟随距离",
+      "icon": "📏",
+      "group": "移动与导航",
+      "status": "staged",
+      "detail": "可在 Mac 控制台设正常与遮挡跟随半径 2～12 格，Mint 配置热加载；等待真人复测实体移动。"
+    },
+    {
+      "name": "人物真实移动坐标验证",
+      "icon": "📍",
+      "group": "移动与导航",
+      "status": "prototype",
+      "detail": "BDS 位置见证已独立采集，证实本地预测坐标偏差约 64 格；尚无服务端认可的 Alice 位移。只有 BDS 前后位置变化才能判定真实走动。"
+    },
+    {
+      "name": "中文聊天与确定性指令",
+      "icon": "💬",
+      "group": "交互",
+      "status": "observed",
+      "detail": "实测命令 跟着我 能令 Alice 进入 FOLLOW；其余指令分别需要动作级验收。"
+    },
+    {
+      "name": "当前状态、背包与记忆查询",
+      "icon": "📋",
+      "group": "交互",
+      "status": "staged",
+      "detail": "能从读取的生存数据/持久学习状态生成回答；每条命令的真实数据和游戏反馈待验证。"
+    },
+    {
+      "name": "可选 Ollama 自然语言规划",
+      "icon": "🧠",
+      "group": "交互",
+      "status": "staged",
+      "detail": "只有设置 ALICE_OLLAMA_URL 且 SSH 反向隧道连通时才启用；确定性指令不依赖大模型。"
+    },
+    {
+      "name": "闲时自主学习和任务",
+      "icon": "🌿",
+      "group": "自主与学习",
+      "status": "staged",
+      "detail": "新增会话内SelfDriveJournal+目标状态转移：根据可信场景、日夜/背包、木门/开放前沿分辨找资源、出房、准备白天和位置验证。夜间无原材料的自动GATHER延至白天，已有材料的CRAFT/安全维护不受影响。仍需Mint真机确认夜晚→白天恢复行动；未来需位置真值/世界拓扑/计划树/受约束模型建议。"
+    },
+    {
+      "name": "持久学习、物品别名",
+      "icon": "📚",
+      "group": "自主与学习",
+      "status": "observed",
+      "detail": "生产日志已确认持久文件载入 1 条知识技能；不把策略日志当成真实动作成功。"
+    },
+    {
+      "name": "原木与天然树识别",
+      "icon": "🪵",
+      "group": "采集与制作",
+      "status": "staged",
+      "detail": "可读取 Bedrock 1.26 方块，保护玩家建造；现场执行因没有可确认自然树而返回 0/1。"
+    },
+    {
+      "name": "物品获取与配方选择",
+      "icon": "⛏️",
+      "group": "采集与制作",
+      "status": "staged",
+      "detail": "限已支持的 Minecraft 注册物品及已具备材料配方，未知来源不盲挖。"
+    },
+    {
+      "name": "制作工作台与木剑",
+      "icon": "🛠️",
+      "group": "采集与制作",
+      "status": "staged",
+      "detail": "具备制作路径、配方与背包数量验证；真实制作成功尚需 Mint 游戏验证。"
+    },
+    {
+      "name": "背包物品快照和数量核验",
+      "icon": "🎒",
+      "group": "库存与交易",
+      "status": "staged",
+      "detail": "只有收到 Bedrock 服务端 inventory_content 后允许物品动作，禁止猜测。"
+    },
+    {
+      "name": "箱子取出与存入",
+      "icon": "📦",
+      "group": "库存与交易",
+      "status": "staged",
+      "detail": "具有已连接的指定箱子物品转移操作及数量检查，尚缺实机双侧结果验收。"
+    },
+    {
+      "name": "自动穿戴与选择武器",
+      "icon": "🗡️",
+      "group": "生存与战斗",
+      "status": "staged",
+      "detail": "周期检查现有装备并尝试优化，需用服务器背包状态确认。"
+    },
+    {
+      "name": "饥饿恢复、睡觉与起床",
+      "icon": "🍞",
+      "group": "生存与战斗",
+      "status": "staged",
+      "detail": "自动睡觉遵守主世界夜晚/雷暴、已知怪物避让；区分寻路失败与睡眠拒绝，并记录具体床位冷却及该区域休息冷却。附近公共床仍可能影响其他玩家重生点，建议 Alice 专用床；BDS 确认与重生点归属尚未完整验证。"
+    },
+    {
+      "name": "敌对生物避让、护卫与攻击",
+      "icon": "🛡️",
+      "group": "生存与战斗",
+      "status": "staged",
+      "detail": "有低血防护、攻击节流与撤退判定；真实成功击退或伤害未获证实。安全机制不能通过控制台关闭。"
+    },
+    {
+      "name": "Xbox 登录匿名审计与单实例保护",
+      "icon": "🔐",
+      "group": "运维与可观测性",
+      "status": "staged",
+      "detail": "旧原生聊天版与自主版共用本机独占登录锁；匿名审计 Bedrock 登录结构、有效期状态和 server_id_conflict，保存有限历史并显示在控制台。不会自动重试、清除 Xbox 凭据或上传账号。Mint 尚未验收，根因仍未知。"
+    },
+    {
+      "name": "Bedrock 寻路失败地形诊断",
+      "icon": "🔎",
+      "group": "运维与可观测性",
+      "status": "staged",
+      "detail": "每 12 秒至多一次，只读采样 Alice 脚底及四邻方块的加载/支撑状态、位置和 noPath 情况，显示在控制台实时状态页；Mint 尚未实测。"
+    },
+    {
+      "name": "实时设置与应用版本确认",
+      "icon": "⚙️",
+      "group": "运维与可观测性",
+      "status": "staged",
+      "detail": "Mac 控制台通过 SSH 保存合法设置，Alice 心跳回报实际加载版本；Mint 端到端仍待验收。"
+    },
+    {
+      "name": "游戏日志与错误排查",
+      "icon": "🧾",
+      "group": "运维与可观测性",
+      "status": "staged",
+      "detail": "历史 Paper 日志可查看；新的原生 Bedrock 运行由实时心跳监测，历史原生日志独立接入仍待完成。"
+    },
+    {
+      "name": "正式世界备份与隔离保护",
+      "icon": "🗃️",
+      "group": "运维与可观测性",
+      "status": "observed",
+      "detail": "生产启动已验证 Bedrock level 世界备份和隔离恢复；本控制台不允许改动世界或绕过门槛。"
+    },
+    {
+      "name": "Bedrock 昼夜与雷暴生活节律",
+      "icon": "🌗",
+      "group": "自主生存",
+      "status": "staged",
+      "detail": "读取实际 Bedrock 时间、天气，夜晚与雷暴适时睡觉；已知怪物靠近床时不主动尝试。未在 Mint 实机验收，睡眠成功仍需服务器确认。"
+    },
+    {
+      "name": "资源失败记忆与安全短距离探索",
+      "icon": "🧭",
+      "group": "自主生存",
+      "status": "staged",
+      "detail": "新版三维安全路线仍按日照、生命与食物动态设定每段预算（最多12步），但不再被旧 scout:粗区域失败记录整体冻结。历史记录原样保留但仅用于审计；新导航 noPath 冷却精确失败的路线节点，允许规划另一条已加载安全路线；区块不完整/脚下不明仅记录短期观察原因且30秒复查，不能把未加载当空气；BDS 真实位移未确认则单独启用地区安全暂停，禁止盲目连续尝试。服务器终点实际到达仍是逐段递进的必要条件，Mint 真机尚未验证。"
+    },
+    {
+      "name": "安全重生点与床位归属",
+      "icon": "🛏️",
+      "group": "自主生存",
+      "status": "pending",
+      "detail": "规划发现独立床位、白天设置重生点与服务端确认；尚未实现归属校验。现有夜晚睡觉仍可能使用附近空床，可能影响同床玩家的重生点，请给 Alice 独立床；不能宣称重生点已确认。"
+    },
+    {
+      "name": "Bedrock 自身服务端位置证据",
+      "icon": "📍",
+      "group": "移动与导航",
+      "status": "staged",
+      "detail": "被动监听 correct_player_move_prediction / 自身 move_player 包，分离服务器实际位置与本地物理预测；记录收到包数、最近服务器脚位与位移。没有服务端包则不宣称移动成功，真实最终验收需 BDS querytarget。 探索递进仍要求服务端自身坐标终点与本地位置一致，单纯 pathfinder 成功不能证明移动。"
+    },
+    {
+      "name": "noPath 安全短步恢复",
+      "icon": "👟",
+      "group": "移动与导航",
+      "status": "staged",
+      "detail": "仅跟随中发生 noPath，距离近、玩家与 Alice 同高、角色着地且全程0.6米脚宽的已加载地面和两格头部空间安全，才允许一次400毫秒非冲刺前进输入；危险/新命令立即取消，失败冷却，无挖掘或传送。Mint 尚未实机验收。"
+    },
+    {
+      "name": "封闭空间出口侦察与木门交互（试验）",
+      "icon": "🔍",
+      "group": "移动与导航",
+      "status": "staged",
+      "detail": "资源采集受阻时扫描人工地面/木门/梯子；最多6格的已知安全路线接近木门，验证开门状态后单次互动；已开木门通过最多8个120ms前进脉冲尝试跨过，避免自动 PathFinder 重复触门。保留 passageAction 独立结果，不挖建。只有服务端自身 XYZ 证据才能确认跨门，Mint 尚待验收。"
+    },
+    {
+      "name": "Alice 3D 世界观察器",
+      "icon": "🌐",
+      "group": "运维与可观测性",
+      "status": "staged",
+      "detail": "Mac Alice 控制台新增 #world，只读查看机器人周围约11×11格、上下8层的已加载 Bedrock 方块，附近实体、可旋转缩放的三维投影、透视屋顶、精确XYZ坐标和最近行为输出。人物位置每约1秒更新、地形4秒以内复用；服务器自身坐标样本不足时标为客户端估算，离线/过期快照隐藏。不发送操作、聊天或认证信息；Mint Node24 和真机画面尚需验收。"
+    },
+    {
+      "name": "双模式自主 Agent（C）",
+      "icon": "🧠",
+      "group": "自主与学习",
+      "status": "pending",
+      "detail": "已确认单模型、单 Alice、单记忆架构：companion 智能队友与 autonomous 自主生活按需模型规划、资源预算和可切换模式；M1 模式状态/M2 Ollama 实际计划闭环/M3 跨重启计划/M4 实测均未实现。"
+    },
+    {
+      "name": "通用方块碰撞导航候选",
+      "icon": "🧱",
+      "group": "移动与导航",
+      "status": "staged",
+      "detail": "读取真实碰撞形状和半砖高度，生成纯观察的 WALK/JUMP_UP/STEP_DOWN 候选；只允许纯平坦WALK路线通过已有安全scout尝试。MInt Node24 和BDS实机动作尚未验收，挖掘/搭建仍禁止。"
+    },
+    {
+      "name": "Alice 长时间验收日志与 Mac 一键导出",
+      "icon": "📋",
+      "group": "运维与可观测性",
+      "status": "staged",
+      "detail": "Mint 私有滚动验收记录每约10秒取样状态，并记录模型/导航/失败事件；Mac 一条 SSH 只读命令保存 ZIP 到桌面。过滤凭据和聊天文本，代码已提交但尚未完成 Mint/BDS 实机验收。"
+    },
+    {
+      "name": "Granite4 观察后继续有安全校验的本地行动",
+      "icon": "🧭",
+      "group": "自主与学习",
+      "status": "staged",
+      "detail": "修复 Ollama observe 导致 SCOUT/门口执行器无条件被跳过的问题；只有已经验证的无破坏安全候选允许继续。未解决实际 Bedrock noPath/高差/服务端确认，Mint 实机验收待完成。"
+    },
+    {
+      "name": "竖井/梯子附近的异常高度变化监测",
+      "icon": "🪜",
+      "group": "安全与生存",
+      "status": "staged",
+      "detail": "安全控制器以只读方式监测客户端 12 秒内 ≥4 格下降；记录梯子附近环境、服务端证据可信度，在异常后暂停自主探索 90 秒且不中断紧急生存和玩家指令。尚待 Mint/BDS 实测，不等同会自主攀爬或防坠落。"
+    },
+    {
+      "name": "3D 世界管理员指令与明确玩家目标反馈",
+      "icon": "⌘",
+      "group": "控制台与可观测性",
+      "status": "staged",
+      "detail": "Mac 本机可发送类型化 STOP/指定玩家 FOLLOW/GUARD/木材/制作/进食/状态指令；控制台‘跟着我’直接拒绝 missing_target，绑定玩家要求在线且有位置，排队/接收/执行/完成结果分开显示。LAN 只读，待实机验收。"
+    },
+    {
+      "name": "死亡次数、重生点可信度和昼夜状态",
+      "icon": "🛏️",
+      "group": "安全与生存",
+      "status": "staged",
+      "detail": "3D 页显示实际昼夜/天气；死亡次数自新版本首次生成起持久追踪，不冒充历史总数；个人重生点必须来自 Bedrock 明确 player spawn 包，否则显示未验证。待 Mint/BDS 实测。"
+    },
+    {
+      "name": "探索进度记忆：避免未确认路线反复往返",
+      "icon": "🧭",
+      "group": "自主与学习",
+      "status": "staged",
+      "detail": "有界持久化最近 48 条探索终点；未收到服务端坐标确认的目标仅作为 20 分钟内已尝试的候选排除，不冒充已到达。等待 Mint 实测。"
+    },
+    {
+      "name": "根据完整方块路径选择安全撤退方向",
+      "icon": "🛡️",
+      "group": "安全与生存",
+      "status": "staged",
+      "detail": "从 Bedrock 实际已加载碰撞图寻找背离怪物、完整地面支撑的 WALK-only 逃生路径，每次仅尝试一格；没有安全路线就拒绝。BDS 位置确认待验证。"
+    },
+    {
+      "name": "自主原木采集与木剑制作的背包闭环",
+      "icon": "🪵",
+      "group": "自主与学习",
+      "status": "staged",
+      "detail": "天然树必须有明确树干树冠及周边非建筑证据；先采 1 个原木或在已具材料时制木剑，以 Bedrock 背包数量真实增加才认定成功，失败冷却，待实机验证。"
+    },
+    {
+      "name": "自主探索：短平路与可解释的空闲复查",
+      "icon": "🧭",
+      "group": "自主与学习",
+      "status": "staged",
+      "detail": "完全验证过的两格及以上安全WALK平路可作为短程探索候选；准备好装备后也会主动探索，未配置Ollama同样可自主决策；健康模型规划间隔不是本地安全路线的否决；无任务时约30秒只读复查，控制台明确等待原因；所有夜晚、怪物、移动确认失败等安全冷却保留。Mint Node24及BDS真实移动尚待验收。"
+    },
+    {
+      "name": "模型探索与固定自主探索共享防绕圈记忆",
+      "icon": "🧭",
+      "group": "自主与学习",
+      "status": "staged",
+      "detail": "03:21验收包显示模型发起的scout_safe未登记尝试终点、未应用移动证据不足冷却，可能形成局部A/B反复。已将两种自主探索来源统一纳入20分钟终点排除、失败冷却、原有服务端验证。仍须Mint Node24与真实BDS比对验收；本地坐标不等于服务端到达。"
+    },
+    {
+      "name": "地形适应探索：跳台、下台、天然土开路、单格搭桥",
+      "icon": "🧱",
+      "group": "移动与导航",
+      "status": "staged",
+      "detail": "新增已知碰撞面的一格 JUMP_UP/STEP_DOWN 自主短步执行；仅在附近5×5×3块区域已加载、无玩家建筑/危险且存在权威服务端自身位置证明时，才可尝试一个天然土方块挖掘或一格深坑的单块支撑。物品变化与方块变化双验证，不等于实际通过障碍。当前服务端位置回传为0时世界改动禁止，跳跃效果与挖建操作尚需Mint/BDS实测。Ollama只建议adapt_terrain意图，不决定坐标。"
+    },
+    {
+      "name": "Bedrock 重连位置诊断（初始位置 vs 本地预测）",
+      "icon": "📍",
+      "group": "移动与导航",
+      "status": "staged",
+      "detail": "从 start_game.player_position 捕获服务器给 Alice 的重连初始坐标，独立显示本地预测与位置修正。修正包为0是可能的正常情况，不能据此判定BDS未接受移动。用于诊断每次恢复到固定坐标的问题，不发送包、不传送、不修改世界或缓存，须配合BDS querytarget 在退出前后核验。"
+    },
+    {
+      "name": "Bedrock 零修正包误判移动失败的冷却修复",
+      "icon": "🛠️",
+      "group": "移动与导航",
+      "status": "staged",
+      "detail": "05:50验收确认正常的无修正位置包情况曾被误判为移动故障，导致5–15分钟禁行。现在改为服务端结果未知、保留20分钟终点去重和90秒复查；真实路点失败仍保留冷却；历史误判记录不再阻止移动。仍需Mint Node24与BDS服务端querytarget验证，不等于已证明服务器接受并保存了位置。"
+    },
+    {
+      "name": "夜晚多床睡眠恢复与入睡确认诊断",
+      "icon": "🛏️",
+      "group": "自主生存",
+      "status": "staged",
+      "detail": "已修复一张床未收到入睡确认就整区禁睡12分钟的错误，并修复下一次睡眠检查时间被 Math.min(0, deadline) 错设为0的回归。现在区分单床限制和其他床短时复查：明确床位失败后30秒复查其他床，无明确床位时90秒复查；床头床尾去重，保留怪物、占用、安全门槛。Mint Node24全量测试与BDS真实入睡仍未验收，禁止标记为已观测。"
+    },
+    {
+      "name": "FOLLOW 距离误判修复与跳跃输入诊断",
+      "icon": "🦘",
+      "group": "移动与导航",
+      "status": "staged",
+      "detail": "修复跟随成功却停在4.15格之外的已证实双重缺陷：Pathfinder整数方块坐标过早完成，以及跟随检测额外+2格死区。目标判定改用真实目标足部与格中心，未达目标且不动时进入安全的有限重寻路。每个物理周期被动观察forward/jump和地面状态，诊断是否真的请求过跳跃；不直接跳、不放宽地形/怪物限制。尚需Mint Node24及Minecraft BDS亲测爬一格。"
+    },
+    {
+      "name": "自主采集异常循环修复与诊断",
+      "icon": "🪵",
+      "group": "自主生存",
+      "status": "staged",
+      "detail": "10:25验收发现341次坐标不变、14次采集任务抛错、异常日志只剩{}。修复异步异常路径漏记天然树木工作地点失败的问题：现在按既有安全记忆标记失败地点、5秒后重新观察安全候选、触发模型复查，私有验收日志只保留固定异常类别（无账号/凭证/原始堆栈）。不修改 Bedrock 网络、世界或安全门槛；尚需 Mint Node24 和游戏中真采集验收。"
+    },
+    {
+      "name": "异常后 AI 调度事件优先级修复",
+      "icon": "🛠️",
+      "group": "自主生存",
+      "status": "staged",
+      "detail": "真实 Mint 测试发现自主采集失败后的 tool_blocked 被启动时未消费的 new_goal 占位事件覆盖。现在只有具体阻塞反馈能覆盖此初始占位，不增加模型调用频率，不绕过 STOP 或安全逻辑。9项调度器单测及1项运行器隔离联调通过；Mint Node24/BDS尚未验证。14:47验收包里的15次旧格式异常不代表新版本已经运行。"
+    },
+    {
+      "name": "持续自主目标与子任务状态管理器",
+      "icon": "🧠",
+      "group": "自主生存",
+      "status": "staged",
+      "detail": "Alice Core 的 IDLE 现在仅代表当前没有执行动作；独立的长期目标跟踪准备武器、储备木材、观察世界，并显示获取材料、探索资源点、制作武器等子步骤和 READY/ACTING/BLOCKED/WAITING/PAUSED 状态。真实背包增量成功后约5秒续接目标，不再固定等待120秒；缺少服务端位置证据不会算作探索成功。STOP/FOLLOW优先，长期目标只保存不含玩家信息的名字以待重启后重新核验。控制台与验收日志可独立查看长期目标。已通过隔离逻辑验证；Mint Node24及BDS实测仍未完成。"
+    },
+    {
+      "name": "夜间主动评估和建造基础庇护所",
+      "icon": "🏠",
+      "group": "自主生存",
+      "status": "staged",
+      "detail": "夜晚与黄昏优先 SECURE_SHELTER，不再默认只等天亮；观察天然3×3地面和附近建筑，计划23块墙/屋顶加一扇木门。背包有真实泥土/圆石、附近无危险、具备服务端可信坐标时，最多一次建一块并验证方块与材料消耗。无材料/坐标则明确提示阻塞。木门开闭状态未确认前不能宣称房屋安全；真正 BDS 建造仍待验收。"
+    }
+  ],
+  "commands": [
+    {
+      "command": "AliceAI 跟着我",
+      "group": "移动与导航",
+      "status": "observed",
+      "description": "将发出消息的玩家设为跟随对象；离线自动撤销，重进需要再次发令（待实机验收）；身体实际移动仍需验证。"
+    },
+    {
+      "command": "AliceAI 保护我",
+      "group": "生存与战斗",
+      "status": "staged",
+      "description": "设置持续护卫/跟随意图，靠近敌对实体时采用保守防护。"
+    },
+    {
+      "command": "AliceAI 停止",
+      "group": "移动与导航",
+      "status": "staged",
+      "description": "取消当前任务与跟随，保护条件仍然生效。"
+    },
+    {
+      "command": "AliceAI 状态",
+      "group": "交互",
+      "status": "staged",
+      "description": "报告真实状态、位置和生存指标。"
+    },
+    {
+      "command": "AliceAI 你在哪里",
+      "group": "交互",
+      "status": "staged",
+      "description": "返回当前维度及已同步的位置。"
+    },
+    {
+      "command": "AliceAI 背包",
+      "group": "库存与交易",
+      "status": "staged",
+      "description": "输出服务端已同步的物品清单。"
+    },
+    {
+      "command": "AliceAI 记忆",
+      "group": "自主与学习",
+      "status": "staged",
+      "description": "列出长期学习记录与物品任务结果。"
+    },
+    {
+      "command": "AliceAI 收集3个木头",
+      "group": "采集与制作",
+      "status": "staged",
+      "description": "仅在确认天然树与安全条件时采集，报告实际背包增长。"
+    },
+    {
+      "command": "AliceAI 制作木剑",
+      "group": "采集与制作",
+      "status": "staged",
+      "description": "材料具备时尝试制作，再核对服务器背包变化。"
+    },
+    {
+      "command": "AliceAI 吃东西",
+      "group": "生存与战斗",
+      "status": "staged",
+      "description": "安全情况下从已确认背包选可食用食物。"
+    },
+    {
+      "command": "AliceAI 起床",
+      "group": "生存与战斗",
+      "status": "staged",
+      "description": "尝试退出睡眠并等待服务器反馈。"
+    },
+    {
+      "command": "AliceAI 从箱子里拿3个苹果",
+      "group": "库存与交易",
+      "status": "staged",
+      "description": "附近容器定量取出，需实测物品转移确认。"
+    },
+    {
+      "command": "AliceAI 记住：闪亮矿=diamond",
+      "group": "自主与学习",
+      "status": "staged",
+      "description": "记录受限中文物品别名，不把别名学习视为物品获得。"
+    }
+  ]
+}
