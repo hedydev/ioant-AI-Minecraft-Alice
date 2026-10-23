@@ -46,8 +46,13 @@ def configured_manifest():
 
 def production_target_valid():
     try:
+        # Reject a symlink at the named production directory itself. Do not
+        # reject a valid canonical ancestor alias (macOS /var -> /private/var
+        # when unit tests use tempfile.TemporaryDirectory).
+        if PRODUCTION.is_symlink():
+            return False
         source = PRODUCTION.resolve(strict=True)
-        if source != PRODUCTION or not source.is_dir() or not (source / "bedrock_server").is_file():
+        if not source.is_dir() or not (source / "bedrock_server").is_file():
             return False
         file = source / "server.properties"
         if file.is_symlink() or not file.is_file():

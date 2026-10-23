@@ -47,6 +47,33 @@ class ArchivedLabWorkflowTests(unittest.TestCase):
         self.stack.start()
         self.addCleanup(self.stack.stop)
 
+    def test_canonical_parent_alias_allowed_but_root_symlink_rejected(self):
+        # On macOS /var is an alias of /private/var. That ancestry must not
+        # cause every test to return production_target_mismatch.
+        self.assertTrue(stage.production_target_valid())
+        alias_parent = self.production.parent / "alternate-parent"
+        alias_parent.symlink_to(self.production.parent, target_is_directory=True)
+        with patch.object(stage, "PRODUCTION", alias_parent / self.production.name):
+            self.assertTrue(stage.production_target_valid())
+        direct_link = self.production.parent / "wrong-bds-symlink"
+        direct_link.symlink_to(self.production, target_is_directory=True)
+        with patch.object(stage, "PRODUCTION", direct_link):
+            self.assertFalse(stage.production_target_valid())
+        self.assertFalse(self.lab.exists())
+
+    def test_wrong_target_port_does_not_advance_to_archive_or_clone(self):
+        p = self.production / "server.properties"
+        before = p.read_text()
+        p.write_text(before.replace("server-port=17879", "server-port=19132"))
+        calls = []
+        out = stage.operate("prepare",
+                            verifier=lambda *_: calls.append("verify"),
+                            lab_preparer=lambda *_: calls.append("clone"))
+        self.assertEqual(out["reason"], "production_target_mismatch")
+        self.assertFalse(calls)
+        self.assertFalse(self.lab.exists())
+        p.write_text(before)
+
     def test_check_does_not_create_lab_and_requires_full_restore(self):
         v = {"verified": True, "temporaryRestore": True,
              "worlds": ["worlds/Bedrock level"], "sha256": "a"*64}
