@@ -291,7 +291,10 @@ def run_action(mode):
         gate.require_lab_stopped()
         instrument_lab_script(lab)
         gate.require_lab_stopped()
-        return probe(lab)
+        state, flags = probe(lab)
+        # Only a completed config/instrumentation guard may positively attest
+        # the clone's isolation configuration. A blocked probe is never proof.
+        return state, {"isolationConfigReady": True, **flags}
 
 
 def output(mode, state, flags=None, reason="none"):
@@ -299,7 +302,7 @@ def output(mode, state, flags=None, reason="none"):
     return {
         "audit": "ALICE_BDS_LAB_STARTUP_PROBE", "schemaVersion": 1,
         "observedAtUnix": int(time.time()), "mode": mode, "state": state,
-        "reason": reason, "isolationConfigReady": bool(flags.get("isolationConfigReady", mode=="probe")),
+        "reason": reason, "isolationConfigReady": bool(flags.get("isolationConfigReady", False)),
         "serverReadyObserved": bool(flags.get("serverReadyObserved", False)),
         "scriptModuleMessagesObserved": bool(flags.get("scriptModuleMessagesObserved", False)),
         "scriptLoadErrorObserved": bool(flags.get("scriptLoadErrorObserved", False)),

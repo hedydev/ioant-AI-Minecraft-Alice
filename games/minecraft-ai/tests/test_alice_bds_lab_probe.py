@@ -212,6 +212,21 @@ class LabStartupProbeTests(unittest.TestCase):
             P.run_action("probe")
         self.assertTrue(lock.is_file())
 
+    def test_blocked_probe_does_not_falsely_claim_isolation_configured(self):
+        # Earlier report defaulted mode=probe to True even before guards ran.
+        blocked = P.output("probe", "blocked", reason="lab_udp_ports_busy")
+        self.assertFalse(blocked["isolationConfigReady"])
+        self.assertFalse(blocked["serverReadyObserved"])
+        self.assertFalse(blocked["isolatedBdsExited"])
+
+    def test_completed_probe_guard_attests_clone_config(self):
+        with patch.object(P, "ports_free", return_value=True), patch.object(
+            P, "probe", return_value=("lab_module_imports_observed",
+                                      P.classify("Server started. " + P.LAB_MARKER))):
+            state, fields = P.run_action("probe")
+        self.assertEqual(state, "lab_module_imports_observed")
+        self.assertTrue(fields["isolationConfigReady"])
+
     def test_mac_action_and_sanitizer_require_explicit_probe(self):
         entry = (SCRIPTS / "alice-mac.sh").read_text()
         wrapper = (SCRIPTS / "alice-bds-lab-probe-mac.sh").read_text()

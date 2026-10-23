@@ -1,3 +1,9 @@
+## 2026-10-24: 17880 lab BDS startup blocked by UDP bind, diagnosis staged
+
+Operator's new Mac/Mint tests: 628/628 passed. Subsequent controlled lab startup returned `ALICE_BDS_LAB_STARTUP_PROBE` schema 1 `state=blocked`, `reason=lab_udp_ports_busy`; BDS readiness, Script API module imports and isolated exit were **not observed**. Production mutation/restart booleans were false. The probe attempts wildcard IPv4 UDP bind on 17880 and IPv6-only UDP bind on 17881; old implementation collapsed any socket `OSError` into one reason, masking the actual family/cause. The old report also set `isolationConfigReady=true` by default for any probe even when blocked, so that flag was **not affirmative evidence** of clone hardening.
+
+Added one read-only Mint port diagnostic `alice-bds-lab-ports.py`, routed through maintained `alice-mac.sh witness-lab-port-check` after normal sync, with enum-classified bind results and presence-only lab staging markers. Fixed probe-report isolation flag so blocked attempts cannot claim readiness based only on mode. Regression tests added, source-only verification pending operator Mac Python/Mint Node suite. No real port-owner diagnosis or new BDS attempt made in this update. Do not rerun lab probe or delete lock/backups without fresh evidence and separately scoped approval.
+
 ## 2026-10-24 05:26 — 17880 startup probe AttributeError before world write or launch
 
 - Actual user Mac/Mint command ran Mac Python suite then Mint Node tests (output showed `duration_ms 7476.219556`) and attempted the controlled `witness-lab-startup-probe`. Mint traceback from `/home/tedz/minecraft-ai/scripts/alice-bds-lab-probe.py:260` `run_action` `gate.require_lab_stopped()`: `AttributeError: module 'alice_lab_beta_for_probe' has no attribute 'require_lab_stopped'`.

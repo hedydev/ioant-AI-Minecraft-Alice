@@ -1,3 +1,7 @@
+## Experimental BDS 17880 UDP port diagnosis (2026-10-24)
+
+**Status: implemented, real Mint acceptance pending.** `alice-mac.sh witness-lab-port-check` runs a bounded read-only Mint Python bind test for isolated lab UDP 17880/17881, classifying `available/in_use/permission_denied/family_unsupported/socket_error` separately for IPv4 and IPv6. It additionally reports fixed booleans for presence of one-shot lab configuration/instrumentation/lock files. This is not evidence of BDS owner identity, world compatibility, loaded scripts or successful lab startup. A failed prior probe remains one-shot and must not be automatically retried. Existing `witness-lab-startup-probe` retained its fail-closed port guard; blocked probe reports no longer falsely claim isolation configuration is ready merely because mode is probe.
+
 ## 2026-10-24 05:26 — 17880 startup probe AttributeError before world write or launch
 
 - Actual user Mac/Mint command ran Mac Python suite then Mint Node tests (output showed `duration_ms 7476.219556`) and attempted the controlled `witness-lab-startup-probe`. Mint traceback from `/home/tedz/minecraft-ai/scripts/alice-bds-lab-probe.py:260` `run_action` `gate.require_lab_stopped()`: `AttributeError: module 'alice_lab_beta_for_probe' has no attribute 'require_lab_stopped'`.
