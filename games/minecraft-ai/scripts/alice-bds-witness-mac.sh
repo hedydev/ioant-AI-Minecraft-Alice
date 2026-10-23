@@ -32,6 +32,34 @@ if (not isinstance(obj, dict) or
     obj.get("readOnly") is not True or
     obj.get("safeToApplyWorldChanges") is not False):
     raise SystemExit("Preflight could not establish the read-only contract.")
+# Prevent unrecognized Mint output (including private paths, usernames or
+# credentials) from being copied into a desktop report, even after a bad sync.
+bool_fields = (
+    "bdsRootMatchesExpected", "propertiesMatchProduction17879BedrockLevel",
+    "targetWorldStructurallyPresent", "alreadyAttached",
+    "packSourceAndRestrictedHttpPolicyValid", "modulePermissionsAlreadyPresent",
+    "targetPackDirectoryExists", "receiverPrivateConfigExists",
+    "receiverPrivateTokenExists", "receiverLoopbackPortConfigured")
+enums = {
+    "targetWorldPackListState": {"valid", "missing", "unreadable_or_unexpected"},
+    "betaApisExperiment": {"not_verified_requires_world_level_experiment_audit"},
+    "verifiedOfflineWorldBackup": {"not_verified_requires_backup_and_restore_test"}
+}
+clean = {"audit": "ALICE_BDS_SILENT_WITNESS_READ_ONLY",
+         "readOnly": True, "safeToApplyWorldChanges": False}
+for key in bool_fields:
+    if type(obj.get(key)) is bool:
+        clean[key] = obj[key]
+for key, choices in enums.items():
+    if isinstance(obj.get(key), str) and obj[key] in choices:
+        clean[key] = obj[key]
+proc = obj.get("processes")
+if isinstance(proc, dict):
+    if (proc.get("state") in {"unknown", "found_running", "not_found_not_offline_proof"}
+            and (proc.get("count") is None or
+                 type(proc.get("count")) is int and 0 <= proc["count"] <= 10000)):
+        clean["processes"] = {"state": proc["state"], "count": proc["count"]}
+p.write_text(json.dumps(clean, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 PY
 mv "$tmp" "$out"
 trap - EXIT
