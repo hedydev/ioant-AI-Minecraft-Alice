@@ -2,11 +2,16 @@
 import importlib.util
 import json
 from pathlib import Path
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 
-FILE = Path(__file__).resolve().parents[1] / "scripts" / "alice-bds-witness-preflight.py"
+# importlib.exec_module() does not add the loaded script's directory to
+# sys.path. The production preflight imports its sibling metadata reader.
+SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
+sys.path.insert(0, str(SCRIPTS))
+FILE = SCRIPTS / "alice-bds-witness-preflight.py"
 SPEC = importlib.util.spec_from_file_location("bds_witness_preflight", FILE)
 CHECK = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(CHECK)
