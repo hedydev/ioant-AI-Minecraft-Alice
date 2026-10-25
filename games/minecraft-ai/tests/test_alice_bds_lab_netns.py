@@ -116,3 +116,66 @@ class NetworkNamespaceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    def test_loopback_flags_are_read_only_and_report_down_without_mutation(self):
+        seen=[]
+        def run(args, **kwargs):
+            seen.append((args, kwargs))
+            return SimpleNamespace(returncode=0, stdout="0x8\\n")
+        with patch.object(P.NETNS_CAT.__class__, "is_file", return_value=True), patch.object(
+                P.NETNS_CAT.__class__, "is_symlink", return_value=False):
+            self.assertEqual(P.namespace_loopback_state(run=run),"down")
+        self.assertEqual(seen[0][0],[
+            "/usr/bin/unshare","--user","--map-root-user","--net",
+            "--","/usr/bin/cat","/sys/class/net/lo/flags"])
+        self.assertNotIn("shell",seen[0][1])
+
+    def test_namespace_loopback_status_does_not_claim_crash_cause(self):
+        with patch.object(P.NETNS_CAT.__class__, "is_file", return_value=True), patch.object(
+                P.NETNS_CAT.__class__, "is_symlink", return_value=False):
+            self.assertEqual(P.namespace_loopback_state(
+                run=lambda *a, **k:SimpleNamespace(returncode=0,stdout="0x49\\n")),"up")
+            self.assertEqual(P.namespace_loopback_state(
+                run=lambda *a, **k:SimpleNamespace(returncode=1,stdout="")),"unverified")
+
+    def test_postmortem_read_only_reports_consumed_probe_without_claiming_bds_start(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            lab=Path(tmp)
+            script=lab/"behavior_packs"/"alice-silent-bds-witness"/"scripts"/"main.js"
+            script.parent.mkdir(parents=True)
+            script.write_text('import {world} from "@minecraft/server";\\n' +
+                              'console.warn("'+P.LAB_MARKER+'");\\n')
+            for f in (lab/".alice-lab-probe-original-properties",
+                      lab/".alice-lab-probe-original-allowlist",
+                      script.with_name(".alice-lab-probe-original-main.js"),
+                      lab/".alice-lab-probe.lock"):
+                f.write_bytes(b"fixture")
+            before=[(str(p.relative_to(lab)),p.read_bytes()) for p in lab.rglob("*") if p.is_file()]
+            with patch.object(P,"namespace_loopback_state",return_value="down"):
+                status,fields=P.lab_probe_postmortem(lab)
+            after=[(str(p.relative_to(lab)),p.read_bytes()) for p in lab.rglob("*") if p.is_file()]
+            self.assertEqual(status,"lab_probe_one_shot_consumed")
+            self.assertEqual(before,after)
+            self.assertTrue(fields["labProbeOneShotConsumed"])
+            self.assertFalse(fields["originalLaunchStdoutRetained"])
+            self.assertFalse(fields["verifiedScriptModuleLoaded"])
+            self.assertEqual(fields["isolatedLoopbackState"],"down")
+
+    def test_postmortem_refuses_symlinked_lab_probe_artifacts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            lab=Path(tmp);(lab/".alice-lab-probe.lock").symlink_to("/etc/passwd")
+            with self.assertRaisesRegex(ValueError,"unsafe_lab_postmortem_file"):
+                P.lab_probe_postmortem(lab)
+
+    def test_postmortem_action_never_starts_bds_or_reconfigures_lab(self):
+        gate=Mock()
+        with tempfile.TemporaryDirectory() as tmp, patch.object(
+                P,"beta_gate",return_value=(gate,Path(tmp))), patch.object(
+                P,"lab_probe_postmortem",return_value=("lab_probe_one_shot_consumed",{})) as inspector, patch.object(
+                P,"probe",side_effect=AssertionError("BDS started")), patch.object(
+                P,"secure_config",side_effect=AssertionError("lab modified")), patch.object(
+                P,"namespace_preflight",side_effect=AssertionError("unexpected capability probe")):
+            state,fields=P.run_action("netns-postmortem")
+            self.assertEqual(state,"lab_probe_one_shot_consumed")
+            inspector.assert_called_once_with(Path(tmp))
+        gate.require_lab_stopped.assert_called_once_with()

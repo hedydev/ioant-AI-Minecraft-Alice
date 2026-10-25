@@ -144,6 +144,7 @@ LAB_MARKER = "ALICE_LAB_IMPORTS_READY_17880"
 # avoids colliding with the production zombie BDS bound to host UDP 17880.
 NETNS_UNSHARE = Path("/usr/bin/unshare")
 NETNS_TRUE = Path("/usr/bin/true")
+NETNS_CAT = Path("/usr/bin/cat")
 
 
 def namespace_preflight(run=subprocess.run):
@@ -167,6 +168,60 @@ def namespace_preflight(run=subprocess.run):
 
 
 
+
+
+def namespace_loopback_state(run=subprocess.run):
+    """Read interface flags in a NEW temporary user+network namespace only.
+
+    This does not raise the interface or read production network state. A
+    newly unshared network namespace generally has loopback administratively
+    down; that is a hypothesis for early BDS exit, never an established cause.
+    """
+    if (not NETNS_UNSHARE.is_file() or NETNS_UNSHARE.is_symlink()
+            or not NETNS_CAT.is_file() or NETNS_CAT.is_symlink()):
+        return "unverified"
+    command = [str(NETNS_UNSHARE), "--user", "--map-root-user",
+               "--net", "--", str(NETNS_CAT), "/sys/class/net/lo/flags"]
+    try:
+        result = run(command, capture_output=True, text=True, check=False,
+                     timeout=8, env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"})
+        if result.returncode != 0 or len(result.stdout) > 32:
+            return "unverified"
+        flag = int(result.stdout.strip(), 16)
+        return "up" if flag & 1 else "down"
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return "unverified"
+
+
+def lab_probe_postmortem(lab):
+    """Inspect one-shot lab artifacts, never re-run the disposed BDS process.
+
+    The earlier probe saved process stdout only in a TemporaryFile; once the
+    process ended, that error is irrecoverable. Never fabricate a crash cause.
+    """
+    marker = lab / "behavior_packs" / "alice-silent-bds-witness" / "scripts" / "main.js"
+    originals = [
+        lab / ".alice-lab-probe-original-properties",
+        lab / ".alice-lab-probe-original-allowlist",
+        marker.with_name(".alice-lab-probe-original-main.js"),
+    ]
+    lock = lab / ".alice-lab-probe.lock"
+    for path in [*originals, marker, lock]:
+        if path.is_symlink():
+            raise ValueError("unsafe_lab_postmortem_file")
+    backed = all(path.is_file() for path in originals)
+    instrumented = marker.is_file() and marker.stat().st_size <= 8192 and (
+        marker.read_bytes().count(LAB_MARKER.encode("ascii")) == 1)
+    consumed = backed and instrumented and lock.is_file()
+    return ("lab_probe_one_shot_consumed" if consumed else
+            "lab_probe_artifacts_incomplete", {
+        "labProbeOneShotConsumed": consumed,
+        "isolatedLoopbackState": namespace_loopback_state(),
+        "originalLaunchStdoutRetained": False,
+        "verifiedScriptModuleLoaded": False,
+        "serverReadyObserved": False,
+        "isolatedBdsExited": False,
+    })
 
 
 def instrument_lab_script(lab):
@@ -298,10 +353,14 @@ def probe(lab, *, duration=12, popen=subprocess.Popen, sleep=time.sleep,
 def run_action(mode):
     netns = mode.startswith("netns-")
     stage = mode[6:] if netns else mode
-    if stage not in ("check", "probe"):
+    if stage not in ("check", "probe", "postmortem"):
         raise ValueError("invalid_action")
     gate, lab = beta_gate()
     gate.require_lab_stopped()
+    if stage == "postmortem":
+        if not netns:
+            raise ValueError("invalid_action")
+        return lab_probe_postmortem(lab)
     # A netns rejection must happen BEFORE creating the one-shot lock or
     # any lab-only backup/config edits, so failure cannot consume the probe.
     if netns and not namespace_preflight():
@@ -354,6 +413,9 @@ def output(mode, state, flags=None, reason="none"):
         "isolatedBdsExited": bool(flags.get("isolatedBdsExited", False)),
         "networkNamespaceRequested": mode.startswith("netns-"),
         "networkNamespacePreflightPassed": bool(flags.get("networkNamespacePreflightPassed", False)),
+        "labProbeOneShotConsumed": bool(flags.get("labProbeOneShotConsumed", False)),
+        "originalLaunchStdoutRetained": bool(flags.get("originalLaunchStdoutRetained", False)),
+        "isolatedLoopbackState": flags.get("isolatedLoopbackState", "unverified"),
         "productionWorldModified": False, "productionBdsRestarted": False,
         "productionWitnessUsed": False,
     }
@@ -361,8 +423,8 @@ def output(mode, state, flags=None, reason="none"):
 
 def main():
     if len(sys.argv) != 2 or sys.argv[1] not in ("check", "probe",
-                                                  "netns-check", "netns-probe"):
-        raise SystemExit("Usage: alice-bds-lab-probe.py check|probe|netns-check|netns-probe")
+                                                  "netns-check", "netns-probe", "netns-postmortem"):
+        raise SystemExit("Usage: alice-bds-lab-probe.py check|probe|netns-check|netns-probe|netns-postmortem")
     mode = sys.argv[1]
     try:
         state, flags = run_action(mode)
@@ -378,6 +440,7 @@ def main():
             "unsafe_lab_instrumentation", "lab_script_drift",
             "lab_script_unexpected_imports",
             "lab_udp_ports_busy", "lab_netns_unavailable", "invalid_action", "lab_pack_not_staged",
+            "unsafe_lab_postmortem_file",
             "lab_bds_is_running", "bds_cwd_requires_privileged_read",
             "bds_cwd_unverified", "proc_unavailable",
         }

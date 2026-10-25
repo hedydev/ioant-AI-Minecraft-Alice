@@ -3,8 +3,8 @@
 # Only sudo -v and sudo -n readlink use elevation; Python BDS stays unprivileged.
 set -euo pipefail
 [[ "$(uname -s)" == Darwin ]] || { echo 'Run on Mac.' >&2; exit 2; }
-[[ $# -eq 1 && ( "$1" == check || "$1" == probe || "$1" == netns-check || "$1" == netns-probe ) ]] || {
-  echo 'Usage: alice-bds-lab-probe-mac.sh check|probe|netns-check|netns-probe' >&2; exit 2; }
+[[ $# -eq 1 && ( "$1" == check || "$1" == probe || "$1" == netns-check || "$1" == netns-probe || "$1" == netns-postmortem ) ]] || {
+  echo 'Usage: alice-bds-lab-probe-mac.sh check|probe|netns-check|netns-probe|netns-postmortem' >&2; exit 2; }
 mode="$1"
 target="$(printenv ALICE_SSH_TARGET || true)"
 [[ "$target" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*@[A-Za-z0-9][A-Za-z0-9.:-]*$ ]] || {
@@ -49,7 +49,8 @@ enums={
     "state":{"blocked","ready_for_isolated_lab_probe",
              "lab_shutdown_unverified","lab_exited_with_error",
              "lab_ready_not_observed","lab_script_load_error_observed",
-             "lab_server_ready_module_unverified","lab_module_imports_observed"},
+             "lab_server_ready_module_unverified","lab_module_imports_observed",
+             "lab_probe_one_shot_consumed","lab_probe_artifacts_incomplete"},
     "reason":{"none","missing_lab_beta_tool","lab_beta_not_enabled",
               "lab_process_guard_unavailable",
               "lab_bds_binary_not_executable","refuse_root_python",
@@ -58,6 +59,7 @@ enums={
               "lab_probe_already_prepared","lab_probe_already_running",
               "unsafe_lab_config",
               "lab_udp_ports_busy","lab_netns_unavailable","invalid_action","lab_pack_not_staged",
+              "unsafe_lab_postmortem_file",
               "unsafe_lab_instrumentation","lab_script_drift",
               "lab_script_unexpected_imports","lab_bds_is_running",
               "bds_cwd_requires_privileged_read","bds_cwd_unverified",
@@ -67,6 +69,7 @@ bools=("isolationConfigReady","serverReadyObserved",
        "scriptModuleMessagesObserved","scriptLoadErrorObserved",
        "verifiedScriptModuleLoaded","isolatedBdsExited",
        "networkNamespaceRequested","networkNamespacePreflightPassed",
+       "labProbeOneShotConsumed","originalLaunchStdoutRetained",
        "productionWorldModified",
        "productionBdsRestarted","productionWitnessUsed")
 sanitized={"audit":"ALICE_BDS_LAB_STARTUP_PROBE","schemaVersion":1,
@@ -79,6 +82,9 @@ for k in bools:
     if type(o.get(k)) is not bool:
         raise SystemExit("Unknown lab probe boolean field; no output.")
     sanitized[k]=o[k]
+if o.get("isolatedLoopbackState") not in ("up","down","unverified"):
+    raise SystemExit("Unknown namespace loopback observation; no output.")
+sanitized["isolatedLoopbackState"]=o["isolatedLoopbackState"]
 if any(sanitized[k] for k in ("productionWorldModified","productionBdsRestarted",
                              "productionWitnessUsed")):
     raise SystemExit("Probe violates production isolation contract.")
