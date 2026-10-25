@@ -3,11 +3,17 @@ import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch, Mock
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "alice-bds-lab-probe.py"
+# Import dependencies exactly as the standalone lab-probe/beta tests do.
+# This file must also load by itself (not rely on another test injecting
+# scripts/ into sys.path earlier during a larger unittest discovery run).
+SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
+sys.path.insert(0, str(SCRIPTS))
+SCRIPT = SCRIPTS / "alice-bds-lab-probe.py"
 spec = importlib.util.spec_from_file_location("alice_bds_lab_netns_probe", SCRIPT)
 P = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(P)

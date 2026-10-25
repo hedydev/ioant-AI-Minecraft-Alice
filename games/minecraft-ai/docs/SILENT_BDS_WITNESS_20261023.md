@@ -1,3 +1,8 @@
+## 2026-10-26 01:44 — standalone Python unittest discovery import fix
+
+- Operator ran `python3 -m unittest discover -s games/minecraft-ai/tests -p 'test_alice_bds_lab_netns.py' -v` after fast-forward to `7a78d75`; before any test ran it failed `ModuleNotFoundError: No module named 'alice_bds_level_metadata'` while loading `alice-bds-lab-probe.py`, because the isolated test module omitted the `scripts/` sys.path setup already present in its sibling lab-probe/beta tests. The prior command chain used `&&` and therefore **neither** Mint `sync` **nor** `netns-postmortem` ran.
+- Fix only the standalone test module: insert its fixed adjacent scripts directory into `sys.path` before executing the imported probe. It still imports the real `alice_bds_level_metadata`; no mocking, skipped assertions or weakened safety guard. This prevents test discovery ordering from masking the import bug. No Alice/BDS process start, world/network/port changes, cleanup or lab lock mutations. Rerun that exact single-test command before the canonical `alice-mac.sh sync` (Mac full Python and Mint Node24), then separately run read-only netns postmortem only after tests pass.
+
 ## 2026-10-26 — Fix missing postmortem_gate definition
 
 - User ran Mac Python suite: 210 tests, 3 errors, 3 skipped. All three errors traced to exactly one missing source definition in `scripts/alice-bds-lab-probe.py`: tests and `run_action("netns-postmortem")` referenced `postmortem_gate()`, but the function was accidentally omitted in prior commit. This was not a Python 3.15 compatibility issue.
