@@ -1,3 +1,9 @@
+## 2026-10-26 — Fix missing postmortem_gate definition
+
+- User ran Mac Python suite: 210 tests, 3 errors, 3 skipped. All three errors traced to exactly one missing source definition in `scripts/alice-bds-lab-probe.py`: tests and `run_action("netns-postmortem")` referenced `postmortem_gate()`, but the function was accidentally omitted in prior commit. This was not a Python 3.15 compatibility issue.
+- Define `postmortem_gate()` explicitly before `lab_probe_postmortem()`; it imports the reviewed lab pack module by fixed local script path, denies root Python, invokes `require_eligible()` (exact world/marker/source and process guard), requires `require_lab_stopped()`, returns that module and the exact lab directory. This keeps the original first-run `beta_gate()` and `pack_guard()` unchanged; only the consumed lab's read-only postmortem path uses the separate gate.
+- No BDS processes, Alice client, lab/world files, one-shot locks, source pack permissions or production witness are changed. Rerun the full Mac test suite and Mint Node24 with standard `alice-mac.sh sync`; then the *read-only* `witness-lab-netns-postmortem`. Do not rerun `netns-probe` or reconfigure existing servers.
+
 ## 2026-10-26 01:26 — netns postmortem reports 'up', but original sysfs check is not child-netns proof
 
 - Actual uploaded JSON `netns-postmortem-20261026-012631`: `lab_probe_one_shot_consumed`, original stdout missing, production untouched, reported `isolatedLoopbackState=up`. However the old diagnostic read `/sys/class/net/lo/flags` through `unshare --net` WITHOUT creating a new mount namespace or remounting sysfs. That may expose the original host sysfs net-device view; it cannot establish original lab BDS loopback UP nor rule out DOWN.

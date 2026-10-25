@@ -205,6 +205,32 @@ def namespace_loopback_state(run=subprocess.run):
     except (OSError, ValueError, subprocess.SubprocessError):
         return "unverified"
 
+
+def postmortem_gate():
+    """Validate ONLY the stopped, named existing lab for read-only diagnosis.
+
+    The first startup correctly requires byte-identical installed/source pack
+    scripts via beta_gate()->pack_guard(). That same first startup deliberately
+    instruments the lab script with a one-shot marker, so pack_guard() must
+    NOT be reused after a completed attempt. This separate path keeps the
+    exact existing lab/prod identity, process ownership and reviewed source
+    checks from require_eligible(), while lab_probe_postmortem() verifies
+    the preserved original and the exact one-line instrumentation.
+    """
+    spec = importlib.util.spec_from_file_location(
+        "alice_lab_pack_postmortem", HERE / "alice-bds-lab-pack.py")
+    if spec is None or spec.loader is None:
+        raise ValueError("missing_lab_beta_tool")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    if os.geteuid() == 0:
+        raise ValueError("refuse_root_python")
+    module.require_eligible()  # Exact lab marker/source + BDS process safety.
+    if not callable(getattr(module, "require_lab_stopped", None)):
+        raise ValueError("lab_process_guard_unavailable")
+    return module, module.LAB
+
+
 def lab_probe_postmortem(lab):
     """Inspect one-shot lab artifacts, never re-run the disposed BDS process.
 
