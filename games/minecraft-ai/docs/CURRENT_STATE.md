@@ -1,3 +1,9 @@
+## 2026-10-25 — Movement-inspector test fixture clock alignment (source-only)
+
+- Operator's Mint Node24 full regression reported **633/634 pass, 1 fail** in `live state is anchored to exactly one owner PID and process birth token` with `movement_report_stale` at the 15-second freshness gate. Source review identified a deterministic fixture ordering problem: `fixture()` captured `now=Date.now()` **before** writing the synthetic status/audit files, so file mtimes could lie just in the fixture clock's future. This was a test artifact, not evidence of Minecraft packet or BDS movement failure.
+- The test-only writer now sets status/audit file mtimes to `now-1000ms`, including later rewrites, so the positive identity case can reach its actual assertion and the stale embedded audit timestamp test cannot pass accidentally from a future filesystem timestamp. Four negative cases explicitly assert rejection of future and >15-second-old mtimes for **both** files.
+- **No production inspector, PID/start-token check, 15-second gate, connection logic, BDS world/service or console commands changed.** Re-run the maintained `alice-mac.sh sync` (Mac Python + Mint Node24) before passive `status`, `bds_position_witness.py --check/--diagnose`, and `inspect_movement_sync.cjs`. These read-only diagnostics do not issue a fresh `querytarget`; real BDS displacement remains unverified until current-session independent evidence exists.
+
 ## 2026-10-25 — Passive production movement audit test fixture alignment
 
 - Corrected offline `inspect_movement_sync.test.cjs` fake `/proc/PID/stat`: Linux field 22 `starttime` belongs at token index 19 after the closing process name, including state as index 0; the old fixture placed the marker one position too far, creating a false regression failure. This is **test data only**; no runtime or BDS changes. Mac Python and Mint Node24 suites still need the operator's first run.

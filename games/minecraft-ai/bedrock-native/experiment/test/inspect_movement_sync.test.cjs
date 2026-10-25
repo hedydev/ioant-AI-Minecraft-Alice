@@ -33,6 +33,14 @@ function fixture(){
   const file=path.join(name==='owner.json'?locked:root,name)
   fs.writeFileSync(file,JSON.stringify(object),{mode:0o600})
   fs.chmodSync(file,0o600)
+  // The injected read clock is frozen at fixture setup. A real write occurs
+  // afterwards, so pin synthetic telemetry mtimes to a valid earlier instant.
+  // Apply the same rule to rewritten files in negative tests: they must test
+  // the intended guard (PID, embedded timestamp), not an accidental future mtime.
+  if(name==='status.json'||name==='outbound-input-audit.json'){
+   const at=new Date(now-1000)
+   fs.utimesSync(file,at,at)
+  }
  }
  write('owner.json',owner);write('status.json',core);write('outbound-input-audit.json',wire)
  return {home,root,procRoot,now,owner,core,wire,proc,write,
@@ -57,6 +65,42 @@ test('previous Alice heartbeat with reused PID is never trusted',()=>{
 test('stale outbound audit cannot report movement from an earlier login',()=>{
  const f=fixture();try{
   f.write('outbound-input-audit.json',{...f.wire,updatedAt:f.now-60000})
+  assert.throws(()=>liveSnapshots({controlRoot:f.root,procRoot:f.procRoot,now:f.now}),
+   /movement_report_stale/)
+ }finally{f.close()}
+})
+test('future-dated heartbeat mtime is rejected even with valid PID provenance',()=>{
+ const f=fixture();try{
+  const file=path.join(f.root,'status.json')
+  const future=new Date(f.now+30000)
+  fs.utimesSync(file,future,future)
+  assert.throws(()=>liveSnapshots({controlRoot:f.root,procRoot:f.procRoot,now:f.now}),
+   /movement_report_stale/)
+ }finally{f.close()}
+})
+test('future-dated outbound audit mtime is rejected',()=>{
+ const f=fixture();try{
+  const file=path.join(f.root,'outbound-input-audit.json')
+  const future=new Date(f.now+30000)
+  fs.utimesSync(file,future,future)
+  assert.throws(()=>liveSnapshots({controlRoot:f.root,procRoot:f.procRoot,now:f.now}),
+   /movement_report_stale/)
+ }finally{f.close()}
+})
+test('stale status file mtime is rejected even if payload is current',()=>{
+ const f=fixture();try{
+  const file=path.join(f.root,'status.json')
+  const past=new Date(f.now-30000)
+  fs.utimesSync(file,past,past)
+  assert.throws(()=>liveSnapshots({controlRoot:f.root,procRoot:f.procRoot,now:f.now}),
+   /movement_report_stale/)
+ }finally{f.close()}
+})
+test('stale outbound audit file mtime is rejected even if payload is current',()=>{
+ const f=fixture();try{
+  const file=path.join(f.root,'outbound-input-audit.json')
+  const past=new Date(f.now-30000)
+  fs.utimesSync(file,past,past)
   assert.throws(()=>liveSnapshots({controlRoot:f.root,procRoot:f.procRoot,now:f.now}),
    /movement_report_stale/)
  }finally{f.close()}
