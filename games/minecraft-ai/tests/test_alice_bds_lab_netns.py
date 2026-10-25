@@ -141,16 +141,16 @@ class NetworkNamespaceTests(unittest.TestCase):
             src=root/"minecraft-ai"/"bds-witness-pack"/"scripts"/"main.js"
             src.parent.mkdir(parents=True)
             original=b''.join([
-                b'import {world} from "@minecraft/server";\\n',
-                b'import {http} from "@minecraft/server-net";\\n',
-                b'import {vars} from "@minecraft/server-admin";\\n',
-                b'const startup = 1;\\n'])
+                b'import {world} from "@minecraft/server";\n',
+                b'import {http} from "@minecraft/server-net";\n',
+                b'import {vars} from "@minecraft/server-admin";\n',
+                b'const startup = 1;\n'])
             src.write_bytes(original)
             script=lab/"behavior_packs"/"alice-silent-bds-witness"/"scripts"/"main.js"
             script.parent.mkdir(parents=True)
             script.write_bytes(original.replace(
                 b'const startup = 1;',
-                b'console.warn("ALICE_LAB_IMPORTS_READY_17880");\\nconst startup = 1;'))
+                b'console.warn("ALICE_LAB_IMPORTS_READY_17880");\nconst startup = 1;'))
             for f in (lab/".alice-lab-probe-original-properties",
                       lab/".alice-lab-probe-original-allowlist",
                       lab/".alice-lab-probe.lock"):
@@ -199,10 +199,10 @@ class NetworkNamespaceTests(unittest.TestCase):
             root=Path(tmp)
             fake=root/"alice-bds-lab-pack.py"
             lab=root/"minecraft-bedrock-alice-lab"
-            fake.write_text("from pathlib import Path\\n"
-                            "LAB=Path("+repr(str(lab))+")\\n"
-                            "def require_eligible(): return None\\n"
-                            "def require_lab_stopped(): return None\\n")
+            fake.write_text("from pathlib import Path\n"
+                            "LAB=Path("+repr(str(lab))+")\n"
+                            "def require_eligible(): return None\n"
+                            "def require_lab_stopped(): return None\n")
             with patch.object(P,"HERE",root), patch.object(
                     P.os,"geteuid",return_value=501), patch.object(
                     P,"beta_gate",side_effect=AssertionError("startup gate invoked")):
@@ -213,9 +213,9 @@ class NetworkNamespaceTests(unittest.TestCase):
     def test_readonly_gate_refuses_missing_process_check(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);fake=root/"alice-bds-lab-pack.py"
-            fake.write_text("from pathlib import Path\\n"
-                            "LAB=Path("+repr(str(root))+")\\n"
-                            "def require_eligible(): return None\\n")
+            fake.write_text("from pathlib import Path\n"
+                            "LAB=Path("+repr(str(root))+")\n"
+                            "def require_eligible(): return None\n")
             with patch.object(P,"HERE",root), patch.object(P.os,"geteuid",return_value=501):
                 with self.assertRaisesRegex(ValueError,"lab_process_guard_unavailable"):
                     P.postmortem_gate()
