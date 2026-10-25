@@ -38,6 +38,30 @@ def verified_process_start_ms(birth_token, *, proc_stat=None, ticks_per_second=N
 
 
 
+# Runtime-generated classifications only. Do not surface unexpected
+# witness text that might be injected into a private status file.
+_WITNESS_STATES = frozenset({
+    'accepted', 'duplicate_or_rejected', 'stale_or_invalid_witness',
+    'not_configured', 'unsafe_witness_file', 'unavailable', 'disabled'
+})
+
+
+def witness_status_summary(m, *, now_ms=None):
+    """Read the existing Alice heartbeat; never query MCSManager or world."""
+    state = m.get('witnessStatus')
+    state = state if isinstance(state, str) and state in _WITNESS_STATES else 'unknown'
+    source = m.get('independentSource')
+    source = source if source in ('bds_querytarget', 'bds_script_api') else None
+    sample_at = m.get('independentAt')
+    now = int(time.time() * 1000) if now_ms is None else now_ms
+    age = (now - sample_at) / 1000 if type(sample_at) is int else None
+    if age is not None and (age < 0 or age > 366 * 86400):
+        age = None
+    return {'bdsWitnessStatus': state,
+            'bdsIndependentSource': source,
+            'bdsLastIndependentAgeSeconds': round(age, 1) if age is not None else None}
+
+
 def status(app):
     owner = app.owner()
     inspected = app.inspect(owner) if owner else None
@@ -61,6 +85,11 @@ def status(app):
     started = verified_process_start_ms(inspected[1]) if matching else None
     m = data.get('movementEvidence') or {}
     age = round(time.time() - file.stat().st_mtime, 1) if matching else None
+    witness = witness_status_summary(m) if matching else {
+        'bdsWitnessStatus': None,
+        'bdsIndependentSource': None,
+        'bdsLastIndependentAgeSeconds': None
+    }
     return {'pid': owner['pid'] if owner else None, 'processAlive': owner is not None,
             'statusSource': source,
             'statusFilePid': file_pid if type(file_pid) is int else None,
@@ -74,6 +103,10 @@ def status(app):
             'state': data.get('state'), 'job': data.get('job'), 'clientFeet': data.get('position'),
             'serverFeet': m.get('latestFeet'), 'serverTravelBlocks': m.get('travelBlocks'),
             'bdsSamples': m.get('independentSamples'),
+            # The legacy travelBlocks is mixed packet + independent observations,
+            # not verified BDS walking; retain old field for compatibility.
+            'mixedObservedTravelUnverified': m.get('travelBlocks'),
+            **witness,
             'idleHold': (data.get('worldRoutine') or {}).get('idleHold')}
 
 

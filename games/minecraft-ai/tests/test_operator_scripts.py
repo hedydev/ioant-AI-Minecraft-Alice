@@ -151,6 +151,70 @@ class StatusProvenanceTests(unittest.TestCase):
             self.assertTrue(status['sessionEstablished'])
 
 
+class WitnessStatusReportTests(unittest.TestCase):
+    def make_status(self, movement, *, token='current-birth', producer='current-birth'):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        app = Mock()
+        app.root = pathlib.Path(temporary.name)
+        app.owner.return_value = {'pid': 3895891}
+        app.inspect.return_value = ('node', token, {})
+        (app.root / 'status.json').write_text(json.dumps({
+            'producerPid': 3895891, 'producerStartToken': producer,
+            'connected': True, 'sessionEstablished': True,
+            'movementEvidence': movement
+        }))
+        (app.root / 'status.json').chmod(0o600)
+        return cli.status(app)
+
+    def test_zero_samples_exposes_runtime_witness_rejection_without_bds_commands(self):
+        result = self.make_status({
+            'witnessStatus': 'stale_or_invalid_witness',
+            'independentSamples': 0, 'independentAt': None,
+            'travelBlocks': 28428.01, 'latestFeet': {'x': -4.5, 'y': 63, 'z': -5.5}
+        })
+        self.assertEqual(result['statusSource'], 'current_process')
+        self.assertEqual(result['bdsWitnessStatus'], 'stale_or_invalid_witness')
+        self.assertIsNone(result['bdsLastIndependentAgeSeconds'])
+        self.assertIsNone(result['bdsIndependentSource'])
+        self.assertEqual(result['mixedObservedTravelUnverified'], 28428.01)
+        self.assertEqual(result['bdsSamples'], 0)
+
+    def test_accepted_witness_with_old_timestamp_is_not_called_fresh(self):
+        past = 60_000
+        with patch.object(cli.time, 'time', return_value=1000):
+            result = self.make_status({
+                'witnessStatus': 'accepted', 'independentSamples': 2,
+                'independentSource': 'bds_querytarget',
+                'independentAt': 1_000_000 - past
+            })
+        self.assertEqual(result['bdsWitnessStatus'], 'accepted')
+        self.assertEqual(result['bdsLastIndependentAgeSeconds'], 60.0)
+        self.assertEqual(result['bdsIndependentSource'], 'bds_querytarget')
+
+    def test_untrusted_witness_status_never_echoes_private_string(self):
+        result = self.make_status({
+            'witnessStatus': 'apikey=SHOULD_NOT_APPEAR', 'independentSamples': 0,
+            'independentSource': 'fake_server', 'independentAt': 'invalid'
+        })
+        self.assertEqual(result['bdsWitnessStatus'], 'unknown')
+        self.assertIsNone(result['bdsIndependentSource'])
+        self.assertIsNone(result['bdsLastIndependentAgeSeconds'])
+        self.assertNotIn('SHOULD_NOT_APPEAR', json.dumps(result))
+
+    def test_old_pid_birth_token_never_exposes_old_witness(self):
+        result = self.make_status({
+            'witnessStatus': 'accepted', 'independentSamples': 6,
+            'independentSource': 'bds_querytarget', 'independentAt': 999000
+        }, producer='prior-birth')
+        self.assertEqual(result['statusSource'], 'awaiting_current_process_heartbeat')
+        self.assertIsNone(result['bdsWitnessStatus'])
+        self.assertIsNone(result['bdsIndependentSource'])
+        self.assertIsNone(result['bdsLastIndependentAgeSeconds'])
+        self.assertIsNone(result['bdsSamples'])
+        self.assertIsNone(result['mixedObservedTravelUnverified'])
+
+
 class DiagnosticTests(unittest.TestCase):
     def test_readonly_duplicate_alice_candidates_and_private_logs(self):
         from alice_operator.diagnostics import alice_processes, recent_logs
