@@ -360,3 +360,20 @@ test('session close classification keeps reason type but no raw server message',
  assert.equal(row.detail.token,undefined)
  assert.equal(row.detail.fullKickReason,undefined)
 })
+
+test('bounded stationary defense journal records causal gate and cooldown but never fake damage proof',()=>{
+ const row=event('info',['[Alice safety] cornered defense:',JSON.stringify({
+  kind:'zombie',retreatReason:'retreat_pathfinder_error',
+  defenseReason:'failed_pathfinder_stopped',attempted:true,verifiedDamage:false,
+  nextAttemptAfterMs:2500,serverMovementVerified:false,
+  attackerGamertag:'NEVER_LOG_THIS',secretToken:'SECRET'
+ })])
+ assert.equal(row.detail.kind,'zombie')
+ assert.equal(row.detail.retreatReason,'retreat_pathfinder_error')
+ assert.equal(row.detail.defenseReason,'failed_pathfinder_stopped')
+ assert.equal(row.detail.nextAttemptAfterMs,2500)
+ assert.equal(row.detail.verifiedDamage,false)
+ assert.equal(row.detail.serverMovementVerified,false)
+ assert(!JSON.stringify(row).includes('NEVER_LOG_THIS'))
+ assert(!JSON.stringify(row).includes('SECRET'))
+})

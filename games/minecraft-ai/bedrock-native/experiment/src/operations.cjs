@@ -326,7 +326,8 @@ class BedrockOperations {
       // considering any subsequent close-range stationary self-defense.
       // A guard rejection is never an attempted route and is not stopped.
       let pathfinderStopRequested=false
-      if(!admission&&typeof this.bot.pathfinder?.stop==='function'){
+      if(!admission&&signal?.aborted!==true&&
+         typeof this.bot.pathfinder?.stop==='function'){
         try{
           await this.bot.pathfinder.stop()
           pathfinderStopRequested=

@@ -89,3 +89,15 @@ test('guard denial does not stop Pathfinder or give permission to move',async()=
  assert.equal(result.pathfinderStopRequested,false)
  assert.equal(stopped,0)
 })
+
+test('aborted retreat never grants post-stop stationary fallback admission',async()=>{
+ const f=fixture()
+ const ctrl=new AbortController()
+ let stopCalls=0
+ f.bot.pathfinder.stop=()=>{stopCalls++}
+ f.bot.pathfinder.goto=()=>{ctrl.abort();throw Error('PRIVATE_PATHFINDER_ERROR')}
+ const result=await new BedrockOperations({bot:f.bot,api:f.api}).retreatFrom(f.target,{signal:ctrl.signal})
+ assert.equal(result.ok,false)
+ assert.equal(result.pathfinderStopRequested,false)
+ assert.equal(result.serverMovementVerified,false)
+})

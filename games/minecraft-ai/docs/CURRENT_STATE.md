@@ -1,3 +1,8 @@
+## 2026-10-25 — Follow-up safety and observability
+
+- A canceled emergency retreat is never eligible for the failed-Pathfinder-to-stationary-melee transition, even if the bounded navigator already requested its own stop. A fixed conservative branch prevents canceled human/safety work from being confused with combat permission.
+- The sanitized acceptance logger now retains only explicit `retreatReason`, `defenseReason`, `nextAttemptAfterMs` and boolean `verifiedDamage` fields from combat events; it still excludes actor names, credentials, raw packets and all unknown attributes. This makes the next 3-hour report useful for verifying which safety branch executed. New regression tests are staged pending Mint full Node24 suite.
+
 ## 2026-10-25 — Bedrock stationary self-defense P0, source staged
 
 - User approved Phase 1 combat survival repair. Last 3-hour acceptance evidence (2026-10-25 23:31 +08): 6,236 entries, 232 death observations, 496 failed retreat results split 212 `retreat_pathfinder_error`, 174 `retreat_flat_geometry_not_verified`, 110 `retreat_no_verified_away_corridor`; 132 cornered melee attempts and 132 unattributed target-hurt events. No verified independent BDS positions or autonomous walking. The old runaway client was started before current source sync; disk changes are NOT live process proof.
