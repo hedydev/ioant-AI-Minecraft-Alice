@@ -4,9 +4,10 @@ set -euo pipefail
 usage() {
   cat <<'HELP'
 Usage: ALICE_SSH_TARGET=user@host bash alice-mac.sh ACTION [--dry-run]
-Actions: status diagnose check test start restart logs capture-config sync deploy report witness-preflight witness-lab-check witness-lab-prepare witness-lab-pack-check witness-lab-pack-stage witness-lab-pack-stage-verified witness-lab-beta-check witness-lab-beta-enable witness-lab-startup-check witness-lab-startup-probe witness-lab-port-check witness-lab-port-owner
+Actions: status diagnose witness-diagnose check test start restart logs capture-config sync deploy report witness-preflight witness-lab-check witness-lab-prepare witness-lab-pack-check witness-lab-pack-stage witness-lab-pack-stage-verified witness-lab-beta-check witness-lab-beta-enable witness-lab-startup-check witness-lab-startup-probe witness-lab-port-check witness-lab-port-owner
 sync: copy Git-tracked Alice files with backups, then run Mint tests; no restart.
 deploy: sync + tests + restart the existing Alice; requires an active client.
+witness-diagnose: read-only owner-verified, redacted witness file chronology; does not query BDS.
 report: 3-hour read-only sanitized status, diagnose, events and source hashes -> Mac Desktop ZIP.
 witness-preflight: inspect BDS 17879 world, packs and beta prerequisites -> Mac Desktop JSON; no BDS writes.
 witness-lab-check: verify private existing world backup via isolated restore; no BDS write.
@@ -25,7 +26,7 @@ Git is never pulled/reset/stashed automatically. See docs/OPERATIONS.md.
 HELP
 }
 action="${1:-}"
-case "$action" in -h|--help|'') usage; exit 0;; status|diagnose|check|test|start|restart|logs|capture-config|sync|deploy|report|witness-preflight|witness-lab-check|witness-lab-prepare|witness-lab-pack-check|witness-lab-pack-stage|witness-lab-pack-stage-verified|witness-lab-beta-check|witness-lab-beta-enable|witness-lab-startup-check|witness-lab-startup-probe|witness-lab-port-check|witness-lab-port-owner) ;; *) usage >&2; exit 2;; esac
+case "$action" in -h|--help|'') usage; exit 0;; status|diagnose|witness-diagnose|check|test|start|restart|logs|capture-config|sync|deploy|report|witness-preflight|witness-lab-check|witness-lab-prepare|witness-lab-pack-check|witness-lab-pack-stage|witness-lab-pack-stage-verified|witness-lab-beta-check|witness-lab-beta-enable|witness-lab-startup-check|witness-lab-startup-probe|witness-lab-port-check|witness-lab-port-owner) ;; *) usage >&2; exit 2;; esac
 [[ $# -le 2 && ( $# -eq 1 || "${2:-}" == --dry-run ) ]] || { usage >&2; exit 2; }
 target="${ALICE_SSH_TARGET:-}"
 [[ "$target" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.-]*@[a-zA-Z0-9][a-zA-Z0-9.:-]*$ ]] || {

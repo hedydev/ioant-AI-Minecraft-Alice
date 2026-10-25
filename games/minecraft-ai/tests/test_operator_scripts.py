@@ -215,6 +215,112 @@ class WitnessStatusReportTests(unittest.TestCase):
         self.assertIsNone(result['mixedObservedTravelUnverified'])
 
 
+
+class WitnessFileDiagnosticTests(unittest.TestCase):
+    def prepare(self, *, now=None, login_offset_ms=20_000):
+        from alice_operator.diagnostics import witness_file_diagnose
+        td = tempfile.TemporaryDirectory()
+        self.addCleanup(td.cleanup)
+        root = pathlib.Path(td.name)
+        root.chmod(0o700)
+        app = Mock()
+        app.root = root
+        app.owner.return_value = {'pid': 3895891, 'nonce': 'a' * 32}
+        app.inspect.return_value = ('node', 'birth-token', {})
+        now = int(__import__('time').time() * 1000) if now is None else now
+        status = {'producerPid': 3895891, 'producerStartToken': 'birth-token',
+                  'movementEvidence': {'loginAt': now - login_offset_ms,
+                                       'witnessStatus': 'stale_or_invalid_witness'}}
+        file = root / 'status.json'
+        file.write_text(json.dumps(status))
+        file.chmod(0o600)
+        def witness(at):
+            file = root / 'bds-position-witness.json'
+            file.write_text(json.dumps({
+                'version': 1, 'source': 'mcsm_querytarget', 'gamertag': 'SecretPlayer',
+                'uniqueId': 'private-player-uuid', 'serial': '1792941234567890123',
+                'feet': {'x': 1, 'y': 60, 'z': 2}, 'observedAt': at,
+            }))
+            file.chmod(0o600)
+            return file
+        return app, now, witness, witness_file_diagnose
+
+    def test_missing_witness_never_runs_console_and_exposes_no_identity(self):
+        app, now, witness, diagnose = self.prepare()
+        report = diagnose(app, now_ms=now)
+        self.assertEqual(report['state'], 'file_missing')
+        self.assertEqual(report['runtimeWitnessStatus'], 'stale_or_invalid_witness')
+        self.assertFalse(report['bdsCommandSent'])
+        self.assertFalse(report['filePresent'])
+        self.assertNotIn('SecretPlayer', json.dumps(report))
+
+    def test_prior_login_sample_is_rejected_with_no_personal_details(self):
+        app, now, witness, diagnose = self.prepare()
+        witness(now - 25_000)
+        result = diagnose(app, now_ms=now)
+        self.assertEqual(result['state'], 'sample_predates_current_login')
+        self.assertTrue(result['sampleBeforeCurrentLogin'])
+        self.assertNotIn('private-player-uuid', json.dumps(result))
+        self.assertNotIn('SecretPlayer', json.dumps(result))
+
+    def test_expired_sample_not_reframed_as_valid_even_if_after_login(self):
+        app, now, witness, diagnose = self.prepare()
+        witness(now - 10_000)
+        result = diagnose(app, now_ms=now)
+        self.assertEqual(result['state'], 'sample_expired_over_4s')
+        self.assertEqual(result['sampleAgeSeconds'], 10.0)
+        self.assertFalse(result['sampleBeforeCurrentLogin'])
+
+    def test_recent_candidate_is_not_reported_as_bds_acceptance(self):
+        app, now, witness, diagnose = self.prepare()
+        witness(now - 1500)
+        result = diagnose(app, now_ms=now)
+        self.assertEqual(result['state'], 'recent_candidate_not_acceptance_proof')
+        self.assertFalse(result['bdsCommandSent'])
+
+    def test_bad_permissions_fail_closed_and_do_not_emit_payload(self):
+        app, now, witness, diagnose = self.prepare()
+        file = witness(now - 1500)
+        file.chmod(0o644)
+        result = diagnose(app, now_ms=now)
+        self.assertEqual(result['state'], 'unsafe_or_unreadable_source')
+        self.assertNotIn('SecretPlayer', json.dumps(result))
+
+    def test_wrong_birth_token_hides_witness_and_owner_change_is_rejected(self):
+        app, now, witness, diagnose = self.prepare()
+        witness(now - 1500)
+        app.inspect.return_value = ('node', 'another-start-token', {})
+        result = diagnose(app, now_ms=now)
+        self.assertEqual(result['state'], 'current_heartbeat_unavailable')
+        self.assertIsNone(result['sampleAgeSeconds'])
+        app.inspect.return_value = ('node', 'birth-token', {})
+        app.owner.side_effect = [{'pid':3895891,'nonce':'a'*32},
+                                 {'pid':3895891,'nonce':'b'*32}]
+        result = diagnose(app, now_ms=now)
+        self.assertEqual(result['state'], 'owner_changed_during_check')
+        self.assertIsNone(result['sampleAgeSeconds'])
+
+    def test_lifecycle_excerpt_shows_only_allowlisted_respawn_reasons(self):
+        from alice_operator.diagnostics import recent_lifecycle
+        with tempfile.TemporaryDirectory() as temp:
+            file = pathlib.Path(temp) / 'operator-alice-check.log'
+            lines = [
+                '[2026-10-25T23:00:39.892+08:00 PID=3895891] [Alice life] respawn recovery: '+
+                json.dumps({'phase':'waiting_for_server_respawn',
+                            'reason':'death_observed','private':'DONT_EMIT'},separators=(',',':')),
+                '[2026-10-25T23:00:40.168+08:00 PID=3895891] [Alice life] respawn recovery: '+
+                json.dumps({'phase':'respawn_verified',
+                            'reason':'spawn_with_positive_health'},separators=(',',':')),
+            ]
+            file.write_text('\n'.join(lines)+'\n')
+            file.chmod(0o600)
+            rows=recent_lifecycle([{'path':str(file)}])
+            self.assertEqual(rows[0]['phase'],'waiting_for_server_respawn')
+            self.assertEqual(rows[0]['reason'],'death_observed')
+            self.assertEqual(rows[1]['phase'],'respawn_verified')
+            self.assertEqual(rows[1]['reason'],'spawn_with_positive_health')
+            self.assertNotIn('DONT_EMIT',json.dumps(rows))
+
 class DiagnosticTests(unittest.TestCase):
     def test_readonly_duplicate_alice_candidates_and_private_logs(self):
         from alice_operator.diagnostics import alice_processes, recent_logs

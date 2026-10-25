@@ -1,3 +1,15 @@
+## 2026-10-25 — Read-only witness-diagnose and respawn stage labels
+
+After verified Mint 644/644, `alice-mac.sh status` showed PID3895891 alive and current, `bdsWitnessStatus=stale_or_invalid_witness`, 0 independent BDS samples, 0 movement inputs, and `scout_bds_position_unavailable`. `diagnose` showed only this one Alice process and repeated `death_observed` and `spawn_confirmed` events, but not the per-event recovery phase.
+
+Use maintained new read-only Mac action:
+```bash
+ALICE_SSH_TARGET=tedz@192.168.0.104 bash games/minecraft-ai/scripts/alice-mac.sh witness-diagnose
+```
+Or Mint `python3 ~/minecraft-ai/scripts/alice-mint.py witness-diagnose`. It checks **only** current owner PID/start-token status plus the private `~/.alice-bedrock-control/bds-position-witness.json`, reports bounded classification and timestamp age, never returns identity, coordinates or any raw JSON. `recent_candidate_not_acceptance_proof` merely means file shape/time could qualify; it does NOT confirm MCSManager instance, Alice gamertag/session or actual movement. `sample_predates_current_login` and `sample_expired_over_4s` confirm stale evidence without issuing a console request. MCSManager `--check` and `--diagnose` remain configuration/log checks only; neither renews coordinates.
+
+The regular read-only `alice-mac.sh diagnose` additionally reports fixed respawn `phase` and `reason` for recent lifecycle lines when recognized. No new network, console, BDS/world or authentication action. Sync via the existing `alice-mac.sh sync` (Mac Python/Mint Node24 suites, backups, no restarts), then run `witness-diagnose` and `diagnose`. Full updated suites and live report pending.
+
 ## 2026-10-25 — Live operator witness rejection reason (source-only, no client restart)
 
 - Operator ran Mint Node24 **644/644 pass** after passive evidence separation; PID **3895891** was the same identity, fresh heartbeat (1.5s), `connected=true`, established 17879 session, health 20, goal `LEARN_WEAPON` but `IDLE` with `scout_bds_position_unavailable`. The wire audit recorded **3,428,282** input frames, **0 moving inputs**; `bdsAcceptedSamples=0`, `bdsFeet=null`, `bdsVerifiedTravel=null`, inspection exit **2 / BDS_POSITION_NOT_FRESH**. `mixedObservedTravelUnverified=28428.01` is explicitly not BDS-confirmed travel. Tests passed, movement has not.

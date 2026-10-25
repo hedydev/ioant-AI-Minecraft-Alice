@@ -10,7 +10,7 @@ import time
 
 from alice_operator.config import load_environment, private_json, private_path, save_environment
 from alice_operator.process import AliceProcess
-from alice_operator.diagnostics import diagnose
+from alice_operator.diagnostics import diagnose, witness_file_diagnose
 
 
 
@@ -112,7 +112,7 @@ def status(app):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('action', choices=['capture-config', 'check', 'test', 'status', 'diagnose', 'start', 'restart', 'logs'])
+    p.add_argument('action', choices=['capture-config', 'check', 'test', 'status', 'diagnose', 'witness-diagnose', 'start', 'restart', 'logs'])
     args = p.parse_args(argv)
     if sys.platform != 'linux':
         raise ValueError('Run alice-mint.py on Mint; use alice-mac.sh on Mac')
@@ -121,6 +121,8 @@ def main(argv=None):
         result = status(app)
     elif args.action == 'diagnose':
         result = diagnose(app)
+    elif args.action == 'witness-diagnose':
+        result = witness_file_diagnose(app)
     elif args.action == 'test':
         env = {**os.environ, 'PATH': str(app.node.parent) + os.pathsep + os.environ.get('PATH', '')}
         return subprocess.call([str(app.node), '--test', *sorted(str(f) for f in (app.project / 'test').glob('*.test.cjs')),
