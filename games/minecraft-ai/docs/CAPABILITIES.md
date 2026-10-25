@@ -1,3 +1,7 @@
+## 2026-10-25 — Dashboard catalog records opt-in witness and lifecycle diagnostics
+
+- The dashboard capability directory now lists read-only `witness-diagnose` and bounded respawn phase/reason interpretation as **staged**, not observed movement. This is an operational visibility feature with no console command, background sampler, world mutation, server restart, player movement or new authentication behavior. It requires updated Mac Python tests and Mint Node24 checks.
+
 ## 2026-10-25 — Passive witness-file / respawn-phase diagnosis (staged, no game action)
 
 New Mint operator `witness-diagnose` classifies whether the already existing locked 0600 BDS witness file is missing, malformed, predates the current Alice login, or exceeds the 4-second trust window, only after current PID/birth-token and fresh status confirmation; it never emits player identifiers, coordinates or raw console content. An apparent recent file is still reported as **unverified candidate**, never BDS movement success. Existing `diagnose` optionally exposes bounded known `respawn_recovery` phase/reason values rather than raw log text. Real observed state: single Alice PID 3895891, BDS witness status stale_or_invalid_witness, 0 independent samples, ~11s spaced death observations. Mac/Mint updated regression and in-game proof pending; no restart, no MCSManager console, no BDS modifications, no Beta packs and no changed navigation admission.

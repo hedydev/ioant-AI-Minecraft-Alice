@@ -10,6 +10,13 @@
   },
   "capabilities": [
     {
+      "name": "BDS 见证文件失败原因与复活阶段只读诊断",
+      "icon": "🔎",
+      "group": "运维与可观测性",
+      "status": "staged",
+      "detail": "新维护入口 alice-mac.sh witness-diagnose 不向 MCSManager/BDS 发送任何命令，不启动/重启 Alice 或服务器；先校验当前 PID、Linux birth-token 与新鲜状态心跳，再对原有私有见证文件进行权限、格式、当前登录前后及4秒时效校验，输出脱敏枚举和样本年龄。现有 diagnose 只展示有限白名单的复活 phase/reason，不泄露原始日志和玩家身份。2026-10-25 实机 PID3895891 的见证仍是 stale_or_invalid_witness，独立 BDS 样本为0；新脚本需 Mint 测试和实机验收，不代表导航成功，也不会恢复刷屏见证循环。"
+    },
+    {
       "name": "独立 BDS 移动证据与输入时间对齐校验（尚未实机验收）",
       "icon": "📍",
       "group": "运维与可观测性",
