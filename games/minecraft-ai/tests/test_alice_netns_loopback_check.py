@@ -84,6 +84,8 @@ class LoopbackActivationTests(unittest.TestCase):
         shell = (SCRIPTS / "alice-netns-loopback-mac.sh").read_text()
         self.assertIn("witness-netns-loopback-check", entry)
         self.assertIn("alice-netns-loopback-mac.sh", entry)
+        validation = entry.split('case "$action" in',1)[1].split('esac',1)[0]
+        self.assertIn("|witness-netns-loopback-check|", validation)
         self.assertNotIn("sudo -", shell)
         self.assertNotIn("bedrock_server", shell)
 
