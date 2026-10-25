@@ -141,8 +141,9 @@ test('no independent witness means no BDS movement even with large packet travel
    wire:{...f.wire,movingQueued:0,lastMovingAgeMs:null},now:f.now})
   assert.equal(report.verdict,'BDS_POSITION_NOT_FRESH')
   assert.equal(report.bdsVerifiedTravel,null)
-  assert.equal(report.serverPacketTravelUnverified,27886.34)
+  assert.equal(report.mixedObservedTravelUnverified,27886.34)
   assert.equal(report.bdsFeet,null)
+  assert.deepEqual(report.latestObservedFeet,{x:1,y:64,z:1})
  }finally{f.close()}
 })
 test('two fresh independent witnesses and time-aligned input establish BDS position change',()=>{
@@ -157,7 +158,7 @@ test('two fresh independent witnesses and time-aligned input establish BDS posit
   assert.equal(report.verdict,'BDS_MOVEMENT_CONFIRMED')
   assert.equal(report.bdsVerifiedTravel,0.6)
   assert.equal(report.bdsLastPairTravel,0.6)
-  assert.equal(report.serverPacketTravelUnverified,100)
+  assert.equal(report.mixedObservedTravelUnverified,100)
   assert.equal(report.inputNearBdsPair,true)
  }finally{f.close()}
 })

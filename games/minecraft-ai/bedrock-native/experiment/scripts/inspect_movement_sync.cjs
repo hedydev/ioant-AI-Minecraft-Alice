@@ -72,7 +72,7 @@ function evaluateMovement({core,wire,now}){
  const m=core?.movementEvidence||{}
  const feet=v=>v&&[v.x,v.y,v.z].every(Number.isFinite)?v:null
  const client=feet(core?.position)
- const serverPacketFeet=feet(m.latestFeet)
+ const latestObservedFeet=feet(m.latestFeet)
  const bds=feet(m.independentLatestFeet)
  const login=feet(m.loginFeet)
  const distance=(a,b)=>a&&b?Math.round(Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z)*100)/100:null
@@ -100,12 +100,14 @@ function evaluateMovement({core,wire,now}){
    !attempted?'NO_MOVEMENT_INPUT_ATTEMPTED':'MOVEMENT_NOT_CONFIRMED'
  return {
    verdict,connected:core?.connected,world:core?.world,serverPort:core?.serverPort,
-   originalLoginFeet:login,clientFeet:client,serverPacketFeet,bdsFeet:bds,
+   originalLoginFeet:login,clientFeet:client,latestObservedFeet,bdsFeet:bds,
    clientBdsDivergence:distance(client,bds),bdsDistanceFromLogin:distance(login,bds),
    // Null means missing independently comparable samples, NOT zero travel.
    bdsVerifiedTravel:accepted?total:null,
    bdsLastPairTravel:accepted?pair:null,
-   serverPacketTravelUnverified:Number.isFinite(m.travelBlocks)?m.travelBlocks:null,
+   // Legacy travelBlocks mixes server self-position packets with independent
+   // witness samples. This metric is NOT packet-only or BDS-verified travel.
+   mixedObservedTravelUnverified:Number.isFinite(m.travelBlocks)?m.travelBlocks:null,
    bdsAcceptedSamples:m.independentSamples??0,
    bdsWitnessLatestFresh:latestFresh,bdsWitnessFresh:!!accepted,
    inputNearBdsPair:!!inputNearPair,
