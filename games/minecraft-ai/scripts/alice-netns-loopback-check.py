@@ -40,7 +40,7 @@ finally:
 def approved_tools():
     return (os.geteuid() != 0 and
             UNSHARE.is_file() and not UNSHARE.is_symlink() and
-            PYTHON.is_file() and not PYTHON.is_symlink() and
+            PYTHON.is_file() and  # /usr/bin/python3 is normally a distro symlink
             os.access(UNSHARE, os.X_OK) and os.access(PYTHON, os.X_OK))
 
 
