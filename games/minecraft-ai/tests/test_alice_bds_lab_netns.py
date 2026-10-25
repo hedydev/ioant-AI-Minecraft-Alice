@@ -113,15 +113,11 @@ class NetworkNamespaceTests(unittest.TestCase):
         self.assertIn("lab_netns_unavailable",wrapper)
         self.assertNotIn("sudo -S",wrapper)
 
-
-if __name__ == "__main__":
-    unittest.main()
-
     def test_loopback_flags_are_read_only_and_report_down_without_mutation(self):
         seen=[]
         def run(args, **kwargs):
             seen.append((args, kwargs))
-            return SimpleNamespace(returncode=0, stdout="0x8\\n")
+            return SimpleNamespace(returncode=0, stdout="0x8\n")
         with patch.object(P.NETNS_CAT.__class__, "is_file", return_value=True), patch.object(
                 P.NETNS_CAT.__class__, "is_symlink", return_value=False):
             self.assertEqual(P.namespace_loopback_state(run=run),"down")
@@ -134,7 +130,7 @@ if __name__ == "__main__":
         with patch.object(P.NETNS_CAT.__class__, "is_file", return_value=True), patch.object(
                 P.NETNS_CAT.__class__, "is_symlink", return_value=False):
             self.assertEqual(P.namespace_loopback_state(
-                run=lambda *a, **k:SimpleNamespace(returncode=0,stdout="0x49\\n")),"up")
+                run=lambda *a, **k:SimpleNamespace(returncode=0,stdout="0x49\n")),"up")
             self.assertEqual(P.namespace_loopback_state(
                 run=lambda *a, **k:SimpleNamespace(returncode=1,stdout="")),"unverified")
 
@@ -143,8 +139,8 @@ if __name__ == "__main__":
             lab=Path(tmp)
             script=lab/"behavior_packs"/"alice-silent-bds-witness"/"scripts"/"main.js"
             script.parent.mkdir(parents=True)
-            script.write_text('import {world} from "@minecraft/server";\\n' +
-                              'console.warn("'+P.LAB_MARKER+'");\\n')
+            script.write_text('import {world} from "@minecraft/server";\n' +
+                              'console.warn("'+P.LAB_MARKER+'");\n')
             for f in (lab/".alice-lab-probe-original-properties",
                       lab/".alice-lab-probe-original-allowlist",
                       script.with_name(".alice-lab-probe-original-main.js"),
@@ -179,3 +175,7 @@ if __name__ == "__main__":
             self.assertEqual(state,"lab_probe_one_shot_consumed")
             inspector.assert_called_once_with(Path(tmp))
         gate.require_lab_stopped.assert_called_once_with()
+
+
+if __name__ == "__main__":
+    unittest.main()
