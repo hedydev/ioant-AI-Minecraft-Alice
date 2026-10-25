@@ -113,26 +113,38 @@ class NetworkNamespaceTests(unittest.TestCase):
         self.assertIn("lab_netns_unavailable",wrapper)
         self.assertNotIn("sudo -S",wrapper)
 
-    def test_loopback_flags_are_read_only_and_report_down_without_mutation(self):
+    def test_loopback_uses_child_socket_ioctl_not_inherited_sysfs(self):
         seen=[]
         def run(args, **kwargs):
             seen.append((args, kwargs))
-            return SimpleNamespace(returncode=0, stdout="0x8\n")
-        with patch.object(P.NETNS_CAT.__class__, "is_file", return_value=True), patch.object(
-                P.NETNS_CAT.__class__, "is_symlink", return_value=False):
+            return SimpleNamespace(returncode=0, stdout="down\\n")
+        with patch.object(P.NETNS_PYTHON.__class__, "is_file", return_value=True), patch.object(
+                P.NETNS_UNSHARE.__class__, "is_symlink", return_value=False), patch.object(
+                P.os, "access", return_value=True):
             self.assertEqual(P.namespace_loopback_state(run=run),"down")
-        self.assertEqual(seen[0][0],[
+        self.assertEqual(seen[0][0][:7],[
             "/usr/bin/unshare","--user","--map-root-user","--net",
-            "--","/usr/bin/cat","/sys/class/net/lo/flags"])
+            "--","/usr/bin/python3","-I"])
+        self.assertEqual(seen[0][0][7],"-c")
+        self.assertIn("socket.socket(socket.AF_INET,socket.SOCK_DGRAM)",seen[0][0][8])
+        self.assertIn("fcntl.ioctl(s.fileno(),0x8913",seen[0][0][8])
+        self.assertNotIn("/sys/class/net",seen[0][0][8])
         self.assertNotIn("shell",seen[0][1])
+        self.assertEqual(seen[0][1]["timeout"],8)
 
-    def test_namespace_loopback_status_does_not_claim_crash_cause(self):
-        with patch.object(P.NETNS_CAT.__class__, "is_file", return_value=True), patch.object(
-                P.NETNS_CAT.__class__, "is_symlink", return_value=False):
+    def test_namespace_loopback_state_is_allowlisted_and_no_old_crash_proof(self):
+        with patch.object(P.NETNS_PYTHON.__class__, "is_file", return_value=True), patch.object(
+                P.NETNS_UNSHARE.__class__, "is_symlink", return_value=False), patch.object(
+                P.os, "access", return_value=True):
             self.assertEqual(P.namespace_loopback_state(
-                run=lambda *a, **k:SimpleNamespace(returncode=0,stdout="0x49\n")),"up")
+                run=lambda *a, **k:SimpleNamespace(returncode=0,stdout="up\\n")),"up")
             self.assertEqual(P.namespace_loopback_state(
                 run=lambda *a, **k:SimpleNamespace(returncode=1,stdout="")),"unverified")
+            self.assertEqual(P.namespace_loopback_state(
+                run=lambda *a, **k:SimpleNamespace(returncode=0,stdout="hello secret")),"unverified")
+            self.assertEqual(P.namespace_loopback_state(
+                run=lambda *a, **k:(_ for _ in ()).throw(
+                    subprocess.TimeoutExpired(cmd="unshare",timeout=8))),"unverified")
 
     def test_postmortem_read_only_reports_consumed_probe_without_claiming_bds_start(self):
         with tempfile.TemporaryDirectory() as tmp:

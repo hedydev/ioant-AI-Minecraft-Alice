@@ -145,6 +145,7 @@ LAB_MARKER = "ALICE_LAB_IMPORTS_READY_17880"
 NETNS_UNSHARE = Path("/usr/bin/unshare")
 NETNS_TRUE = Path("/usr/bin/true")
 NETNS_CAT = Path("/usr/bin/cat")
+NETNS_PYTHON = Path("/usr/bin/python3")
 
 
 def namespace_preflight(run=subprocess.run):
@@ -171,49 +172,38 @@ def namespace_preflight(run=subprocess.run):
 
 
 def namespace_loopback_state(run=subprocess.run):
-    """Read interface flags in a NEW temporary user+network namespace only.
+    """Observe lo of the actual fresh child netns via Linux SIOCGIFFLAGS.
 
-    This does not raise the interface or read production network state. A
-    newly unshared network namespace generally has loopback administratively
-    down; that is a hypothesis for early BDS exit, never an established cause.
+    /sys/class/net/lo/flags can show HOST lo without a sysfs remount after
+    unshare --net. Instead use ioctl on a socket opened INSIDE this new
+    namespace. No interface change, host UDP bind, shell, sudo, or BDS run.
+    Observation is new and does NOT reconstruct the previous BDS namespace.
     """
     if (not NETNS_UNSHARE.is_file() or NETNS_UNSHARE.is_symlink()
-            or not NETNS_CAT.is_file() or NETNS_CAT.is_symlink()):
+            or not NETNS_PYTHON.is_file()
+            or not os.access(NETNS_PYTHON, os.X_OK)):
         return "unverified"
+    script = (
+        "import socket,fcntl,struct\n"
+        "s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)\n"
+        "try:\n"
+        " data=fcntl.ioctl(s.fileno(),0x8913,struct.pack('256s',b'lo'))\n"
+        " flags=struct.unpack_from('H',data,16)[0]\n"
+        " print('up' if flags & 1 else 'down')\n"
+        "finally:\n"
+        " s.close()\n"
+    )
     command = [str(NETNS_UNSHARE), "--user", "--map-root-user",
-               "--net", "--", str(NETNS_CAT), "/sys/class/net/lo/flags"]
+               "--net", "--", str(NETNS_PYTHON), "-I", "-c", script]
     try:
         result = run(command, capture_output=True, text=True, check=False,
                      timeout=8, env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"})
         if result.returncode != 0 or len(result.stdout) > 32:
             return "unverified"
-        flag = int(result.stdout.strip(), 16)
-        return "up" if flag & 1 else "down"
+        value = result.stdout.strip()
+        return value if value in ("up", "down") else "unverified"
     except (OSError, ValueError, subprocess.SubprocessError):
         return "unverified"
-
-
-def postmortem_gate():
-    """Read-only identity/process check for an already instrumented lab.
-
-    A first-run startup requires an installed script byte-identical to the
-    reviewed source. The probe adds its import marker after passing that
-    guard; inspecting the consumed clone must not rerun the startup gate.
-    Keep beta_gate() and its strict pack_guard() entirely unchanged.
-    """
-    spec = importlib.util.spec_from_file_location(
-        "alice_lab_pack_postmortem", HERE / "alice-bds-lab-pack.py")
-    if spec is None or spec.loader is None:
-        raise ValueError("missing_lab_beta_tool")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    if os.geteuid() == 0:
-        raise ValueError("refuse_root_python")
-    module.require_eligible()
-    if not callable(getattr(module, "require_lab_stopped", None)):
-        raise ValueError("lab_process_guard_unavailable")
-    return module, module.LAB
-
 
 def lab_probe_postmortem(lab):
     """Inspect one-shot lab artifacts, never re-run the disposed BDS process.
