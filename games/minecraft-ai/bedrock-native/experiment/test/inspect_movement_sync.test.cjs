@@ -19,7 +19,8 @@ function fixture(){
  fs.symlinkSync(node,path.join(proc,'exe'))
  fs.symlinkSync(project,path.join(proc,'cwd'))
  fs.writeFileSync(path.join(proc,'cmdline'),'node\0src/main.cjs\0--production-start\0')
- const stat=Array.from({length:25},()=> '0');stat[19]=token
+ // Linux /proc/PID/stat tail has field 3 (state) at index 0; field 22 at 19.
+ const stat=Array.from({length:25},()=> '0');stat[18]=token
  fs.writeFileSync(path.join(proc,'stat'),pid+' (node) S '+stat.join(' '))
  const owner={pid,nonce:'a'.repeat(32)}
  const core={producerPid:pid,producerStartToken:token,

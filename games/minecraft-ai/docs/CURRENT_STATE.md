@@ -1,3 +1,7 @@
+## 2026-10-25 — Passive production movement audit test fixture alignment
+
+- Corrected offline `inspect_movement_sync.test.cjs` fake `/proc/PID/stat`: Linux field 22 `starttime` belongs at token index 19 after the closing process name, including state as index 0; the old fixture placed the marker one position too far, creating a false regression failure. This is **test data only**; no runtime or BDS changes. Mac Python and Mint Node24 suites still need the operator's first run.
+
 ## 2026-10-25 — Back to existing 17879 production world, no extra BDS
 
 Operator clarified three pre-existing MCSManager Bedrock services: `bedrock-default` at 17879 (Alice's actual world), `zombie-apocalypse` at UDP 17880/27880 (world `zombie-apocalypse`), and `fight-alwasys` (port not yet verified). The disposable Alice beta lab previously assigned 17880 was a **fourth, separate, not-started** BDS clone. The observed `lab_udp_ports_busy` is explained by the long-running `zombie-apocalypse` BDS: PID 1712655, working directory `~/minecraft-bedrock-zombie-apocalypse`, independently confirmed by operator with read-only `sudo ss`, `fuser` and proc cwd; port 17879 is occupied by production PID 2875730. These are historical observations only, not live guarantees. **No existing BDS should be killed, stopped, restarted, modified or have ports moved.** Do not run 17880 startup probe or create a fourth BDS unless the operator explicitly reauthorizes a separate lab test.
