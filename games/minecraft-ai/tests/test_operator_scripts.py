@@ -234,6 +234,10 @@ class WitnessFileDiagnosticTests(unittest.TestCase):
         file = root / 'status.json'
         file.write_text(json.dumps(status))
         file.chmod(0o600)
+        # Frozen now precedes fixture writes. Keep the synthetic heartbeat
+        # timestamp in the past, not accidentally a future file mtime.
+        heartbeat_seconds = (now - 1000) / 1000
+        os.utime(file, (heartbeat_seconds, heartbeat_seconds))
         def witness(at):
             file = root / 'bds-position-witness.json'
             file.write_text(json.dumps({

@@ -1,3 +1,7 @@
+## 2026-10-25 — Witness-diagnose regression fixture time alignment
+
+- The new Mint Python test fixture uses a frozen `now_ms` for live-status freshness. Pin its synthetic `status.json` mtime to `now_ms-1000ms` so filesystem writes after the frozen test clock cannot masquerade as an invalid future heartbeat. This is **test only**; production 15s PID/status checks and 4s witness expiry remain unchanged. The updated test suite still needs operator execution.
+
 ## 2026-10-25 — Witness-file chronology and respawn-phase read-only diagnosis
 
 - Operator confirmed **644/644 Mint Node24** again. Verified one current Alice PID 3895891, fresh ~1.1s heartbeat, connected and session established on 17879, 20 health but IDLE with goal LEARN_WEAPON, `bdsSamples=0`, `bdsWitnessStatus=stale_or_invalid_witness`, `bdsIndependentSource=null`. Current movement verdict remains `BDS_POSITION_NOT_FRESH` and **no BDS autonomous travel has been proved**.
