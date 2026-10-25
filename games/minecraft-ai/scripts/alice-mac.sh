@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
   cat <<'HELP'
 Usage: ALICE_SSH_TARGET=user@host bash alice-mac.sh ACTION [--dry-run]
-Actions: status diagnose witness-diagnose check test start restart logs capture-config sync deploy report witness-preflight witness-lab-check witness-lab-prepare witness-lab-pack-check witness-lab-pack-stage witness-lab-pack-stage-verified witness-lab-beta-check witness-lab-beta-enable witness-lab-startup-check witness-lab-startup-probe witness-lab-netns-check witness-lab-netns-probe witness-lab-netns-postmortem witness-lab-port-check witness-lab-port-owner
+Actions: status diagnose witness-diagnose check test start restart logs capture-config sync deploy report witness-preflight witness-lab-check witness-lab-prepare witness-lab-pack-check witness-lab-pack-stage witness-lab-pack-stage-verified witness-lab-beta-check witness-lab-beta-enable witness-lab-startup-check witness-lab-startup-probe witness-lab-netns-check witness-lab-netns-probe witness-lab-netns-postmortem witness-netns-loopback-check witness-lab-port-check witness-lab-port-owner
 sync: copy Git-tracked Alice files with backups, then run Mint tests; no restart.
 deploy: sync + tests + restart the existing Alice; requires an active client.
 witness-diagnose: read-only owner-verified, redacted witness file chronology; does not query BDS.
@@ -22,6 +22,7 @@ witness-lab-startup-probe: explicit 17880-only short BDS launch + graceful stop 
 witness-lab-netns-check: no BDS startup; test whether an unprivileged, network-isolated process can run despite host port 17880 being occupied.
 witness-lab-netns-probe: explicit lab-only BDS module-import probe INSIDE a user network namespace; never binds host 17880.
 witness-lab-netns-postmortem: read-only one-shot lab artifacts and fresh isolated-loopback flags; no BDS launch or changes.
+witness-netns-loopback-check: prove child-only lo can be set UP, then report; no BDS or host-world edits.
 witness-lab-port-check: read-only UDP 17880/17881 availability diagnosis, no sudo and no BDS launch.
 witness-lab-port-owner: operator-authorized sudo read-only owner identity of just UDP 17880/17881; does not launch/stop BDS.
 Other actions call the corresponding Mint CLI. --dry-run does no SSH or writes.
@@ -45,6 +46,10 @@ if [[ "${2:-}" == --dry-run ]]; then
   fi
   [[ "$action" != deploy && "$action" != restart ]] || echo 'Validate old Alice, preserve its env, SIGINT only that client, verify BDS logout, start one replacement.'
   exit 0
+fi
+if [[ "$action" == witness-netns-loopback-check ]]; then
+  bash "$scripts/alice-netns-loopback-mac.sh"
+  exit $?
 fi
 # Operator-authorized, read-only elevated owner check on fixed UDP ports only.
 # sudo -v authenticates interactively; project Python remains unprivileged.
