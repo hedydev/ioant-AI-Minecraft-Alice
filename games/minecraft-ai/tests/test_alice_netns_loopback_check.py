@@ -90,7 +90,7 @@ class LoopbackActivationTests(unittest.TestCase):
     def test_distro_python_symlink_does_not_block_fixed_binary(self):
         with patch.object(P.os, "geteuid", return_value=1000), patch.object(
                 P.Path, "is_file", return_value=True), patch.object(
-                P.Path, "is_symlink", side_effect=lambda p: p == P.UNSHARE), patch.object(
+                P.Path, "is_symlink", return_value=True), patch.object(
                 P.os, "access", return_value=True):
             # A symlinked unshare binary is refused; /usr/bin/python3 is often
             # symlinked but its fixed path is controlled by the Linux distro.
