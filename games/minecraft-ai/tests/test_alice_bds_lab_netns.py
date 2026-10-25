@@ -136,26 +136,43 @@ class NetworkNamespaceTests(unittest.TestCase):
 
     def test_postmortem_read_only_reports_consumed_probe_without_claiming_bds_start(self):
         with tempfile.TemporaryDirectory() as tmp:
-            lab=Path(tmp)
+            root=Path(tmp)
+            lab=root/"minecraft-bedrock-alice-lab"
+            src=root/"minecraft-ai"/"bds-witness-pack"/"scripts"/"main.js"
+            src.parent.mkdir(parents=True)
+            original=b''.join([
+                b'import {world} from "@minecraft/server";\\n',
+                b'import {http} from "@minecraft/server-net";\\n',
+                b'import {vars} from "@minecraft/server-admin";\\n',
+                b'const startup = 1;\\n'])
+            src.write_bytes(original)
             script=lab/"behavior_packs"/"alice-silent-bds-witness"/"scripts"/"main.js"
             script.parent.mkdir(parents=True)
-            script.write_text('import {world} from "@minecraft/server";\n' +
-                              'console.warn("'+P.LAB_MARKER+'");\n')
+            script.write_bytes(original.replace(
+                b'const startup = 1;',
+                b'console.warn("ALICE_LAB_IMPORTS_READY_17880");\\nconst startup = 1;'))
             for f in (lab/".alice-lab-probe-original-properties",
                       lab/".alice-lab-probe-original-allowlist",
-                      script.with_name(".alice-lab-probe-original-main.js"),
                       lab/".alice-lab-probe.lock"):
                 f.write_bytes(b"fixture")
-            before=[(str(p.relative_to(lab)),p.read_bytes()) for p in lab.rglob("*") if p.is_file()]
+            script.with_name(".alice-lab-probe-original-main.js").write_bytes(original)
+            before=[(str(p.relative_to(root)),p.read_bytes()) for p in root.rglob("*") if p.is_file()]
             with patch.object(P,"namespace_loopback_state",return_value="down"):
                 status,fields=P.lab_probe_postmortem(lab)
-            after=[(str(p.relative_to(lab)),p.read_bytes()) for p in lab.rglob("*") if p.is_file()]
+            after=[(str(p.relative_to(root)),p.read_bytes()) for p in root.rglob("*") if p.is_file()]
             self.assertEqual(status,"lab_probe_one_shot_consumed")
             self.assertEqual(before,after)
             self.assertTrue(fields["labProbeOneShotConsumed"])
             self.assertFalse(fields["originalLaunchStdoutRetained"])
             self.assertFalse(fields["verifiedScriptModuleLoaded"])
             self.assertEqual(fields["isolatedLoopbackState"],"down")
+            # Any post-staging mutation must not be mistaken for an intact
+            # one-shot lab, and the inspector may NEVER restore/correct it.
+            script.write_bytes(script.read_bytes()+b"unexpected")
+            with patch.object(P,"namespace_loopback_state",return_value="down"):
+                state,details=P.lab_probe_postmortem(lab)
+            self.assertEqual(state,"lab_probe_artifacts_incomplete")
+            self.assertFalse(details["labProbeOneShotConsumed"])
 
     def test_postmortem_refuses_symlinked_lab_probe_artifacts(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -166,7 +183,8 @@ class NetworkNamespaceTests(unittest.TestCase):
     def test_postmortem_action_never_starts_bds_or_reconfigures_lab(self):
         gate=Mock()
         with tempfile.TemporaryDirectory() as tmp, patch.object(
-                P,"beta_gate",return_value=(gate,Path(tmp))), patch.object(
+                P,"postmortem_gate",return_value=(gate,Path(tmp))), patch.object(
+                P,"beta_gate",side_effect=AssertionError("must not use first-run gate")), patch.object(
                 P,"lab_probe_postmortem",return_value=("lab_probe_one_shot_consumed",{})) as inspector, patch.object(
                 P,"probe",side_effect=AssertionError("BDS started")), patch.object(
                 P,"secure_config",side_effect=AssertionError("lab modified")), patch.object(
@@ -175,6 +193,32 @@ class NetworkNamespaceTests(unittest.TestCase):
             self.assertEqual(state,"lab_probe_one_shot_consumed")
             inspector.assert_called_once_with(Path(tmp))
         gate.require_lab_stopped.assert_called_once_with()
+
+    def test_readonly_gate_accepts_instrumented_lab_without_startup_hash_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            fake=root/"alice-bds-lab-pack.py"
+            lab=root/"minecraft-bedrock-alice-lab"
+            fake.write_text("from pathlib import Path\\n"
+                            "LAB=Path("+repr(str(lab))+")\\n"
+                            "def require_eligible(): return None\\n"
+                            "def require_lab_stopped(): return None\\n")
+            with patch.object(P,"HERE",root), patch.object(
+                    P.os,"geteuid",return_value=501), patch.object(
+                    P,"beta_gate",side_effect=AssertionError("startup gate invoked")):
+                gate,actual=P.postmortem_gate()
+            self.assertEqual(actual,lab)
+            self.assertTrue(callable(gate.require_lab_stopped))
+
+    def test_readonly_gate_refuses_missing_process_check(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);fake=root/"alice-bds-lab-pack.py"
+            fake.write_text("from pathlib import Path\\n"
+                            "LAB=Path("+repr(str(root))+")\\n"
+                            "def require_eligible(): return None\\n")
+            with patch.object(P,"HERE",root), patch.object(P.os,"geteuid",return_value=501):
+                with self.assertRaisesRegex(ValueError,"lab_process_guard_unavailable"):
+                    P.postmortem_gate()
 
 
 if __name__ == "__main__":

@@ -193,6 +193,28 @@ def namespace_loopback_state(run=subprocess.run):
         return "unverified"
 
 
+def postmortem_gate():
+    """Read-only identity/process check for an already instrumented lab.
+
+    A first-run startup requires an installed script byte-identical to the
+    reviewed source. The probe adds its import marker after passing that
+    guard; inspecting the consumed clone must not rerun the startup gate.
+    Keep beta_gate() and its strict pack_guard() entirely unchanged.
+    """
+    spec = importlib.util.spec_from_file_location(
+        "alice_lab_pack_postmortem", HERE / "alice-bds-lab-pack.py")
+    if spec is None or spec.loader is None:
+        raise ValueError("missing_lab_beta_tool")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    if os.geteuid() == 0:
+        raise ValueError("refuse_root_python")
+    module.require_eligible()
+    if not callable(getattr(module, "require_lab_stopped", None)):
+        raise ValueError("lab_process_guard_unavailable")
+    return module, module.LAB
+
+
 def lab_probe_postmortem(lab):
     """Inspect one-shot lab artifacts, never re-run the disposed BDS process.
 
@@ -209,9 +231,28 @@ def lab_probe_postmortem(lab):
     for path in [*originals, marker, lock]:
         if path.is_symlink():
             raise ValueError("unsafe_lab_postmortem_file")
-    backed = all(path.is_file() for path in originals)
-    instrumented = marker.is_file() and marker.stat().st_size <= 8192 and (
-        marker.read_bytes().count(LAB_MARKER.encode("ascii")) == 1)
+    # A previously instrumented script must be exactly the reviewed source
+    # plus ONE known marker. A random file containing that string is not
+    # evidence of the operator's one-shot preparation.
+    original = originals[2]
+    source = lab.parent / "minecraft-ai" / "bds-witness-pack" / "scripts" / "main.js"
+    for directory in (marker.parent, marker.parent.parent,
+                      marker.parent.parent.parent, source.parent):
+        if directory.is_symlink():
+            raise ValueError("unsafe_lab_postmortem_file")
+    backed = all(path.is_file() and path.stat().st_size <= 65536
+                 for path in originals)
+    instrumented = False
+    if backed and source.is_file() and not source.is_symlink() and source.stat().st_size <= 8192:
+        src = source.read_bytes()
+        raw = marker.read_bytes() if marker.is_file() and marker.stat().st_size <= 8192 else b""
+        lines = src.splitlines(keepends=True)
+        imports = [i for i,line in enumerate(lines) if line.lstrip().startswith(b"import ")]
+        if len(imports) == 3 and original.read_bytes() == src:
+            marker_line = b'console.warn("ALICE_LAB_IMPORTS_READY_17880");' + bytes((10,))
+            expected = (b"".join(lines[:imports[-1]+1]) + marker_line +
+                        b"".join(lines[imports[-1]+1:]))
+            instrumented = raw == expected
     consumed = backed and instrumented and lock.is_file()
     return ("lab_probe_one_shot_consumed" if consumed else
             "lab_probe_artifacts_incomplete", {
@@ -355,12 +396,17 @@ def run_action(mode):
     stage = mode[6:] if netns else mode
     if stage not in ("check", "probe", "postmortem"):
         raise ValueError("invalid_action")
-    gate, lab = beta_gate()
-    gate.require_lab_stopped()
+    # Never weaken the strict first-run gate: the one-time marker necessarily
+    # changes the installed script's SHA-256, so it cannot pass pack_guard()
+    # again. Only this read-only postmortem uses the separate identity gate.
     if stage == "postmortem":
         if not netns:
             raise ValueError("invalid_action")
+        gate, lab = postmortem_gate()
+        gate.require_lab_stopped()
         return lab_probe_postmortem(lab)
+    gate, lab = beta_gate()
+    gate.require_lab_stopped()
     # A netns rejection must happen BEFORE creating the one-shot lock or
     # any lab-only backup/config edits, so failure cannot consume the probe.
     if netns and not namespace_preflight():
