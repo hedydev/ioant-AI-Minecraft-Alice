@@ -1,7 +1,7 @@
 {
   "version": "Bedrock native 1.26.51 / control-center 0.4",
-  "asOf": "2026-10-23",
-  "notice": "2026-10-23：非刷屏 BDS Script API 见证系统已写入源码但未部署：Mint 私有回环鉴权、BDS 可选只读行为包及双来源安全校验。因 1.26.51 Beta API/世界配置未验收，当前自主采集仍可能因 BDS 坐标见证失效而停滞。",
+  "asOf": "2026-10-25",
+  "notice": "2026-10-25：Mint Node24 638/638通过，但Alice PID3895891的独立BDS见证为0、移动输入为0，因scout_bds_position_unavailable保持IDLE。新源码仅修正独立BDS位移与混合服务端位置包里程的区分和验收判据，尚未部署进运行进程，不能声称Minecraft实际行走成功。暂停第四套实验BDS及Beta行为包。",
   "statusNames": {
     "observed": "已有实机证据",
     "staged": "代码已接入·待验收",
@@ -9,6 +9,13 @@
     "pending": "尚未实现"
   },
   "capabilities": [
+    {
+      "name": "独立 BDS 移动证据与输入时间对齐校验（尚未实机验收）",
+      "icon": "📍",
+      "group": "运维与可观测性",
+      "status": "staged",
+      "detail": "将 querytarget 独立样本的连续位移与服务端位置校正累计值分开；只有同一世界、同一Alice进程、4秒内两条新鲜连续可信样本、0.25格实际位置变化，且与本会话移动输入时间有关联，才可判定独立BDS坐标发生变化。队列输入只证实相关性不证实网络交付。无样本显示未确认；代码同步不重启Alice也不会产生样本。禁止自动开启刷屏querytarget或修改BDS。"
+    },
     {
       "name": "BDS 无控制台刷屏的服务器坐标见证（未启用）",
       "icon": "📍",

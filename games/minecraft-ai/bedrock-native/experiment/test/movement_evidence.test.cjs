@@ -127,3 +127,57 @@ test('server correction does not overwrite the independent witness age or identi
  assert.equal(e.get().independentAt,11900,'server corrections cannot extend independent freshness')
  e.detach()
 })
+
+test('large correction-only travel never becomes independent BDS motion',()=>{
+ const client=new EventEmitter();let at=10000
+ const e=attachMovementEvidence(client,{clock:()=>at})
+ client.emit('start_game',{runtime_entity_id:42n,player_position:{x:0,y:65.62,z:0}})
+ client.emit('correct_player_move_prediction',{position:{x:0,y:65.62,z:0}})
+ client.emit('correct_player_move_prediction',{position:{x:22,y:65.62,z:0}})
+ assert.equal(e.get().travelBlocks,22)
+ assert.equal(e.get().independentSamples,0)
+ assert.equal(e.get().independentTravelBlocks,0)
+ assert.equal(e.get().independentPairTravelBlocks,null)
+ e.detach()
+})
+test('independent BDS distance excludes interleaved server packet corrections',()=>{
+ const client=new EventEmitter();let at=10000
+ const e=attachMovementEvidence(client,{clock:()=>at})
+ client.emit('start_game',{runtime_entity_id:42n,player_position:{x:0,y:65.62,z:0}})
+ const common={source:'mcsm_querytarget',uniqueId:'one-session-uid'}
+ at=11000
+ assert.equal(e.ingestIndependentPosition({...common,serial:'1792572000000000001',
+  observedAt:at-100,feet:{x:0,y:64,z:0}}),true)
+ client.emit('correct_player_move_prediction',{position:{x:12,y:65.62,z:0}})
+ at=12000
+ assert.equal(e.ingestIndependentPosition({...common,serial:'1792572000000000002',
+  observedAt:at-100,feet:{x:0.5,y:64,z:0}}),true)
+ assert.equal(e.get().independentSamples,2)
+ assert.equal(e.get().independentPreviousAt,10900)
+ assert.equal(e.get().independentAt,11900)
+ assert.equal(e.get().independentPairTravelBlocks,0.5)
+ assert.equal(e.get().independentTravelBlocks,0.5)
+ assert.ok(e.get().travelBlocks>20)
+ assert.equal(e.ingestIndependentPosition({...common,serial:'1792572000000000003',
+  observedAt:11900,feet:{x:5,y:64,z:0}}),false,
+  'newer serial with replayed clock must not count')
+ client.emit('start_game',{runtime_entity_id:42n,player_position:{x:0,y:65.62,z:0}})
+ assert.equal(e.get().independentTravelBlocks,0)
+ assert.equal(e.get().independentPreviousAt,null)
+ e.detach()
+})
+test('independent BDS teleport-sized jumps are not counted as walking',()=>{
+ const client=new EventEmitter();let at=10000
+ const e=attachMovementEvidence(client,{clock:()=>at})
+ client.emit('start_game',{runtime_entity_id:42n,player_position:{x:0,y:65.62,z:0}})
+ const common={source:'mcsm_querytarget',uniqueId:'one-session-uid'}
+ at=11000
+ assert.equal(e.ingestIndependentPosition({...common,serial:'1792572000000000001',
+  observedAt:10900,feet:{x:0,y:64,z:0}}),true)
+ at=12000
+ assert.equal(e.ingestIndependentPosition({...common,serial:'1792572000000000002',
+  observedAt:11900,feet:{x:100,y:64,z:0}}),true)
+ assert.equal(e.get().independentTravelBlocks,0)
+ assert.equal(e.get().independentPairTravelBlocks,null)
+ e.detach()
+})

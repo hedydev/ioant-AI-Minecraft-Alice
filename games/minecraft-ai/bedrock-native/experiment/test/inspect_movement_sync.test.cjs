@@ -1,7 +1,7 @@
 'use strict'
 const test=require('node:test'),assert=require('node:assert/strict')
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path')
-const {liveOwner,liveSnapshots}=require('../scripts/inspect_movement_sync.cjs')
+const {liveOwner,liveSnapshots,evaluateMovement}=require('../scripts/inspect_movement_sync.cjs')
 function fixture(){
  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'alice-readonly-proof-'))
  const home=path.join(tmp,'home'),root=path.join(home,'.alice-bedrock-control')
@@ -130,5 +130,58 @@ test('tampered or world-readable status is rejected, no world paths opened',()=>
   fs.chmodSync(path.join(f.root,'status.json'),0o644)
   assert.throws(()=>liveSnapshots({controlRoot:f.root,procRoot:f.procRoot,now:f.now}),
    /unsafe_movement_report_source/)
+ }finally{f.close()}
+})
+
+test('no independent witness means no BDS movement even with large packet travel',()=>{
+ const f=fixture();try{
+  const m={...f.core.movementEvidence,travelBlocks:27886.34,
+   independentSamples:0,independentLatestFeet:null,lastAt:f.now-100}
+  const report=evaluateMovement({core:{...f.core,movementEvidence:m},
+   wire:{...f.wire,movingQueued:0,lastMovingAgeMs:null},now:f.now})
+  assert.equal(report.verdict,'BDS_POSITION_NOT_FRESH')
+  assert.equal(report.bdsVerifiedTravel,null)
+  assert.equal(report.serverPacketTravelUnverified,27886.34)
+  assert.equal(report.bdsFeet,null)
+ }finally{f.close()}
+})
+test('two fresh independent witnesses and time-aligned input establish BDS position change',()=>{
+ const f=fixture();try{
+  const m={...f.core.movementEvidence,
+   independentSource:'bds_querytarget',independentSamples:2,
+   independentLatestFeet:{x:0.6,y:64,z:0},independentPreviousAt:f.now-3000,
+   independentAt:f.now-500,independentPairTravelBlocks:0.6,
+   independentTravelBlocks:0.6,travelBlocks:100}
+  const report=evaluateMovement({core:{...f.core,movementEvidence:m},
+   wire:{...f.wire,updatedAt:f.now-200,lastMovingAgeMs:1100},now:f.now})
+  assert.equal(report.verdict,'BDS_MOVEMENT_CONFIRMED')
+  assert.equal(report.bdsVerifiedTravel,0.6)
+  assert.equal(report.bdsLastPairTravel,0.6)
+  assert.equal(report.serverPacketTravelUnverified,100)
+  assert.equal(report.inputNearBdsPair,true)
+ }finally{f.close()}
+})
+test('packet-only travel, stale second witness, and stale moving burst cannot confirm',()=>{
+ const f=fixture();try{
+  const good={...f.core.movementEvidence,
+   independentSource:'bds_querytarget',independentSamples:2,
+   independentLatestFeet:{x:1,y:64,z:0},independentPreviousAt:f.now-3000,
+   independentAt:f.now-500,independentPairTravelBlocks:0,
+   independentTravelBlocks:0,travelBlocks:400}
+  const report=(m,w)=>evaluateMovement({core:{...f.core,movementEvidence:m},
+   wire:{...f.wire,...w},now:f.now})
+  assert.equal(report(good,{lastMovingAgeMs:1200}).verdict,'MOVEMENT_NOT_CONFIRMED')
+  assert.equal(report({...good,independentPairTravelBlocks:1,independentPreviousAt:f.now-6000},
+   {lastMovingAgeMs:1200}).verdict,'BDS_POSITION_NOT_FRESH')
+  assert.equal(report({...good,independentPairTravelBlocks:1,independentTravelBlocks:1},
+   {movingQueued:0,lastMovingAgeMs:null}).verdict,'NO_MOVEMENT_INPUT_ATTEMPTED')
+  assert.equal(report({...good,independentPairTravelBlocks:1,independentTravelBlocks:1},
+   {updatedAt:f.now-500,lastMovingAgeMs:60000}).verdict,'MOVEMENT_NOT_CONFIRMED')
+  assert.equal(report({...good,independentPairTravelBlocks:1,independentTravelBlocks:1},
+   {updatedAt:f.now-500,lastMovingAgeMs:null}).verdict,'MOVEMENT_NOT_CONFIRMED')
+  assert.equal(report({...good,independentPairTravelBlocks:1,independentTravelBlocks:1},
+   {lastMovingAgeMs:1200}).verdict,'BDS_MOVEMENT_CONFIRMED')
+  assert.equal(evaluateMovement({core:{...f.core,serverPort:17880,movementEvidence:good},
+   wire:{...f.wire,lastMovingAgeMs:1200},now:f.now}).verdict,'BDS_POSITION_NOT_FRESH')
  }finally{f.close()}
 })

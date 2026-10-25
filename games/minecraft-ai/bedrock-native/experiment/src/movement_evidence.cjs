@@ -9,6 +9,9 @@ function attachMovementEvidence(client,{clock=Date.now,eyeHeight=()=>1.62}={}){
   let ownRuntimeId=null,events=0,packets=0,independentSamples=0,last=null,lastAt=0,distance=0,lastSource=null
   let lastIndependentSerial=null,independentUniqueId=null
   let independentLatestFeet=null,independentAt=null,independentSource=null
+  // Independent BDS samples have a separate motion ledger. Ordinary
+  // correction/self-move packets must NEVER inflate this distance.
+  let independentTravel=0,independentPreviousAt=null,independentPairTravel=null
   let serverTick=null,authority=null,rewindHistory=null,closed=false
   let loginFeet=null,loginAt=null
   function record(pos,source,tick=null,observedAt=clock(),alreadyFeet=false){
@@ -42,6 +45,7 @@ function attachMovementEvidence(client,{clock=Date.now,eyeHeight=()=>1.62}={}){
     distance=0;lastSource=null;serverTick=null
     lastIndependentSerial=null;independentUniqueId=null
     independentLatestFeet=null;independentAt=null;independentSource=null
+    independentTravel=0;independentPreviousAt=null;independentPairTravel=null
     ownRuntimeId=p?.runtime_entity_id==null?null:String(p.runtime_entity_id)
     authority=typeof p?.movement_authority==='string'?p.movement_authority.slice(0,24):null
     rewindHistory=Number.isInteger(p?.rewind_history_size)?p.rewind_history_size:null
@@ -63,6 +67,19 @@ function attachMovementEvidence(client,{clock=Date.now,eyeHeight=()=>1.62}={}){
        sample.observedAt>clock()||clock()-sample.observedAt>4000)return false
     if(lastIndependentSerial!==null&&BigInt(sample.serial)<=BigInt(lastIndependentSerial))return false
     if(independentUniqueId!==null&&independentUniqueId!==sample.uniqueId)return false
+    // Both serial and observation time must move strictly forwards. A newer
+    // serial containing a replayed timestamp is not a new temporal sample.
+    if(independentAt!==null&&sample.observedAt<=independentAt)return false
+    if(independentLatestFeet!==null){
+      independentPreviousAt=independentAt
+      const step=Math.hypot(
+        sample.feet.x-independentLatestFeet.x,
+        sample.feet.y-independentLatestFeet.y,
+        sample.feet.z-independentLatestFeet.z)
+      // A large jump could be a teleport or a respawn; do not call it walking.
+      independentPairTravel=Number.isFinite(step)&&step<32?step:null
+      if(independentPairTravel!==null)independentTravel+=independentPairTravel
+    }
     independentUniqueId=sample.uniqueId;lastIndependentSerial=sample.serial
     independentLatestFeet=copy(sample.feet);independentAt=sample.observedAt
     independentSource=sample.source==='bds_script_api'?'bds_script_api':'bds_querytarget'
@@ -89,7 +106,9 @@ function attachMovementEvidence(client,{clock=Date.now,eyeHeight=()=>1.62}={}){
       latestFeet:last?Object.fromEntries(Object.entries(last).map(([k,v])=>[k,round(v)])):null,
       lastAt:lastAt||null,lastSource,travelBlocks:round(distance),
       independentLatestFeet:independentLatestFeet?copy(independentLatestFeet):null,
-      independentAt,independentSource,
+      independentAt,independentPreviousAt,independentSource,
+      independentPairTravelBlocks:independentPairTravel===null?null:round(independentPairTravel),
+      independentTravelBlocks:round(independentTravel),
       // Server's start_game spawn coordinate is deliberately separate from
       // corrective self-move packets and never increments received.
       loginFeet,loginAt,loginSource:loginFeet?'start_game_player_position':null,

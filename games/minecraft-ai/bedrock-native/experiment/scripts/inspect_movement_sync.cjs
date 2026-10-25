@@ -64,49 +64,78 @@ function liveSnapshots({controlRoot=guardRoot,procRoot='/proc',now=Date.now()}={
    reject('movement_report_stale')
  return {core,wire,now}
 }
-function main(){
-try{
- const {core,wire,now}=liveSnapshots()
- if(!core||!wire)throw Error('movement_report_files_missing')
- const m=core.movementEvidence||{}
-
- const feet=(v)=>v&&[v.x,v.y,v.z].every(Number.isFinite)?v:null
- const client=feet(core.position),bds=feet(m.latestFeet),login=feet(m.loginFeet)
+// Pure, read-only evidence classifier. A server correction and a BDS sample
+// are different sources: only two temporally fresh independent samples may
+// prove BDS displacement. Input timing only supports correlation, never
+// delivery or acceptance of a specific PlayerAuthInput.
+function evaluateMovement({core,wire,now}){
+ const m=core?.movementEvidence||{}
+ const feet=v=>v&&[v.x,v.y,v.z].every(Number.isFinite)?v:null
+ const client=feet(core?.position)
+ const serverPacketFeet=feet(m.latestFeet)
+ const bds=feet(m.independentLatestFeet)
+ const login=feet(m.loginFeet)
  const distance=(a,b)=>a&&b?Math.round(Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z)*100)/100:null
- const serverTravel=Number.isFinite(m.travelBlocks)?m.travelBlocks:null
- const fresh=Number.isFinite(m.lastAt)&&now-m.lastAt>=0&&now-m.lastAt<=5000
- const accepted=core.connected===true&&core.sessionEstablished===true&&core.world==='Bedrock level'&&core.serverPort===17879&&m.lastSource==='bds_querytarget'&&fresh&&m.independentSamples>=2
- const actualMove=accepted&&serverTravel>=0.25
- const attempted=wire.movingQueued>0
+ const pair=Number.isFinite(m.independentPairTravelBlocks)?m.independentPairTravelBlocks:null
+ const total=Number.isFinite(m.independentTravelBlocks)?m.independentTravelBlocks:null
+ const freshTime=at=>Number.isSafeInteger(at)&&now-at>=0&&now-at<=4000
+ const latestFresh=freshTime(m.independentAt)
+ const pairFresh=latestFresh&&freshTime(m.independentPreviousAt)&&
+   m.independentPreviousAt<m.independentAt
+ const accepted=core?.connected===true&&core?.sessionEstablished===true&&
+   core.world==='Bedrock level'&&core.serverPort===17879&&
+   m.independentSource==='bds_querytarget'&&
+   Number.isSafeInteger(m.independentSamples)&&m.independentSamples>=2&&
+   !!bds&&pair!==null&&pairFresh
+ const attempted=Number.isFinite(wire?.movingQueued)&&wire.movingQueued>0
+ const lastMovingAt=Number.isFinite(wire?.updatedAt)&&
+   Number.isFinite(wire?.lastMovingAgeMs)&&wire.lastMovingAgeMs>=0?
+   wire.updatedAt-wire.lastMovingAgeMs:null
+ const inputNearPair=attempted&&lastMovingAt!==null&&
+   lastMovingAt>=m.independentPreviousAt-5000&&
+   lastMovingAt<=m.independentAt+5000
+ const actualMove=accepted&&pair>=0.25&&inputNearPair
  const verdict=actualMove?'BDS_MOVEMENT_CONFIRMED':
    !accepted?'BDS_POSITION_NOT_FRESH':
    !attempted?'NO_MOVEMENT_INPUT_ATTEMPTED':'MOVEMENT_NOT_CONFIRMED'
- console.log(JSON.stringify({
-   verdict,connected:core.connected,world:core.world,serverPort:core.serverPort,
-   originalLoginFeet:login,clientFeet:client,bdsFeet:bds,
+ return {
+   verdict,connected:core?.connected,world:core?.world,serverPort:core?.serverPort,
+   originalLoginFeet:login,clientFeet:client,serverPacketFeet,bdsFeet:bds,
    clientBdsDivergence:distance(client,bds),bdsDistanceFromLogin:distance(login,bds),
-   bdsVerifiedTravel:serverTravel,bdsAcceptedSamples:m.independentSamples,
-   bdsWitnessFresh:fresh,inputPackets:wire.serialized,
-   movementInputs:wire.movingQueued,analogCorrections:wire.analogCompatCorrected,
-   syncTickMode:wire.syncTickMode,
-   wireProbeFrames:wire.wireProbeFrames,wireProbeMatched:wire.wireProbeMatched,
-   wireProbeMismatches:wire.wireProbeMismatches,
-   wireProbeUnavailable:wire.wireProbeUnavailable,
-   wireProbeFirstIssue:wire.wireProbeFirstIssue,
-   movementBursts:wire.movingBurstCount,
-   maxConsecutiveMovingTicks:wire.maxConsecutiveMovingTicks,
-   currentMovingRun:wire.currentMovingRun,
-   lastMovingAgeMs:wire.lastMovingAgeMs,
-   syncFrames:wire.syncEmitted,syncCatchupFrames:wire.syncCatchupFrames,
-   syncMaxBatchFrames:wire.syncMaxBatchFrames,
-   syncOverruns:wire.syncOverruns,syncSkippedTicks:wire.syncSkippedTicks,
-   syncControlsChangedInsideFrame:wire.syncControlsChangedInsideFrame,
-   syncCallbackPositionMutationsPrevented:wire.syncCallbackPositionMutationsPrevented,
-   syncCallbackVelocityMutationsPrevented:wire.syncCallbackVelocityMutationsPrevented,
-   syncCallbackContactMutationsPrevented:wire.syncCallbackContactMutationsPrevented,
-   dataSource:'same-instance querytarget + anonymous outbound telemetry'
- },null,2))
- if(!actualMove)process.exitCode=2
+   // Null means missing independently comparable samples, NOT zero travel.
+   bdsVerifiedTravel:accepted?total:null,
+   bdsLastPairTravel:accepted?pair:null,
+   serverPacketTravelUnverified:Number.isFinite(m.travelBlocks)?m.travelBlocks:null,
+   bdsAcceptedSamples:m.independentSamples??0,
+   bdsWitnessLatestFresh:latestFresh,bdsWitnessFresh:!!accepted,
+   inputNearBdsPair:!!inputNearPair,
+   inputPackets:wire?.serialized,movementInputs:wire?.movingQueued,
+   analogCorrections:wire?.analogCompatCorrected,
+   syncTickMode:wire?.syncTickMode,
+   wireProbeFrames:wire?.wireProbeFrames,wireProbeMatched:wire?.wireProbeMatched,
+   wireProbeMismatches:wire?.wireProbeMismatches,
+   wireProbeUnavailable:wire?.wireProbeUnavailable,
+   wireProbeFirstIssue:wire?.wireProbeFirstIssue,
+   movementBursts:wire?.movingBurstCount,
+   maxConsecutiveMovingTicks:wire?.maxConsecutiveMovingTicks,
+   currentMovingRun:wire?.currentMovingRun,
+   lastMovingAgeMs:wire?.lastMovingAgeMs,
+   syncFrames:wire?.syncEmitted,syncCatchupFrames:wire?.syncCatchupFrames,
+   syncMaxBatchFrames:wire?.syncMaxBatchFrames,
+   syncOverruns:wire?.syncOverruns,syncSkippedTicks:wire?.syncSkippedTicks,
+   syncControlsChangedInsideFrame:wire?.syncControlsChangedInsideFrame,
+   syncCallbackPositionMutationsPrevented:wire?.syncCallbackPositionMutationsPrevented,
+   syncCallbackVelocityMutationsPrevented:wire?.syncCallbackVelocityMutationsPrevented,
+   syncCallbackContactMutationsPrevented:wire?.syncCallbackContactMutationsPrevented,
+   dataSource:'owner-verified telemetry; independent BDS samples only for BDS verdict'
+ }
+}
+function main(){
+try{
+ const {core,wire,now}=liveSnapshots()
+ const report=evaluateMovement({core,wire,now})
+ console.log(JSON.stringify(report,null,2))
+ if(report.verdict!=='BDS_MOVEMENT_CONFIRMED')process.exitCode=2
 }catch(e){
  console.error('movement_sync_inspection_unavailable:',
    /^[a-z_]+$/.test(String(e.message))?e.message:'io_error')
@@ -114,4 +143,4 @@ try{
 }
 }
 if(require.main===module)main()
-module.exports={liveOwner,liveSnapshots}
+module.exports={liveOwner,liveSnapshots,evaluateMovement}

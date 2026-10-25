@@ -1,3 +1,7 @@
+## 2026-10-25 — Verified BDS-motion telemetry hardening (staged, not gameplay success)
+
+The previous aggregate `travelBlocks` includes Bedrock server-origin self-position packets and corrections and can grow despite `independentSamples=0`. Operator observed 27,886.34 such blocks, no independent witness and zero movement inputs (Mint Node24 regression 638/638). New runtime evidence fields separately track `independentTravelBlocks` and the last independent BDS sample-pair distance with timestamps; the read-only inspector only confirms when two fresh matching-identity samples from the 17879 world move >=0.25 blocks within 4 seconds and a moving input is time-associated. The packet total is labeled `serverPacketTravelUnverified` and cannot drive confirmation. Staged only; no Alice restart, no MCSManager commands, no new witness channel, no BDS/world modifications, no autonomous movement acceptance.
+
 ## 2026-10-25 — Movement inspector regression-fixture repair (not a new runtime capability)
 
 Mint Node24 reported 633/634 tests passing on the previous `main`; the positive inspector test's synthetic status/audit mtimes were newer than its fixed mock clock. The fixture now makes these files exactly 1 second older than the mock clock, and adds explicit stale/future-file regressions. **Runtime behavior, verified PID provenance, 15-second freshness limit and actual BDS movement requirements are unchanged.** Full updated suite and current production movement still require operator evidence. No additional lab/BDS/Script API capability was enabled.
