@@ -117,7 +117,7 @@ class NetworkNamespaceTests(unittest.TestCase):
         seen=[]
         def run(args, **kwargs):
             seen.append((args, kwargs))
-            return SimpleNamespace(returncode=0, stdout="down\\n")
+            return SimpleNamespace(returncode=0, stdout="down\n")
         with patch.object(P.NETNS_PYTHON.__class__, "is_file", return_value=True), patch.object(
                 P.NETNS_UNSHARE.__class__, "is_symlink", return_value=False), patch.object(
                 P.os, "access", return_value=True):
@@ -137,7 +137,7 @@ class NetworkNamespaceTests(unittest.TestCase):
                 P.NETNS_UNSHARE.__class__, "is_symlink", return_value=False), patch.object(
                 P.os, "access", return_value=True):
             self.assertEqual(P.namespace_loopback_state(
-                run=lambda *a, **k:SimpleNamespace(returncode=0,stdout="up\\n")),"up")
+                run=lambda *a, **k:SimpleNamespace(returncode=0,stdout="up\n")),"up")
             self.assertEqual(P.namespace_loopback_state(
                 run=lambda *a, **k:SimpleNamespace(returncode=1,stdout="")),"unverified")
             self.assertEqual(P.namespace_loopback_state(
