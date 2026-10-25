@@ -3,8 +3,8 @@
 # Only sudo -v and sudo -n readlink use elevation; Python BDS stays unprivileged.
 set -euo pipefail
 [[ "$(uname -s)" == Darwin ]] || { echo 'Run on Mac.' >&2; exit 2; }
-[[ $# -eq 1 && ( "$1" == check || "$1" == probe ) ]] || {
-  echo 'Usage: alice-bds-lab-probe-mac.sh check|probe' >&2; exit 2; }
+[[ $# -eq 1 && ( "$1" == check || "$1" == probe || "$1" == netns-check || "$1" == netns-probe ) ]] || {
+  echo 'Usage: alice-bds-lab-probe-mac.sh check|probe|netns-check|netns-probe' >&2; exit 2; }
 mode="$1"
 target="$(printenv ALICE_SSH_TARGET || true)"
 [[ "$target" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*@[A-Za-z0-9][A-Za-z0-9.:-]*$ ]] || {
@@ -57,7 +57,7 @@ enums={
               "lab_port_world_or_auth_changed","unsafe_lab_allowlist",
               "lab_probe_already_prepared","lab_probe_already_running",
               "unsafe_lab_config",
-              "lab_udp_ports_busy","invalid_action","lab_pack_not_staged",
+              "lab_udp_ports_busy","lab_netns_unavailable","invalid_action","lab_pack_not_staged",
               "unsafe_lab_instrumentation","lab_script_drift",
               "lab_script_unexpected_imports","lab_bds_is_running",
               "bds_cwd_requires_privileged_read","bds_cwd_unverified",
@@ -66,6 +66,7 @@ enums={
 bools=("isolationConfigReady","serverReadyObserved",
        "scriptModuleMessagesObserved","scriptLoadErrorObserved",
        "verifiedScriptModuleLoaded","isolatedBdsExited",
+       "networkNamespaceRequested","networkNamespacePreflightPassed",
        "productionWorldModified",
        "productionBdsRestarted","productionWitnessUsed")
 sanitized={"audit":"ALICE_BDS_LAB_STARTUP_PROBE","schemaVersion":1,

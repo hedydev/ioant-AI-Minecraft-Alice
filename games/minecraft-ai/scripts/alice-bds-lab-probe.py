@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import signal
 import socket
 import stat
@@ -139,6 +140,34 @@ def secure_config(lab):
 
 LAB_MARKER = "ALICE_LAB_IMPORTS_READY_17880"
 
+# Only the already staged disposable lab is ever launched. Network isolation
+# avoids colliding with the production zombie BDS bound to host UDP 17880.
+NETNS_UNSHARE = Path("/usr/bin/unshare")
+NETNS_TRUE = Path("/usr/bin/true")
+
+
+def namespace_preflight(run=subprocess.run):
+    """Opt-in child namespace capability check; never start BDS or bind a host port.
+
+    A failed user+network namespace unshare is a hard refusal. No privileged
+    fallback, sudo, host namespace networking or --userns=host substitute.
+    """
+    if (not NETNS_UNSHARE.is_file() or NETNS_UNSHARE.is_symlink()
+            or not os.access(NETNS_UNSHARE, os.X_OK)
+            or not NETNS_TRUE.is_file() or NETNS_TRUE.is_symlink()):
+        return False
+    command = [str(NETNS_UNSHARE), "--user", "--map-root-user", "--net",
+               "--", str(NETNS_TRUE)]
+    try:
+        result = run(command, capture_output=True, timeout=8, check=False,
+                     env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"})
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return result.returncode == 0
+
+
+
+
 
 def instrument_lab_script(lab):
     """Add one nonsecret, one-shot import confirmation to the cloned pack only.
@@ -216,8 +245,11 @@ def classify(log):
     }
 
 
-def probe(lab, *, duration=12, popen=subprocess.Popen, sleep=time.sleep):
-    if not ports_free():
+def probe(lab, *, duration=12, popen=subprocess.Popen, sleep=time.sleep,
+          network_namespace=False):
+    # Host route still requires both ports. Namespace route does not touch
+    # the host UDP table and MUST exec unshare; never fall back to a host bind.
+    if not network_namespace and not ports_free():
         raise ValueError("lab_udp_ports_busy")
     # No private Alice/Xbox/production service environment enters the BDS.
     env = {"HOME": str(Path.home()), "PATH": "/usr/local/bin:/usr/bin:/bin",
@@ -225,7 +257,10 @@ def probe(lab, *, duration=12, popen=subprocess.Popen, sleep=time.sleep):
     run = None
     with tempfile.TemporaryFile(mode="w+b") as logs:
         try:
-            run = popen(["./bedrock_server"], cwd=lab, env=env,
+            command = ([str(NETNS_UNSHARE), "--user", "--map-root-user",
+                        "--net", "--", "./bedrock_server"]
+                       if network_namespace else ["./bedrock_server"])
+            run = popen(command, cwd=lab, env=env,
                         stdin=subprocess.PIPE, stdout=logs, stderr=subprocess.STDOUT,
                         start_new_session=True)
             sleep(duration)
@@ -261,9 +296,17 @@ def probe(lab, *, duration=12, popen=subprocess.Popen, sleep=time.sleep):
 
 
 def run_action(mode):
+    netns = mode.startswith("netns-")
+    stage = mode[6:] if netns else mode
+    if stage not in ("check", "probe"):
+        raise ValueError("invalid_action")
     gate, lab = beta_gate()
     gate.require_lab_stopped()
-    if mode == "check":
+    # A netns rejection must happen BEFORE creating the one-shot lock or
+    # any lab-only backup/config edits, so failure cannot consume the probe.
+    if netns and not namespace_preflight():
+        raise ValueError("lab_netns_unavailable")
+    if stage == "check":
         props, keys = properties(lab / "server.properties")
         return ("ready_for_isolated_lab_probe", {
             "isolationConfigReady": all(keys.get(k) == v for k, v in SAFE_PROPS.items())
@@ -271,10 +314,9 @@ def run_action(mode):
                 and (lab / "allowlist.json").read_bytes().strip() == b"[]",
             "serverReadyObserved": False, "scriptModuleMessagesObserved": False,
             "scriptLoadErrorObserved": False, "verifiedScriptModuleLoaded": False,
+            "networkNamespacePreflightPassed": netns,
         })
-    if mode != "probe":
-        raise ValueError("invalid_action")
-    if not ports_free():
+    if not netns and not ports_free():
         raise ValueError("lab_udp_ports_busy")
     # Cooperating probes must never overlap. Lock is held through graceful
     # shutdown, not released before a second process could start.
@@ -291,7 +333,9 @@ def run_action(mode):
         gate.require_lab_stopped()
         instrument_lab_script(lab)
         gate.require_lab_stopped()
-        state, flags = probe(lab)
+        state, flags = (probe(lab, network_namespace=True)
+                        if netns else probe(lab))
+        flags["networkNamespacePreflightPassed"] = netns
         # Only a completed config/instrumentation guard may positively attest
         # the clone's isolation configuration. A blocked probe is never proof.
         return state, {"isolationConfigReady": True, **flags}
@@ -308,14 +352,17 @@ def output(mode, state, flags=None, reason="none"):
         "scriptLoadErrorObserved": bool(flags.get("scriptLoadErrorObserved", False)),
         "verifiedScriptModuleLoaded": bool(flags.get("verifiedScriptModuleLoaded", False)),
         "isolatedBdsExited": bool(flags.get("isolatedBdsExited", False)),
+        "networkNamespaceRequested": mode.startswith("netns-"),
+        "networkNamespacePreflightPassed": bool(flags.get("networkNamespacePreflightPassed", False)),
         "productionWorldModified": False, "productionBdsRestarted": False,
         "productionWitnessUsed": False,
     }
 
 
 def main():
-    if len(sys.argv) != 2 or sys.argv[1] not in ("check", "probe"):
-        raise SystemExit("Usage: alice-bds-lab-probe.py check|probe")
+    if len(sys.argv) != 2 or sys.argv[1] not in ("check", "probe",
+                                                  "netns-check", "netns-probe"):
+        raise SystemExit("Usage: alice-bds-lab-probe.py check|probe|netns-check|netns-probe")
     mode = sys.argv[1]
     try:
         state, flags = run_action(mode)
@@ -330,7 +377,7 @@ def main():
             "lab_probe_already_prepared", "lab_probe_already_running", "unsafe_lab_config",
             "unsafe_lab_instrumentation", "lab_script_drift",
             "lab_script_unexpected_imports",
-            "lab_udp_ports_busy", "invalid_action", "lab_pack_not_staged",
+            "lab_udp_ports_busy", "lab_netns_unavailable", "invalid_action", "lab_pack_not_staged",
             "lab_bds_is_running", "bds_cwd_requires_privileged_read",
             "bds_cwd_unverified", "proc_unavailable",
         }
