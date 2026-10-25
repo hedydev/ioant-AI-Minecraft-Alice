@@ -321,10 +321,24 @@ class BedrockOperations {
         navigation_scout_client_server_position_diverged:'retreat_bds_client_position_diverged',
         navigation_scout_client_position_unavailable:'retreat_client_position_unavailable'
       }[String(e?.message||'')]
+      // Pathfinder may leave controls active after a failed goto. On an
+      // actual attempted route, explicitly request synchronous stop before
+      // considering any subsequent close-range stationary self-defense.
+      // A guard rejection is never an attempted route and is not stopped.
+      let pathfinderStopRequested=false
+      if(!admission&&typeof this.bot.pathfinder?.stop==='function'){
+        try{
+          await this.bot.pathfinder.stop()
+          pathfinderStopRequested=
+            typeof this.bot.pathfinder.isMoving!=='function'||
+            this.bot.pathfinder.isMoving()===false
+        }catch{}
+      }
       return {ok:false,reason:admission||
         (/No path to the goal!/.test(String(e?.message||''))?
           'retreat_pathfinder_no_path':'retreat_pathfinder_error'),
         attempted:!admission,serverMovementVerified:false,
+        pathfinderStopRequested,
         candidates:plan.candidates,firstWaypoint:tile}
     }
     cancelled(signal)

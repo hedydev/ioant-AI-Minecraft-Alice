@@ -600,7 +600,8 @@ test('safety backoff avoids unverified packet spam while guarding; damage event 
   assert.equal(attempts,2,'second unverified attempt should back off longer')
   assert.equal(f.core.state,'GUARD')
   e.onEntityHurt(enemy)
-  assert.equal(e.attackBackoff.has('55'),false,'observed entityHurt resets backoff without proving Alice caused it')
+  assert.equal(e.attackBackoff.has('55'),true,'anonymous target hurt must not erase attack cooldown')
+  assert(f.calls.some(x=>x[1]==='[Alice safety] target hurt observed (attacker unverified):'))
 })
 
 test('gather searches wider, still refuses built logs, bounds candidates to starting area',async()=>{
@@ -2897,4 +2898,49 @@ test('persistent IDLE gate diagnosis separates intentional companion mode, safet
   e.bot.health=20;e.liveBehavior.settings.autonomyEnabled=false
   assert.equal(e.idleGateReason(),'autonomy_disabled')
   e.stop()
+})
+
+test('stopped failed Pathfinder near a zombie falls back to one stationary strike',async()=>{
+ let now=100000
+ const f=fixture(()=>now),e=new AliceBedrockRuntime({...f,policies:await policies()})
+ e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+ f.bot.health=8
+ const mob={id:999,name:'zombie',position:vec(1.5,64,0)}
+ f.bot.entities[999]=mob
+ e.threat=()=>({type:'SURVIVE',target:mob})
+ f.operator.retreatFrom=async()=>({ok:false,attempted:true,
+   pathfinderStopRequested:true,reason:'retreat_pathfinder_error'})
+ let swings=0
+ f.operator.attackOnce=async()=>{swings++;return {ok:false,attempted:true,verifiedDamage:false}}
+ e.safetyTick()
+ for(let i=0;i<4;i++)await new Promise(setImmediate)
+ assert.equal(swings,1)
+ assert.equal(e.attackBackoff.get('999')?.misses,1)
+ assert(f.calls.some(x=>x[1]==='[Alice safety] cornered defense:'))
+ now+=500;e.safetyTick()
+ for(let i=0;i<4;i++)await new Promise(setImmediate)
+ assert.equal(swings,1,'emergency melee must respect cooldown')
+ e.stop()
+})
+
+test('unstopped failed Pathfinder and diverged BDS coordinates forbid fallback attack',async()=>{
+ for(const retreat of [
+   {ok:false,attempted:true,pathfinderStopRequested:false,reason:'retreat_pathfinder_error'},
+   {ok:false,attempted:false,reason:'retreat_bds_client_position_diverged'},
+   {ok:false,attempted:false,reason:'retreat_bds_position_unavailable'}
+ ]){
+  const f=fixture(),e=new AliceBedrockRuntime({...f,policies:await policies()})
+  e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+  f.bot.health=8
+  const enemy={id:182,name:'zombie',position:vec(1,64,0)}
+  f.bot.entities[182]=enemy
+  e.threat=()=>({type:'SURVIVE',target:enemy})
+  f.operator.retreatFrom=async()=>retreat
+  let swings=0
+  f.operator.attackOnce=async()=>{swings++;return {attempted:true}}
+  e.safetyTick()
+  for(let i=0;i<4;i++)await new Promise(setImmediate)
+  assert.equal(swings,0,retreat.reason)
+  e.stop()
+ }
 })

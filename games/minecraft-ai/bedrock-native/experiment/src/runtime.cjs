@@ -3,6 +3,7 @@
 // Paper's canonical AliceCore + autonomy/safety/wood/social/inventory policy files
 // are loaded by the entrypoint. The game actions are Bedrock-specific adapters.
 const {BedrockOperations,qty,WOOD_LOGS} = require('./operations.cjs')
+const {stationaryDefense,defenseDelay}=require('./defensive_melee.cjs')
 const {OllamaPlanner} = require('./planner.cjs')
 const {FollowProgress} = require('./follow_progress.cjs')
 const {FollowInputObservation}=require('./follow_input_observation.cjs')
@@ -223,15 +224,22 @@ class AliceBedrockRuntime {
           safetyPreserved:safetyActive,jobPreserved:!!this.job}))
     }
     this.attackBackoff=new Map();this.observedHurt=new Map()
+    this.recentAttackAttempts=new Map()
     this.onEntityHurt=entity=>{
       const key=attackKey(entity)
       if(key==null)return
-      this.observedHurt.set(key,this.clock())
+      const now=this.clock()
+      this.observedHurt.set(key,now)
       if(this.observedHurt.size>32)this.observedHurt.delete(this.observedHurt.keys().next().value)
-      // Target hurt is observed, but the Bedrock event doesn't establish who caused it.
-      if(this.attackBackoff.has(key)) {
-        this.attackBackoff.delete(key)
-        this.log.log('[Alice safety] target hurt observed (attacker unverified):',entity.name||key)
+      // A target hurt event has NO attacker ID. Correlation within 2s is
+      // explicitly NOT proof Alice dealt damage; do not reset miss backoff.
+      const previous=this.recentAttackAttempts.get(key)
+      const age=previous===undefined?null:now-previous
+      if(this.attackBackoff.has(key)||age!==null&&age>=0&&age<=2000){
+        const kind=HOSTILES.has(entity?.name)?entity.name:'unknown'
+        this.log.log('[Alice safety] target hurt observed (attacker unverified):',
+          JSON.stringify({kind,elapsedMs:age!==null&&age>=0&&age<=2000?age:null,
+            evidence:'target_hurt_attacker_unverified',verifiedCause:false}))
       }
     }
     this.safetyBusy=false;this.timers=[];this.lastQuipAt=clock();this.lastLookAt=0
@@ -1002,35 +1010,39 @@ class AliceBedrockRuntime {
           JSON.stringify({reason:r.reason||'unknown',
             attempted:r.attempted===true,localMovedBlocks:r.localMovedBlocks??null,
             serverMovementVerified:r.serverMovementVerified===true}))
-        // When NO collision-verified away route exists, a nearby spider or
-        // zombie would otherwise simply kill a stationary Alice. Allow one
-        // rate-limited defensive melee swing while keeping all route safety
-        // gates unchanged. Never charge a creeper or chase a target.
-        if(r.ok||r.attempted!==false||
-           !['retreat_flat_geometry_not_verified',
-              'retreat_no_verified_away_corridor'].includes(r.reason)||
-           !this.ready()||!HOSTILES.has(t.name)||t.name==='creeper'||
-           !Object.values(this.bot.entities||{}).includes(t)||
-           !this.bot.entity?.position||!t.position||
-           this.bot.entity.position.distanceTo(t.position)>3.5)return
+        // A failed retreat must not trap Alice without any defensive swing.
+        // This guard never moves: a stopped failed Pathfinder, a known blocked
+        // corridor, or a fresh server-packet-aligned STATIC witness refusal can
+        // permit ONE bounded melee attempt. Divergent position cannot.
+        const defenseGate=stationaryDefense({
+          retreat:r,bot:this.bot,target:t,hostiles:HOSTILES,
+          ready:this.ready(),now:this.clock(),movementEvidence:this.movementEvidence})
+        if(!defenseGate.ok)return
         const key=attackKey(t),previous=key!=null?this.attackBackoff.get(key):null
         if(this.clock()-this.lastCombatAt<1250||
            (previous&&this.clock()<previous.nextAt))return
         this.lastCombatAt=this.clock()
         const defenseStartedAt=this.clock()
+        if(key!=null){
+          this.recentAttackAttempts.set(key,defenseStartedAt)
+          if(this.recentAttackAttempts.size>32)
+            this.recentAttackAttempts.delete(this.recentAttackAttempts.keys().next().value)
+        }
          const defense=await this.ops.attackOnce(t,{signal:controller.signal})
          this.log.log('[Alice safety] action duration:',JSON.stringify({
            kind:mobType,action:'cornered_defense',
            result:defense.verifiedDamage===true?'verified':'unverified',
            durationMs:Math.max(0,this.clock()-defenseStartedAt)}))
         const misses=defense.verifiedDamage?0:Math.min((previous?.misses||0)+1,5)
+        const delay=defenseDelay(misses,{health:this.bot.health,
+          distance:this.bot.entity?.position?.distanceTo?.(t.position)})
         if(key!=null)this.attackBackoff.set(key,{misses,
-          nextAt:this.clock()+Math.min(ATTACK_UNCONFIRMED_MAX_MS,
-            1750*2**Math.max(0,misses-1))})
+          nextAt:this.clock()+delay})
+        if(key!=null&&defense.attempted!==true)this.recentAttackAttempts.delete(key)
         this.log.log('[Alice safety] cornered defense:',JSON.stringify({
-          kind:mobType,retreatReason:r.reason,
+          kind:mobType,retreatReason:r.reason,defenseReason:defenseGate.reason,
           attempted:defense.attempted===true,verifiedDamage:defense.verifiedDamage===true,
-          serverMovementVerified:false}))
+          nextAttemptAfterMs:delay,serverMovementVerified:false}))
       }).catch(e=>this.log.warn('[Alice safety] retreat:',e.message)).finally(()=>{this.safetyBusy=false})
     }else{
       // An attack cooldown must never suppress a newly urgent retreat.
@@ -1040,13 +1052,19 @@ class AliceBedrockRuntime {
       if(previous&&this.clock()<previous.nextAt)return
       this.lastCombatAt=this.clock();this.safetyBusy=true
       const attackStartedAt=this.clock()
+      if(key!=null){
+        this.recentAttackAttempts.set(key,attackStartedAt)
+        if(this.recentAttackAttempts.size>32)
+          this.recentAttackAttempts.delete(this.recentAttackAttempts.keys().next().value)
+      }
        this.ops.attackOnce(t).then(r=>{
+        if(key!=null&&r.attempted!==true)this.recentAttackAttempts.delete(key)
          this.log.log('[Alice safety] action duration:',JSON.stringify({
            kind:mobType,action:'attack',result:r.verifiedDamage===true?'verified':'unverified',
            durationMs:Math.max(0,this.clock()-attackStartedAt)}))
         if(key!=null){
-          // If no target hurt has been observed since the previous attack,
-          // increasingly back off instead of spamming unverified packets.
+          // No attacker identity on target hurt events: never count them as
+          // confirmed damage or silently clear an unverified attack backoff.
           const prev=previous?.misses||0
           const misses=r.verifiedDamage?0:Math.min(prev+1,5)
           const delay=r.reason==='out_of_reach'?ATTACK_OUT_OF_RANGE_MS:

@@ -66,3 +66,26 @@ test('actual Pathfinder failures still report attempted navigation without grant
     assert(!JSON.stringify(result).includes('PRIVATE_TRANSPORT_ERROR'))
   }
 })
+
+test('failed emergency goto requests stop before stationary defensive handoff',async()=>{
+ const f=fixture()
+ let stopped=0
+ f.bot.pathfinder.stop=()=>{stopped++}
+ f.bot.pathfinder.goto=()=>{f.calls.goto++;throw Error('PRIVATE_PATHFINDER_ERROR')}
+ const result=await new BedrockOperations({bot:f.bot,api:f.api}).retreatFrom(f.target)
+ assert.equal(result.reason,'retreat_pathfinder_error')
+ assert.equal(result.attempted,true)
+ assert.equal(result.pathfinderStopRequested,true)
+ assert.equal(stopped,1)
+ assert.equal(result.serverMovementVerified,false)
+})
+test('guard denial does not stop Pathfinder or give permission to move',async()=>{
+ const f=fixture()
+ let stopped=0
+ f.bot.pathfinder.stop=()=>{stopped++}
+ f.bot.pathfinder.goto=()=>{throw Error('navigation_scout_bds_position_unavailable')}
+ const result=await new BedrockOperations({bot:f.bot,api:f.api}).retreatFrom(f.target)
+ assert.equal(result.attempted,false)
+ assert.equal(result.pathfinderStopRequested,false)
+ assert.equal(stopped,0)
+})
