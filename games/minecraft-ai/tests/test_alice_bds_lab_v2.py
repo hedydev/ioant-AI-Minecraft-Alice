@@ -147,6 +147,8 @@ class V2ArchiveTests(unittest.TestCase):
         mac=(SCRIPTS/"alice-bds-lab-v2-mac.sh").read_text()
         self.assertIn("witness-lab-v2-check",dispatcher)
         self.assertIn("witness-lab-v2-prepare",dispatcher)
+        accepted=dispatcher.split('case "$action" in',1)[1].split('esac',1)[0]
+        self.assertIn("|witness-lab-v2-check|witness-lab-v2-prepare|",accepted)
         self.assertIn('alice-bds-lab-v2-mac.sh',dispatcher)
         self.assertIn("v2DirectoryOnly",mac)
         self.assertIn("productionWorldModified",mac)
