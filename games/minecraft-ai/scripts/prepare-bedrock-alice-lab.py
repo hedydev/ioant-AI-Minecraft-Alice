@@ -30,8 +30,12 @@ def prepare(source, manifest_file, destination, *, run_verify=mod.verify):
         raise ValueError('Sandbox destination already exists; will not overwrite it')
     if destination==source or source in destination.parents or destination in source.parents:
         raise ValueError('Sandbox must be a separate sibling, not inside production server')
-    if destination.name!='minecraft-bedrock-alice-lab':
-        raise ValueError('Only dedicated minecraft-bedrock-alice-lab directory is allowed')
+    if destination.name not in ('minecraft-bedrock-alice-lab',
+                               'minecraft-bedrock-alice-lab-v2'):
+        raise ValueError('Only explicitly named Alice lab directories are allowed')
+    is_v2 = destination.name == 'minecraft-bedrock-alice-lab-v2'
+    if is_v2 and destination.parent.resolve(strict=True) != source.parent:
+        raise ValueError('v2 lab must be the exact production sibling')
     result=run_verify(manifest_file,source)
     if result['worlds']!=['worlds/'+WORLD]:
         raise ValueError('Manifest must contain ONLY the selected Bedrock level world')
@@ -42,7 +46,13 @@ def prepare(source, manifest_file, destination, *, run_verify=mod.verify):
         # Never follow nested symlinks into private files or a different world
         # while copying a LIVE BDS installation's non-world runtime assets.
         for entry in source.iterdir():
-            if entry.name in ('worlds','logs',MARKER):continue
+            excluded = ('worlds','logs',MARKER)
+            if is_v2:
+                # Fresh fixture must not inherit real server player records,
+                # scripts, per-module secrets or operator permissions.
+                excluded += ('config','behavior_packs','allowlist.json',
+                             'permissions.json','whitelist.json')
+            if entry.name in excluded:continue
             if entry.is_symlink():raise ValueError('Refusing to copy server symlink: '+entry.name)
             target=tmp/entry.name
             if entry.is_dir():
@@ -72,6 +82,12 @@ def prepare(source, manifest_file, destination, *, run_verify=mod.verify):
         props=tmp/'server.properties'
         before=props.read_text()
         update={'server-port':str(PORT),'server-portv6':str(PORT+1),'server-name':'AliceAI Lab (disposable)','level-name':WORLD,'allow-list':'false','online-mode':'true'}
+        if is_v2:
+            update.update({'server-name':'AliceAI v2 Lab (network-isolated)',
+                           'allow-list':'true','enable-lan-visibility':'false',
+                           'allow-inbound-script-debugging':'false',
+                           'allow-outbound-script-debugging':'false',
+                           'script-debugger-auto-attach':'disabled'})
         output=[]
         for line in before.splitlines():
             key=line.split('=',1)[0].strip() if '=' in line and not line.startswith('#') else ''
@@ -80,7 +96,15 @@ def prepare(source, manifest_file, destination, *, run_verify=mod.verify):
             else:output.append(line)
         output.extend(k+'='+v for k,v in update.items())
         props.write_text('\n'.join(output)+'\n')
-        (tmp/MARKER).write_text(json.dumps({'version':1,'kind':'alice-disposable-bedrock-lab','source':str(source),'port':PORT,'world':WORLD,'backupSha256':result['sha256']},indent=2)+'\n')
+        if is_v2:
+            # Explicit empty player allowlist; never reuse production's.
+            (tmp/'allowlist.json').write_text('[]\n')
+        marker={'version':1,'kind':'alice-disposable-bedrock-lab',
+                'source':str(source),'port':PORT,'world':WORLD,
+                'backupSha256':result['sha256']}
+        if is_v2:
+            marker['labGeneration']='fresh-isolated-v2'
+        (tmp/MARKER).write_text(json.dumps(marker,indent=2)+'\n')
         tmp.rename(destination)
     finally:
         if tmp.exists():shutil.rmtree(tmp)
