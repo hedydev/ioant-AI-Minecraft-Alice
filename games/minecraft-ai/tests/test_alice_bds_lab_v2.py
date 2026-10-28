@@ -142,6 +142,17 @@ class V2ArchiveTests(unittest.TestCase):
         self.assertEqual(result["reason"],"configured_manifest_unavailable")
         self.assertFalse(self.v2.exists())
 
+    def test_mac_action_split_and_sanitized_schema(self):
+        dispatcher=(SCRIPTS/"alice-mac.sh").read_text()
+        mac=(SCRIPTS/"alice-bds-lab-v2-mac.sh").read_text()
+        self.assertIn("witness-lab-v2-check",dispatcher)
+        self.assertIn("witness-lab-v2-prepare",dispatcher)
+        self.assertIn('alice-bds-lab-v2-mac.sh',dispatcher)
+        self.assertIn("v2DirectoryOnly",mac)
+        self.assertIn("productionWorldModified",mac)
+        self.assertNotIn("bedrock_server",mac)
+        self.assertNotIn("sudo",mac)
+
 
 if __name__ == "__main__":
     unittest.main()

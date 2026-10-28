@@ -1,3 +1,8 @@
+## 2026-10-28 — v2 fresh archived lab split command interface
+
+- Added `witness-lab-v2-check` (operator's non-mutating archive verification and temporary isolated restore) and `witness-lab-v2-prepare` (separately explicit new-only v2 directory creation). Mac wrapper strictly sanitizes fields and saves `AliceAI-BDS-Lab-v2-check-*.json` / `...-prepare-*.json` to Desktop; never starts BDS. Reuses previously reviewed archive/prod-target validation, but overrides destination **in a separate Python process only** to exact `~/minecraft-bedrock-alice-lab-v2` while retaining v1 and three production servers.
+- Fresh v2 clones avoid inheriting production `config`, `behavior_packs`, `permissions.json`, `allowlist.json`, `whitelist.json`; `allow-list=true`, empty allowlist, `enable-lan-visibility=false` and script debugging disabled from first creation. Production BDS is not restarted, no UDP host bind. Do not call the v2 lab runnable until Script API pack/Beta and guarded network namespace child startup are independently developed and tested. Tests are offline fixtures and user full Mac/Mint regression still pending.
+
 ## 2026-10-26 01:49 — loopback is DOWN inside real unprivileged netns; ephemeral activation capability check
 
 - Uploaded user JSON: `netns-postmortem`, `state=lab_probe_one_shot_consumed`, `isolatedLoopbackState=down`, stdout not retained, original production BDS/world untouched. The fresh child namespace query was performed with socket-local SIOCGIFFLAGS and is trustworthy about that new namespace, unlike the earlier inherited sysfs `up`; it does **not** reveal the exited BDS process's historical stderr or establish its precise crash cause.
