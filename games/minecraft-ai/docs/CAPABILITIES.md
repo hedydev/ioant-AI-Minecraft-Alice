@@ -1,3 +1,7 @@
+## 2026-10-29 — v2 duplicate server.properties guards (source-only)
+
+- Reviewed fresh v2 archival lab preparation and found that repeated keys in source server.properties could survive after the first forced safe value, allowing a later stale port/allow-list/LAN/debug setting to override intended v2 isolation. v2 now writes exactly one value for each forced property; the legacy v1 rewrite stays unchanged. Added offline fixture with duplicate allow-list, LAN, port and debugger entries. No lab directory or production server was touched by this source change; Mac Python/Mint Node24 full regression and all live v2 acceptance remain pending. Do not start BDS, replay the consumed v1 probe, or treat this as BDS witness success.
+
 ## 2026-10-25 — Bedrock stationary self-defense P0, source staged
 
 - User approved Phase 1 combat survival repair. Last 3-hour acceptance evidence (2026-10-25 23:31 +08): 6,236 entries, 232 death observations, 496 failed retreat results split 212 `retreat_pathfinder_error`, 174 `retreat_flat_geometry_not_verified`, 110 `retreat_no_verified_away_corridor`; 132 cornered melee attempts and 132 unattributed target-hurt events. No verified independent BDS positions or autonomous walking. The old runaway client was started before current source sync; disk changes are NOT live process proof.

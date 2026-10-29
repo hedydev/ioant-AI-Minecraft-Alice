@@ -84,6 +84,31 @@ class V2ArchiveTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"already exists"):
             self.prepare(self.v2)
 
+    def test_v2_duplicate_server_properties_cannot_override_guards(self):
+        with (self.prod/"server.properties").open("a",encoding="utf-8") as f:
+            f.write("allow-list=false\n"
+                    "enable-lan-visibility=true\n"
+                    "server-port=19132\n"
+                    "server-portv6=19133\n"
+                    "script-debugger-auto-attach=enabled\n"
+                    "allow-list=false\n")
+        self.prepare(self.v2)
+        props=(self.v2/"server.properties").read_text().splitlines()
+        expected={
+            "allow-list":"true",
+            "enable-lan-visibility":"false",
+            "server-port":"17880",
+            "server-portv6":"17881",
+            "script-debugger-auto-attach":"disabled",
+            "allow-inbound-script-debugging":"false",
+            "allow-outbound-script-debugging":"false",
+        }
+        for key,value in expected.items():
+            with self.subTest(key=key):
+                matches=[line.split("=",1)[1] for line in props
+                         if "=" in line and line.split("=",1)[0].strip()==key]
+                self.assertEqual(matches,[value])
+
     def test_only_exact_v2_sibling_name_is_eligible(self):
         for dest in (self.home/"minecraft-bedrock-alice-lab-v3",
                      self.home/"other"/V2.V2_NAME):

@@ -89,12 +89,22 @@ def prepare(source, manifest_file, destination, *, run_verify=mod.verify):
                            'allow-outbound-script-debugging':'false',
                            'script-debugger-auto-attach':'disabled'})
         output=[]
+        seen_v2=set()
         for line in before.splitlines():
             key=line.split('=',1)[0].strip() if '=' in line and not line.startswith('#') else ''
             if key in update:
-                output.append(key+'='+update.pop(key))
+                if is_v2:
+                    # Every forced v2 setting must occur exactly once; a stale
+                    # later duplicate could otherwise override the safe value.
+                    if key in seen_v2:
+                        continue
+                    seen_v2.add(key)
+                    output.append(key+'='+update[key])
+                else:
+                    output.append(key+'='+update.pop(key))
             else:output.append(line)
-        output.extend(k+'='+v for k,v in update.items())
+        output.extend(k+'='+v for k,v in update.items()
+                      if not is_v2 or k not in seen_v2)
         props.write_text('\n'.join(output)+'\n')
         if is_v2:
             # Explicit empty player allowlist; never reuse production's.

@@ -1,3 +1,7 @@
+## 2026-10-29 — v2 duplicate server.properties guards (source-only)
+
+- Reviewed fresh v2 archival lab preparation and found that repeated keys in source server.properties could survive after the first forced safe value, allowing a later stale port/allow-list/LAN/debug setting to override intended v2 isolation. v2 now writes exactly one value for each forced property; the legacy v1 rewrite stays unchanged. Added offline fixture with duplicate allow-list, LAN, port and debugger entries. No lab directory or production server was touched by this source change; Mac Python/Mint Node24 full regression and all live v2 acceptance remain pending. Do not start BDS, replay the consumed v1 probe, or treat this as BDS witness success.
+
 ## 2026-10-26 — Fix missing postmortem_gate definition
 
 - User ran Mac Python suite: 210 tests, 3 errors, 3 skipped. All three errors traced to exactly one missing source definition in `scripts/alice-bds-lab-probe.py`: tests and `run_action("netns-postmortem")` referenced `postmortem_gate()`, but the function was accidentally omitted in prior commit. This was not a Python 3.15 compatibility issue.
