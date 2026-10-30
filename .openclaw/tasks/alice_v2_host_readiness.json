@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "title": "Alice v2 BDS lab host readiness (non-mutating)",
+  "steps": [
+    {
+      "name": "readiness_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-v2-host-readiness.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "readonly_host_check",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-v2-host-readiness.py",
+      "args": [
+        "--check",
+        "@output_dir",
+        "tedz@192.168.0.104"
+      ],
+      "timeoutSeconds": 40
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "v2_host_readiness",
+      "file": "alice_v2_host_readiness.json",
+      "format": "json"
+    }
+  ]
+}
