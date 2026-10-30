@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Prove nonroot user netns, loopback, then zero capabilities before executable",
+  "steps": [
+    {
+      "name": "nonroot_cap_drop_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-netns-nonroot-cap-drop.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "mint_nonroot_cap_drop",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-netns-nonroot-cap-drop.py",
+      "args": [
+        "--audit",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 46
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "nonroot_cap_drop",
+      "file": "netns_nonroot_cap_drop.json",
+      "format": "json"
+    }
+  ]
+}
