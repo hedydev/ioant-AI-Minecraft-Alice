@@ -20,9 +20,9 @@ except OSError as exc:
 print(json.dumps(x,separators=(',',':')))
 '''
 out={}
-for name,mode in (('root','--map-root-user'),('current','--map-current-user')):
+for name,mode in (('root','--map-root-user'),('current','--map-current-user'),('currentWithCaps','--map-current-user')):
  try:
-  p=subprocess.run(['/usr/bin/unshare','--user',mode,'--net','--',
+  p=subprocess.run(['/usr/bin/unshare','--user',mode,*(['--keep-caps'] if name=='currentWithCaps' else []),'--net','--',
      '/usr/bin/python3','-I','-c',child,str(os.getuid())],
      capture_output=True,text=True,timeout=9,check=False)
   if p.returncode==0 and len(p.stdout)<450:
@@ -40,11 +40,11 @@ for name,mode in (('root','--map-root-user'),('current','--map-current-user')):
    out[name]={'state':'failed','reason':reason}
  except (OSError,ValueError,subprocess.SubprocessError):
   out[name]={'state':'unavailable'}
-print(json.dumps({'state':'observed','root':out['root'],'current':out['current']},separators=(',',':')))
+print(json.dumps({'state':'observed','root':out['root'],'current':out['current'],'currentWithCaps':out['currentWithCaps']},separators=(',',':')))
 """
 def validate(x):
-    if not isinstance(x,dict) or set(x)!={'state','root','current'} or x['state']!='observed':return None
-    for k in ('root','current'):
+    if not isinstance(x,dict) or set(x)!={'state','root','current','currentWithCaps'} or x['state']!='observed':return None
+    for k in ('root','current','currentWithCaps'):
         v=x[k]
         if not isinstance(v,dict) or v.get('state') not in ('entered','failed','invalid_result','unavailable'):return None
         if v['state']=='entered':
@@ -72,7 +72,7 @@ def run(output):
     print(json.dumps({'state':'observed' if value else 'unavailable'}))
 def selftest():
     a={'state':'observed','root':{'state':'entered','euidIsZero':True,'uidPreserved':False,'loSet':'up'},
-       'current':{'state':'entered','euidIsZero':False,'uidPreserved':True,'loSet':'permission_denied'}}
+       'current':{'state':'entered','euidIsZero':False,'uidPreserved':True,'loSet':'permission_denied'},'currentWithCaps':{'state':'entered','euidIsZero':False,'uidPreserved':True,'loSet':'up'}}
     assert validate(a) and validate({**a,'current':{'state':'failed','reason':'permission_denied'}})
     print('ALICE_NETNS_SECONDARY_SELFTEST_PASS')
 if __name__=='__main__':
