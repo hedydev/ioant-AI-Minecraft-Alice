@@ -66,7 +66,7 @@ def accept(x):
         if not isinstance(item,dict) or set(item)!={'step','state'} or (
             item['step'] not in ('pack-stage','beta-check','beta-enable','netns-check',
              'netns-probe','aborted')) or not isinstance(item['state'],str) or
-            not re.fullmatch(r'[A-Za-z0-9_]{1,80}',item['state'])):
+            not re.fullmatch(r'[A-Za-z0-9_]{1,80}',item['state']):
             return None
     return x
 def run(output,target):
