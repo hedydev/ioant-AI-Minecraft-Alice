@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Two coordinated 17879 querytarget readings gated on live Alice file ingestion",
+  "steps": [
+    {
+      "name": "coord_witness_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-coordinated-witness.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "coord_witness_live",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-coordinated-witness.py",
+      "args": [
+        "--run",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 135
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "coord_witness",
+      "file": "alice_coord_witness.json",
+      "format": "json"
+    }
+  ]
+}
