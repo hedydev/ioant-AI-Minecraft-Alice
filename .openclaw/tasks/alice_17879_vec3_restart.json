@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Safely reload existing 17879 Alice client with Vec3 barrier fix only",
+  "steps": [
+    {
+      "name": "vec3_restart_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-vec3-escort-restart.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "one_client_replacement_only",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-vec3-escort-restart.py",
+      "args": [
+        "--restart",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 270
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "vec3_restart",
+      "file": "alice_17879_client_restart.json",
+      "format": "json"
+    }
+  ]
+}
