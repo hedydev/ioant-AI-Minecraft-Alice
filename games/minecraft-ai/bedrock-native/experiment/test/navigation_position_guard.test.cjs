@@ -8,8 +8,9 @@ function setup(pos={x:0.5,y:69,z:0.5}){
    setGoal(goal){calls.push(['setGoal',goal]);return 'set'},
    stop(){calls.push(['stop'])}
  }}
- const e={get:()=>({lastSource:'bds_querytarget',latestFeet:{x:.5,y:69,z:.5},
-   independentSamples:3,lastAt:9000})}
+ const e={get:()=>({independentSource:'bds_querytarget',
+   independentLatestFeet:{x:.5,y:69,z:.5},independentAt:9000,
+   independentPreviousAt:8600,independentSamples:3})}
  return {bot,e,calls}
 }
 test('pathfinder goto and setGoal both admit fresh aligned BDS position',async()=>{
@@ -38,8 +39,9 @@ test('GATHER goto refuses local/server drift; cancellation remains allowed',()=>
 })
 test('untrusted stale BDS witness fails closed for normal follow',()=>{
  const {bot,e}=setup()
- e.get=()=>({lastSource:'bds_querytarget',latestFeet:{x:.5,y:69,z:.5},
-    independentSamples:1,lastAt:9000})
+ e.get=()=>({independentSource:'bds_querytarget',
+    independentLatestFeet:{x:.5,y:69,z:.5},independentAt:9000,
+    independentPreviousAt:null,independentSamples:1})
  installNavigationPositionGuard(bot,e,{clock:()=>10000})
  assert.equal(bot.pathfinder.setGoal({dynamic:true}),false)
 })

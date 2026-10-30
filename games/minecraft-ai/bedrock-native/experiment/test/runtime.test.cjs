@@ -2364,8 +2364,9 @@ test('nighttime with no bed/materials chooses guarded short relocation instead o
      shapes:floor?[[0,0,0,1,1,1]]:[],position:vec(Math.floor(pos.x),Math.floor(pos.y),Math.floor(pos.z))}
  }
  f.setItems([])
- const evidence={get:()=>({lastSource:'bds_querytarget',latestFeet:{x:.5,y:69,z:.5},
-   lastAt:now,independentSamples:4,authoritativeSamples:4,received:0}),
+ const evidence={get:()=>({independentSource:'bds_querytarget',
+   independentLatestFeet:{x:.5,y:69,z:.5},independentAt:now,
+   independentPreviousAt:now-500,independentSamples:4,authoritativeSamples:4,received:0}),
    checkpoint:()=>({events:4,position:{x:.5,y:69,z:.5}})}
  const e=new AliceBedrockRuntime({...f,policies:p,movementEvidence:evidence})
  e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
@@ -2550,7 +2551,9 @@ test('fresh aligned BDS evidence wakes the next decision without waiting the act
  await e.idleTick()
  assert.equal(e.lastIdleHold.reason,'scout_bds_position_unavailable')
  e.nextIdleAt=now+120000
- proof={lastSource:'bds_querytarget',independentSamples:2,latestFeet:f.bot.entity.position,lastAt:now}
+ proof={independentSource:'bds_querytarget',independentSamples:2,
+   independentLatestFeet:f.bot.entity.position,independentAt:now,
+   independentPreviousAt:now-500}
  await e.idleTick()
  assert.equal(e.navigationHold,null)
  assert(e.lastWorldRoutine)
@@ -2560,8 +2563,9 @@ test('fresh aligned BDS evidence wakes the next decision without waiting the act
 test('production startup chooses intent while waiting for landing, without spending an action cooldown',async()=>{
  let now=100000
  const f=fixture(()=>now)
- const proof={get:()=>({lastSource:'bds_querytarget',independentSamples:2,
-   latestFeet:f.bot.entity.position,lastAt:now})}
+ const proof={get:()=>({independentSource:'bds_querytarget',independentSamples:2,
+   independentLatestFeet:f.bot.entity.position,independentAt:now,
+   independentPreviousAt:now-500})}
  const e=new AliceBedrockRuntime({...f,policies:await policies(),movementEvidence:proof,
    requireBdsAlignedExplore:true})
  e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
@@ -2722,9 +2726,9 @@ test('night survival checks a fresh route despite two-minute raw-material cooldo
    return {name:floor?'oak_planks':'air',boundingBox:floor?'block':'empty',
      shapes:floor?[[0,0,0,1,1,1]]:[]}
  }
- const evidence={get:()=>({lastSource:'bds_querytarget',
-   latestFeet:{x:.5,y:69,z:.5},lastAt:now,
-   independentSamples:4,authoritativeSamples:4}),
+ const evidence={get:()=>({independentSource:'bds_querytarget',
+   independentLatestFeet:{x:.5,y:69,z:.5},independentAt:now,
+   independentPreviousAt:now-500,independentSamples:4,authoritativeSamples:4}),
    checkpoint:()=>({events:4,position:{x:.5,y:69,z:.5}})}
  const e=new AliceBedrockRuntime({...f,policies:p,movementEvidence:evidence})
  e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
