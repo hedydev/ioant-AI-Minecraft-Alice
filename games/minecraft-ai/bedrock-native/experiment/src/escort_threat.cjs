@@ -13,7 +13,11 @@ function observedHostileBarrier(bot,target,{maxDistance=12}={}){
  const steps=Math.ceil(len/0.45)
  for(let i=2;i<steps-1;i++){
   const f=i/steps
-  const p={x:from.x+dx*f,y:from.y+1.15+dy*f,z:from.z+dz*f}
+  // The live Bedrock Mineflayer world adapter expects Vec3, not a plain
+  // {x,y,z} record. Passing a record throws in the world reader and silently
+  // turns every enclosed hostile into 'unknown'. Do not assume loaded blocks.
+  if(typeof from.offset!=='function')return 'unknown'
+  const p=from.offset(dx*f,1.15+dy*f,dz*f)
   let block
   try{block=bot.blockAt(p)}catch{return 'unknown'}
   if(!block||typeof block.name!=='string')return 'unknown'
