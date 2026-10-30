@@ -34,7 +34,7 @@ SAFE_PROPS = {
 CONTROLLED = set(SAFE_PROPS)
 
 
-def beta_gate():
+def beta_gate(*, lab=None):
     spec = importlib.util.spec_from_file_location("alice_lab_beta_for_probe",
                                                    HERE / "alice-bds-lab-beta.py")
     if spec is None or spec.loader is None:
@@ -44,6 +44,14 @@ def beta_gate():
     # pack_guard() returns (lab_pack_module, world), not (beta_module, world).
     # The lab-pack module owns require_lab_stopped(); returning the beta
     # module caused AttributeError before the first BDS launch.
+    if lab is not None:
+        candidate = Path(lab)
+        if (candidate.name != 'minecraft-bedrock-alice-lab-v2' or
+            candidate.parent != Path.home() or candidate.is_symlink() or
+            not candidate.is_dir()):
+            raise ValueError('v2_lab_missing')
+        reviewed = module.pack_guard
+        module.pack_guard = lambda: reviewed(lab=candidate)
     lab_pack, world = module.pack_guard()
     if not callable(getattr(lab_pack, "require_lab_stopped", None)):
         raise ValueError("lab_process_guard_unavailable")
@@ -206,7 +214,7 @@ def namespace_loopback_state(run=subprocess.run):
         return "unverified"
 
 
-def postmortem_gate():
+def postmortem_gate(*, lab=None):
     """Validate ONLY the stopped, named existing lab for read-only diagnosis.
 
     The first startup correctly requires byte-identical installed/source pack
@@ -225,6 +233,13 @@ def postmortem_gate():
     spec.loader.exec_module(module)
     if os.geteuid() == 0:
         raise ValueError("refuse_root_python")
+    if lab is not None:
+        candidate = Path(lab)
+        if (candidate.name != 'minecraft-bedrock-alice-lab-v2' or
+            candidate.parent != Path.home() or candidate.is_symlink() or
+            not candidate.is_dir()):
+            raise ValueError('v2_lab_missing')
+        module.LAB = candidate
     module.require_eligible()  # Exact lab marker/source + BDS process safety.
     if not callable(getattr(module, "require_lab_stopped", None)):
         raise ValueError("lab_process_guard_unavailable")
@@ -407,7 +422,7 @@ def probe(lab, *, duration=12, popen=subprocess.Popen, sleep=time.sleep,
                     pass
 
 
-def run_action(mode):
+def run_action(mode, *, lab=None):
     netns = mode.startswith("netns-")
     stage = mode[6:] if netns else mode
     if stage not in ("check", "probe", "postmortem"):
@@ -418,10 +433,10 @@ def run_action(mode):
     if stage == "postmortem":
         if not netns:
             raise ValueError("invalid_action")
-        gate, lab = postmortem_gate()
+        gate, lab = postmortem_gate(lab=lab)
         gate.require_lab_stopped()
         return lab_probe_postmortem(lab)
-    gate, lab = beta_gate()
+    gate, lab = beta_gate(lab=lab)
     gate.require_lab_stopped()
     # A netns rejection must happen BEFORE creating the one-shot lock or
     # any lab-only backup/config edits, so failure cannot consume the probe.
