@@ -30,12 +30,13 @@ def prepare(source, manifest_file, destination, *, run_verify=mod.verify):
         raise ValueError('Sandbox destination already exists; will not overwrite it')
     if destination==source or source in destination.parents or destination in source.parents:
         raise ValueError('Sandbox must be a separate sibling, not inside production server')
-    if destination.name not in ('minecraft-bedrock-alice-lab',
-                               'minecraft-bedrock-alice-lab-v2'):
+    generations={'minecraft-bedrock-alice-lab-v2':'fresh-isolated-v2',
+                 'minecraft-bedrock-alice-lab-v3':'fresh-isolated-v3'}
+    if destination.name not in ('minecraft-bedrock-alice-lab', *generations):
         raise ValueError('Only explicitly named Alice lab directories are allowed')
-    is_v2 = destination.name == 'minecraft-bedrock-alice-lab-v2'
-    if is_v2 and destination.parent.resolve(strict=True) != source.parent:
-        raise ValueError('v2 lab must be the exact production sibling')
+    strict_new = destination.name in generations
+    if strict_new and destination.parent.resolve(strict=True) != source.parent:
+        raise ValueError('isolated lab must be the exact production sibling')
     result=run_verify(manifest_file,source)
     if result['worlds']!=['worlds/'+WORLD]:
         raise ValueError('Manifest must contain ONLY the selected Bedrock level world')
@@ -47,7 +48,7 @@ def prepare(source, manifest_file, destination, *, run_verify=mod.verify):
         # while copying a LIVE BDS installation's non-world runtime assets.
         for entry in source.iterdir():
             excluded = ('worlds','logs',MARKER)
-            if is_v2:
+            if strict_new:
                 # Fresh fixture must not inherit real server player records,
                 # scripts, per-module secrets or operator permissions.
                 excluded += ('config','behavior_packs','allowlist.json',
@@ -82,8 +83,10 @@ def prepare(source, manifest_file, destination, *, run_verify=mod.verify):
         props=tmp/'server.properties'
         before=props.read_text()
         update={'server-port':str(PORT),'server-portv6':str(PORT+1),'server-name':'AliceAI Lab (disposable)','level-name':WORLD,'allow-list':'false','online-mode':'true'}
-        if is_v2:
-            update.update({'server-name':'AliceAI v2 Lab (network-isolated)',
+        if strict_new:
+            update.update({'server-name':('AliceAI v3 Control (network-isolated)' if
+                                          destination.name.endswith('-v3') else
+                                          'AliceAI v2 Lab (network-isolated)'),
                            'allow-list':'true','enable-lan-visibility':'false',
                            'allow-inbound-script-debugging':'false',
                            'allow-outbound-script-debugging':'false',
@@ -93,7 +96,7 @@ def prepare(source, manifest_file, destination, *, run_verify=mod.verify):
         for line in before.splitlines():
             key=line.split('=',1)[0].strip() if '=' in line and not line.startswith('#') else ''
             if key in update:
-                if is_v2:
+                if strict_new:
                     # Every forced v2 setting must occur exactly once; a stale
                     # later duplicate could otherwise override the safe value.
                     if key in seen_v2:
@@ -104,16 +107,16 @@ def prepare(source, manifest_file, destination, *, run_verify=mod.verify):
                     output.append(key+'='+update.pop(key))
             else:output.append(line)
         output.extend(k+'='+v for k,v in update.items()
-                      if not is_v2 or k not in seen_v2)
+                      if not strict_new or k not in seen_v2)
         props.write_text('\n'.join(output)+'\n')
-        if is_v2:
+        if strict_new:
             # Explicit empty player allowlist; never reuse production's.
             (tmp/'allowlist.json').write_text('[]\n')
         marker={'version':1,'kind':'alice-disposable-bedrock-lab',
                 'source':str(source),'port':PORT,'world':WORLD,
                 'backupSha256':result['sha256']}
-        if is_v2:
-            marker['labGeneration']='fresh-isolated-v2'
+        if strict_new:
+            marker['labGeneration']=generations[destination.name]
         (tmp/MARKER).write_text(json.dumps(marker,indent=2)+'\n')
         tmp.rename(destination)
     finally:
