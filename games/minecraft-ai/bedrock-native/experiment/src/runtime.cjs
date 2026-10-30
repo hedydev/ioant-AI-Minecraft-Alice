@@ -122,6 +122,7 @@ class AliceBedrockRuntime {
     this.lastFollowReportAt=0;this.followPosition=null
     this.followGoalRadius=this.liveBehavior.settings.followDistance;this.lastFollowRadiusChange=0
     this.nextSleepAt=0;this.nextEquipAt=0;this.maintenanceBusy=false
+    this.lastEquipObservation=null
     this.lastSleepOpportunity=null;this.lastSleepOpportunityKey=null
     this.observedBeds=new ObservedBeds({clock,log,
       file:experienceFile?require('node:path').join(
@@ -1264,7 +1265,33 @@ class AliceBedrockRuntime {
     if(this.ready()&&!this.bot.isSleeping&&!this.safetyBusy&&!this.threat())
       this.observedBeds.observe(this.bot)
     if(!this.ready()||this.bot.isSleeping||this.job||this.safetyBusy||
-       this.threat()||this.maintenanceBusy)return
+       this.maintenanceBusy)return
+    // Passive equipment maintenance is inventory-only. It is allowed in the
+    // SURVIVE/low-health hold when no emergency action currently owns Alice;
+    // otherwise threat_nearby + health<14 would permanently prevent using
+    // weapons/armor that a player just handed her.
+    if(this.clock()>=this.nextEquipAt){
+      this.nextEquipAt=this.clock()+20000
+      this.maintenanceBusy=true
+      try{
+        const result=await this.ops.equipAuto({chooseWeapon:this.p.equipment.chooseWeapon})
+        const item=String(result?.item||'').replace(/[^a-z0-9_]/gi,'').slice(0,42)||null
+        const reason=String(result?.reason||'unknown').replace(/[^a-z0-9_]/gi,'').slice(0,64)
+        this.lastEquipObservation={ok:result?.ok===true,
+          kind:['weapon','armor'].includes(result?.kind)?result.kind:'unknown',
+          item,reason,at:this.clock()}
+        if(result?.ok)this.log.log('[Alice equipment] equipped:',JSON.stringify(this.lastEquipObservation))
+        else if(!['no_equipment_available','already_best'].includes(reason))
+          this.log.warn('[Alice equipment] deferred:',JSON.stringify(this.lastEquipObservation))
+      }catch(err){
+        this.lastEquipObservation={ok:false,kind:'unknown',item:null,
+          reason:classifyJobException(err),at:this.clock()}
+        this.log.warn('[Alice equipment] deferred:',JSON.stringify(this.lastEquipObservation))
+      }finally{this.maintenanceBusy=false}
+    }
+    // Threat or low-health recovery still blocks ALL non-equipment activities.
+    // Never launch food, bed, crafting, follow or scout tasks from this branch.
+    if(this.threat()||this.safetyBusy||this.job)return
     const health=this.bot.health,food=this.bot.food
     if(this.clock()>=this.nextFoodAt&&Number.isFinite(food)&&food<18){
       this.nextFoodAt=this.clock()+30000
@@ -1280,17 +1307,6 @@ class AliceBedrockRuntime {
       }
     }
     if(health<14)return
-    // Armor and held weapon maintenance outrank optional sleep.
-    if(this.clock()>=this.nextEquipAt){
-      this.nextEquipAt=this.clock()+20000
-      this.maintenanceBusy=true
-      try{
-        const result=await this.ops.equipAuto({chooseWeapon:this.p.equipment.chooseWeapon})
-        if(result.ok)this.log.log('[Alice equipment] equipped:',JSON.stringify(result))
-        else if(!['no_better_armor','no_weapon','already_best'].includes(result.reason||''))
-          this.log.warn('[Alice equipment] deferred:',JSON.stringify(result))
-      }finally{this.maintenanceBusy=false}
-    }
     // Sleep is an OPPORTUNITY at an observed landmark, never a recurring
     // night-wide search. Stored coordinates are only hints; currently loaded
     // bed block/occupancy, hostile proximity, failure cooldown and BDS start
