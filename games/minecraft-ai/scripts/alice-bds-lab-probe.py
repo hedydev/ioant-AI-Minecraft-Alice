@@ -188,7 +188,7 @@ def trusted_namespace_python():
         return (candidate == Path("/usr/bin/python3")
                 and link.st_uid == 0
                 and resolved.parent == Path("/usr/bin")
-                and re.fullmatch(r"python3\\.[0-9]{1,2}", resolved.name) is not None
+                and re.fullmatch(r"python3\.[0-9]{1,2}", resolved.name) is not None
                 and stat.S_ISREG(meta.st_mode)
                 and meta.st_uid == 0
                 and meta.st_mode & 0o022 == 0
