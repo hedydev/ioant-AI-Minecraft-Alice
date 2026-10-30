@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "On-demand original Bedrock level 17879 two BDS samples after observed respawns; cannot retry",
+  "steps": [
+    {
+      "name": "bounded_witness_contract",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-nofollow-respawn-alignment-two.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "two_server_observations_only",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-nofollow-respawn-alignment-two.py",
+      "args": [
+        "--run",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 145
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "bds_pair",
+      "file": "alice_coord_witness.json",
+      "format": "json"
+    }
+  ]
+}
