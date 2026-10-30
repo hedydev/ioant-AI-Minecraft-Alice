@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "title": "Ephemeral user netns UID mapping diagnostic with no BDS",
+  "steps": [
+    {
+      "name": "uid_mapping_contract_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-netns-uid-diagnostic.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "mint_uid_mapping_probe",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-netns-uid-diagnostic.py",
+      "args": [
+        "--audit",
+        "@output_dir",
+        "tedz@192.168.0.104"
+      ],
+      "timeoutSeconds": 52
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "netns_uid_mapping",
+      "file": "alice_netns_uid_mapping.json",
+      "format": "json"
+    }
+  ]
+}
