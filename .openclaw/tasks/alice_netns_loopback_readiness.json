@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "title": "Ephemeral isolated user netns lo diagnostic",
+  "steps": [
+    {
+      "name": "netns_lo_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-netns-loopback-readiness.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "netns_lo_ephemeral",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-netns-loopback-readiness.py",
+      "args": [
+        "--audit",
+        "@output_dir",
+        "tedz@192.168.0.104"
+      ],
+      "timeoutSeconds": 50
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "netns_lo",
+      "file": "alice_netns_loopback.json",
+      "format": "json"
+    }
+  ]
+}
