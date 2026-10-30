@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "title": "Alice v2 existing report reconciliation without re-execution",
+  "steps": [
+    {
+      "name": "report_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-v2-report-reconcile.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "read_existing_reports",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-v2-report-reconcile.py",
+      "args": [
+        "--inspect",
+        "@output_dir",
+        "1793372400",
+        "1793377200"
+      ],
+      "timeoutSeconds": 20
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "v2_report_audit",
+      "file": "v2_existing_report_audit.json",
+      "format": "json"
+    }
+  ]
+}
