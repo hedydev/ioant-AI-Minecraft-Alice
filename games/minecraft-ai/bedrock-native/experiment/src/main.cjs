@@ -262,6 +262,12 @@ async function main(args=process.argv.slice(2)){
         name.toLowerCase()!==String(bot.username||'').toLowerCase())
         .slice(0,12).map(([name])=>name),
       safetyEnabled:true,followDiagnostic:runtime.lastFollowDiagnostic,
+      escort:runtime.lastEscortDecision&&{
+        reason:runtime.lastEscortDecision.reason,
+        barrier:runtime.lastEscortDecision.barrier,
+        ownerMoving:runtime.lastEscortDecision.ownerMoving,
+        followPermitted:runtime.lastEscortDecision.allowFollow},
+      equipment:runtime.equipmentEvidence(),
       agent:runtime.goalPlanner.snapshot(runtime.liveBehavior.settings.agentMode),
       movementEvidence:{...movementEvidence.get(),witnessStatus:bdsWitness?.lastStatus||'disabled'},
       ...(outboundSummary?{outboundInput:outboundSummary}:{}),
