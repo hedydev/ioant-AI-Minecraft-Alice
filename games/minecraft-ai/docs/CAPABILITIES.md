@@ -1,3 +1,9 @@
+## 2026-10-31 — FOLLOW3 / sheltered auto-food staged live state
+
+- Mac UI already has configurable normal 3 (range 2..12) and occluded 4; follow uses actual feet distance with floor elevation check, visible-owner look throttle, safe Pathfinder staircase endpoint correction. Node24 678/678 and Mac Python266 accepted; original 17879 client reconnected with new code and FOLLOW intent reissued.
+- Existing best weapon/armor maintenance verified by slot/held state, and hunger-driven food consumer checks food increase. New source permits eating behind positively verified solid hostile barrier with no recent damage/critical health; food clears hand then triggers quick equipment re-check. Actual new-process armor replacement and food consumption remain unverified in current observations (food20); no BDS or world modifications.
+- New independent 2-sample BDS alignment true for freshness but **false** for local/server <=0.75; server pair travel0. Do not promote new continuous FOLLOW or stair climbing capability to observed. Older verified 4.65-block movement is historical. See CURRENT_STATE/OPERATIONS for receipts.
+
 ## 2026-10-31 — Food and equipment survival refinement (source only; pending field check)
 
 - Existing automatic best weapon/armor system checks about every 20 seconds; success is only logged after held-item or armor-slot confirmation. On eating, food occupies the hand; new logic forces an early next equipment review after confirmed food recovery. No automatic fabrication or duplication of gear.
