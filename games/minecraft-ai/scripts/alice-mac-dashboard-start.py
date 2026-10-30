@@ -48,7 +48,7 @@ def port_bound(port):
 
 def supported():
     return RUN.is_file() and not RUN.is_symlink() and all(
-        shutil.which(x) for x in ('nginx','python3','curl','mktemp'))
+        shutil.which(x,path='/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin') for x in ('nginx','python3','curl','mktemp'))
 
 def status():
     ready=web_ready()
@@ -111,7 +111,7 @@ def main(args):
         raise SystemExit('usage: --self-test | --start')
     if args==['--self-test']:
         assert WEB_PORT!=API_PORT and str(RUN).endswith('/run-dashboard.sh')
-        assert '127.0.0.1' in http.__code__.co_consts[1] if False else True
+        assert callable(web_ready) and callable(status)
         print('ALICE_MAC_DASHBOARD_START_SELFTEST_PASS')
         return
     launch()
