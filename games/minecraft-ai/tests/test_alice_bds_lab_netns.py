@@ -120,6 +120,34 @@ class NetworkNamespaceTests(unittest.TestCase):
         self.assertNotIn("sudo -S",wrapper)
 
 
+    def test_v2_distro_python_symlink_trusted_target_and_bad_links(self):
+        import stat
+        safe_stat=SimpleNamespace(st_uid=0,st_mode=stat.S_IFREG | 0o755)
+        with patch.object(Path,"is_file",return_value=True), patch.object(
+                Path,"is_symlink",return_value=True), patch.object(
+                Path,"lstat",return_value=SimpleNamespace(st_uid=0)), patch.object(
+                Path,"resolve",return_value=Path("/usr/bin/python3.12")), patch.object(
+                Path,"stat",return_value=safe_stat), patch.object(
+                P.os,"access",return_value=True):
+            self.assertTrue(P.trusted_namespace_python())
+
+        with patch.object(Path,"is_file",return_value=True), patch.object(
+                Path,"is_symlink",return_value=True), patch.object(
+                Path,"lstat",return_value=SimpleNamespace(st_uid=0)), patch.object(
+                Path,"resolve",return_value=Path("/tmp/python3.12")), patch.object(
+                Path,"stat",return_value=safe_stat), patch.object(
+                P.os,"access",return_value=True):
+            self.assertFalse(P.trusted_namespace_python())
+
+        writable_stat=SimpleNamespace(st_uid=0,st_mode=stat.S_IFREG | 0o777)
+        with patch.object(Path,"is_file",return_value=True), patch.object(
+                Path,"is_symlink",return_value=True), patch.object(
+                Path,"lstat",return_value=SimpleNamespace(st_uid=0)), patch.object(
+                Path,"resolve",return_value=Path("/usr/bin/python3.12")), patch.object(
+                Path,"stat",return_value=writable_stat), patch.object(
+                P.os,"access",return_value=True):
+            self.assertFalse(P.trusted_namespace_python())
+
     def test_v2_netns_preflight_only_enables_loopback_in_child_namespace(self):
         calls=[]
         def run(args, **kwargs):
