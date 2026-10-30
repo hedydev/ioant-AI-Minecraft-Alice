@@ -54,7 +54,7 @@ test('autonomous sleep excludes previously rejected bed while leaving other bed 
  const outcome=await sleepNearby(bot,{GoalNear:class{constructor(x,y,z){this.x=x;this.y=y;this.z=z}}},{avoidBed:avoided})
  assert.equal(outcome.ok,true)
  assert.equal(outcome.bedPosition.x,second.position.x)
- assert.equal(visited.length,1)
+ assert.equal(visited.length,0,'in-reach alternative bed uses no unnecessary navigation')
 })
 test('navigation failure and sleep rejection expose distinct stage and exact attempted bed',async()=>{
  const {bot,bed}=fixture();bot.time.timeOfDay=14000
