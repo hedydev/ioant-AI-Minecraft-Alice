@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Alice Mac Python sync preflight read-only diagnosis",
+  "steps": [
+    {
+      "name": "preflight_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mac-python-preflight.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "diagnose_python_preflight",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mac-python-preflight.py",
+      "args": [
+        "--diagnose",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 165
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "mac_preflight",
+      "file": "mac_python_preflight.json",
+      "format": "json"
+    }
+  ]
+}
