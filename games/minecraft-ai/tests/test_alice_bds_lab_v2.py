@@ -110,13 +110,46 @@ class V2ArchiveTests(unittest.TestCase):
                 self.assertEqual(matches,[value])
 
     def test_only_exact_v2_sibling_name_is_eligible(self):
-        for dest in (self.home/"minecraft-bedrock-alice-lab-v3",
+        for dest in (self.home/"minecraft-bedrock-alice-lab-v4",
                      self.home/"other"/V2.V2_NAME):
             with self.subTest(destination=dest):
                 dest.parent.mkdir(exist_ok=True)
                 with self.assertRaisesRegex(ValueError,"allowed|sibling"):
                     self.prepare(dest)
                 self.assertFalse(dest.exists())
+
+    def test_new_v3_control_clone_has_no_pack_beta_or_private_players(self):
+        v3=self.home/"minecraft-bedrock-alice-lab-v3"
+        self.prepare(v3)
+        marker=json.loads((v3/".alice-sandbox.json").read_text())
+        self.assertEqual(marker["labGeneration"],"fresh-isolated-v3")
+        props=(v3/"server.properties").read_text()
+        self.assertIn("server-port=17880",props)
+        self.assertIn("server-portv6=17881",props)
+        self.assertIn("allow-list=true",props)
+        self.assertIn("online-mode=true",props)
+        self.assertIn("enable-lan-visibility=false",props)
+        self.assertEqual((v3/"allowlist.json").read_text(),"[]\\n")
+        for name in ("config","behavior_packs","permissions.json","whitelist.json"):
+            self.assertFalse((v3/name).exists())
+        self.assertEqual((self.prod/"worlds"/"Bedrock level"/"level.dat").read_bytes(),
+                         b"LIVE WORLD")
+        self.assertEqual((self.v1/"spent").read_bytes(),b"DO NOT EDIT")
+        with self.assertRaisesRegex(ValueError,"already exists"):
+            self.prepare(v3)
+
+    def test_v3_duplicate_properties_are_forced_once(self):
+        v3=self.home/"minecraft-bedrock-alice-lab-v3"
+        with (self.prod/"server.properties").open("a") as f:
+            f.write("server-port=19132\\nonline-mode=false\\n"
+                    "allow-list=false\\nserver-portv6=19133\\n")
+        self.prepare(v3)
+        lines=(v3/"server.properties").read_text().splitlines()
+        for key,value in (("server-port","17880"),("server-portv6","17881"),
+                          ("online-mode","true"),("allow-list","true")):
+            entries=[line.split("=",1)[1] for line in lines
+                     if line.startswith(key+"=")]
+            self.assertEqual(entries,[value])
 
     def test_existing_v1_does_not_block_v2_check(self):
         class FakeArchive:
