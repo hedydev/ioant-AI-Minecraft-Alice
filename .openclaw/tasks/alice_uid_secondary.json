@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Differentiate nonroot user netns creation and loopback permission without BDS",
+  "steps": [
+    {
+      "name": "uid_secondary_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-netns-uid-secondary.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "mint_uid_secondary",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-netns-uid-secondary.py",
+      "args": [
+        "--audit",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 52
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "uid_secondary",
+      "file": "alice_uid_secondary.json",
+      "format": "json"
+    }
+  ]
+}
