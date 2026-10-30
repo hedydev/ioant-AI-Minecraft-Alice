@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "title": "Alice Mint Node24 test failure diagnosis without sync",
+  "steps": [
+    {
+      "name": "failure_parser_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mint-node-failure-diag.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "mint_node24_diagnosis",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mint-node-failure-diag.py",
+      "args": [
+        "--diagnose",
+        "@output_dir",
+        "tedz@192.168.0.104"
+      ],
+      "timeoutSeconds": 190
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "mint_node_diag",
+      "file": "mint_node_failure_diag.json",
+      "format": "json"
+    }
+  ]
+}

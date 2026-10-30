@@ -1,3 +1,7 @@
+## 2026-10-31 — Mint Node24 failure diagnosis after first real updated sync
+
+- After compatible Mac Python selection, pinned nonrestart sync `alice_mint_sync_dcf3e742_20261031_7f0ab19d` reached Mint Node24, reporting 658 tests, 652 pass, 6 fail. This is **failed** acceptance; do not deploy or restart Alice/BDS. Existing sync runner captures child output but cannot read its declared artifact when the test step exits nonzero. The new repository task `alice_mint_node_failure_diag` runs only the maintained Mint `alice-mac.sh test` action, **not sync**, with a bounded fixed-target SSH call. It records only fixed Node summary and sanitized failing test names via artifact `mint_node_diag`; no world, console, Git update or service operation.
+
 ## 2026-10-31 — Nonrestart sync blocked by macOS system Python 3.9.6
 
 - The deterministic sync operation `alice_mint_sync_f283c965_20261031_c59d2fa7` returned `failed_or_unverified` with no Mint Node24 summary; later read-only source-hash parity showed the latest navigation files were NOT delivered to Mint. Separate deterministic Mac-only preflight `alice_mac_python_preflight_fb83_20261031_a517d82b` reported Python 3.9.6, `tests_failed`, 225 discovered, with `ERROR: test_acceptance_export (unittest.loader._FailedTest)`. In contrast, fixed `alice_mac_regression` used a compatible Homebrew interpreter and passed 227 tests (3 skipped).
