@@ -9,7 +9,7 @@ from pathlib import Path
 
 TARGET='tedz@192.168.0.104'
 REMOTE=r"""
-import importlib.util,json,os,re,stat,subprocess
+import importlib.util,json,os,re,stat,struct,subprocess
 from pathlib import Path
 h=Path.home(); lab=h/'minecraft-bedrock-alice-lab-v2'
 out={'state':'unverified','onceOnlyConsumed':False,'binaryPresent':False,
@@ -38,6 +38,29 @@ try:
  with binary.open('rb') as f:hdr=f.read(64)
  out['binaryElf64']=hdr[:5]==b'\x7fELF\x02'
  out['binaryArch']='x86_64' if hdr[18:20]==b'\x3e\x00' else ('aarch64' if hdr[18:20]==b'\xb7\x00' else 'other')
+ # Parse ELF64 PT_INTERP directly (readelf is not installed on some Mint hosts).
+ # This is a bounded binary header inspection, not a BDS execution.
+ if out['binaryElf64'] and hdr[5]==1:
+  phoff=struct.unpack_from('<Q',hdr,32)[0]
+  phsize=struct.unpack_from('<H',hdr,54)[0]
+  phnum=struct.unpack_from('<H',hdr,56)[0]
+  if phsize==56 and 0<phnum<64 and 0<=phoff<=st.st_size-phnum*phsize:
+   with binary.open('rb') as elf:
+    elf.seek(phoff)
+    headers=elf.read(phnum*phsize)
+    for i in range(phnum):
+     entry=headers[i*56:(i+1)*56]
+     if struct.unpack_from('<I',entry,0)[0]!=3:continue
+     start=struct.unpack_from('<Q',entry,8)[0]
+     length=struct.unpack_from('<Q',entry,32)[0]
+     if length<1 or length>512 or start+length>st.st_size:continue
+     elf.seek(start)
+     path=elf.read(length).split(b'\0',1)[0].decode('ascii','replace')
+     interp=Path(path)
+     out['elfInterpreterPresent']=interp.is_file()
+     out['elfInterpreterSafe']=(path.startswith('/lib/') or
+       path.startswith('/lib64/')) and '..' not in interp.parts and interp.is_file()
+     break
  readelf=Path('/usr/bin/readelf')
  if readelf.is_file() and not readelf.is_symlink():
   out['readelfAvailable']=True
@@ -62,7 +85,7 @@ try:
            if '=' in line and not line.lstrip().startswith('#'))
   out['labConfigSafe']=(cfg.get('server-port')=='17880'
       and cfg.get('server-portv6')=='17881'
-      and cfg.get('online-mode')=='false')
+      and cfg.get('online-mode')=='true')
   name=cfg.get('level-name','')
   if re.fullmatch(r'[A-Za-z0-9 _-]{1,64}',name):
    level=lab/'worlds'/name/'level.dat'
