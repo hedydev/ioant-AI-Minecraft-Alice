@@ -24,7 +24,7 @@ class V2ResumeTests(unittest.TestCase):
           'observedAtUnix':1793383833,'v2Only':True,
           'productionModified':False,'oldV1Modified':False,
           'productionBdsRestarted':False,'aliceRestarted':False,
-          'credentialStored':False,'state':'not_verified','stages':M.EXPECTED_STAGES,
+          'credentialStored':False,'state':'not_verified','stages':json.loads(json.dumps(M.EXPECTED_STAGES)),
           'doNotRepeat':True}
         path=self.lab/'.alice-v2-activation-result.json'
         path.write_text(json.dumps(payload))
