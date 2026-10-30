@@ -32,6 +32,7 @@ test('adjacent clear Bedrock bed can sleep without moving injured Alice',async()
    pathfinder:{goto:async()=>{walks++},stop(){}},
    async sleep(){sleeps++;this.isSleeping=true}}
  const api={GoalNear:class{}}
+ delete bot.pathfinder // adjacent bed does not require any navigation plugin
  const r=await life.sleepNearby(bot,api,{knownPositions:[bedPosition]})
  assert.equal(r.ok,true)
  assert.equal(sleeps,1)
