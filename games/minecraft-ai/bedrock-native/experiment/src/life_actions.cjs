@@ -146,7 +146,7 @@ async function sleepNearby(bot,api,{signal,radius=12,avoidBed=()=>false,
  if(!canSleepNow(bot))return {ok:false,reason:'not_night_or_thunderstorm_or_wrong_dimension'}
  if(typeof bot.parseBedMetadata!=='function')return {ok:false,reason:'bed_occupancy_unknown'}
  if(bot.isSleeping)return {ok:true,alreadySleeping:true}
- if(typeof bot.sleep!=='function'||!bot.pathfinder?.goto||
+ if(typeof bot.sleep!=='function'||
     (knownPositions===null&&typeof bot.findBlocks!=='function'))
    return {ok:false,reason:'unsupported_sleep_or_navigation'}
  const pos=bot.entity?.position
@@ -177,6 +177,8 @@ async function sleepNearby(bot,api,{signal,radius=12,avoidBed=()=>false,
    // navigation action (especially while Alice is injured indoors).
    const adjacent=bot.entity.position.distanceTo(bed.position)<=2.4
    if(!adjacent){
+     if(typeof bot.pathfinder?.goto!=='function'||typeof api?.GoalNear!=='function')
+       return {ok:false,reason:'unsupported_bed_navigation',bedPosition}
      if(Number.isFinite(bot.health)&&bot.health<14)
        return {ok:false,reason:'low_health_bed_not_adjacent',bedPosition}
      await race(Promise.resolve().then(()=>bot.pathfinder.goto(
