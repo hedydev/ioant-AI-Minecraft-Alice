@@ -159,9 +159,18 @@ class BedrockOperations {
     return r.ok?{...r,message:(r.direction==='withdraw'?'从箱子取出 ':'存入箱子 ')+r.item+' ×'+r.moved}:r
   }
   async equipAuto({chooseWeapon}={}){
+    // Prioritize the held weapon: an unsupported/missing armor equipment ACK
+    // must NEVER indefinitely starve basic self-defense on Bedrock.
+    const weapon=await life.equipBestHeldWeapon(this.bot,chooseWeapon)
+    if(weapon.ok)return {...weapon,kind:'weapon'}
+    // A failed real weapon equip is worth reporting and retrying later rather
+    // than masking the error by another armor transaction in the same tick.
+    if(!['no_weapon','already_best'].includes(weapon.reason))return {...weapon,kind:'weapon'}
     const armor=await life.equipBetterArmor(this.bot)
-    if(armor.ok||armor.reason!=='no_better_armor')return armor
-    return life.equipBestHeldWeapon(this.bot,chooseWeapon)
+    if(armor.ok)return {...armor,kind:'armor'}
+    if(armor.reason!=='no_better_armor')return {...armor,kind:'armor'}
+    return weapon.reason==='already_best'?
+      {ok:false,reason:'already_best'}:{ok:false,reason:'no_equipment_available'}
   }
   inventory(){
     if(!validInventory(this.bot))return null
