@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "title": "Alice Mint read-only source and Node24 parity audit",
+  "steps": [
+    {
+      "name": "parity_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mint-readonly-audit.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 20
+    },
+    {
+      "name": "mint_readonly_parity",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mint-readonly-audit.py",
+      "args": [
+        "--audit",
+        "@output_dir",
+        "tedz@192.168.0.104"
+      ],
+      "timeoutSeconds": 45
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "mint_parity",
+      "file": "mint_readonly_audit.json",
+      "format": "json"
+    }
+  ]
+}
