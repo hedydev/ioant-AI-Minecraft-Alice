@@ -63,6 +63,24 @@ async function equipBestHeldWeapon(bot,chooseWeapon,{signal}={}){
  }
  return {ok:false,reason:'held_item_not_confirmed',item:candidate.name}
 }
+function equipmentSnapshot(bot,chooseWeapon){
+  // Read-only observation; never infer possession from a dropped ground item
+  // or claim a successful equip without a server-backed held/armor update.
+  const name=item=>typeof item?.name==='string'&&/^[a-z0-9_]{1,48}$/.test(item.name)?
+    item.name:null
+  const items=bot.inventory?.items?.()
+  const known=Array.isArray(items)
+  const stock=known?items.filter(safeQty):[]
+  const expected=typeof chooseWeapon==='function'?chooseWeapon(stock):null
+  const armorNames=stock.filter(item=>Object.keys(armorParts).some(p=>armorScore(item.name,p)>0))
+    .slice(0,8).map(name).filter(Boolean)
+  const slots=bot.inventory?.slots
+  const worn=slots&&typeof slots==='object'?
+    Object.fromEntries(Object.entries(armorParts).map(([part,[,index]])=>[part,name(slots[index])])):
+    null
+  return {inventoryKnown:known,weaponInInventory:name(expected),
+    heldItem:name(bot.heldItem),armorInInventory:armorNames,wornArmor:worn}
+}
 function inspectNightBeds(bot,radius=12,{avoidBed=()=>false,knownPositions=null}={}){
   const phase=environment(bot).phase
   const result={status:'unavailable',phase,found:0,eligible:0,
@@ -173,4 +191,4 @@ async function sleepNearby(bot,api,{signal,radius=12,avoidBed=()=>false,
      bedPosition,bedDiagnosis:diagnosis()}
  }
 }
-module.exports={isNight,canSleepNow,hasNearbyBed,inspectNightBeds,monstersNearBed,armorScore,bestArmorChoice,equipBetterArmor,equipBestHeldWeapon,sleepNearby}
+module.exports={isNight,canSleepNow,hasNearbyBed,inspectNightBeds,monstersNearBed,armorScore,bestArmorChoice,equipBetterArmor,equipBestHeldWeapon,equipmentSnapshot,sleepNearby}
