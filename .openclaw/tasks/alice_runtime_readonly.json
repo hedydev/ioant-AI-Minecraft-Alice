@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "title": "Alice read-only runtime status and isolated v2 directory observation",
+  "steps": [
+    {
+      "name": "runtime_status_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-runtime-readonly.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "runtime_status_readonly",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-runtime-readonly.py",
+      "args": [
+        "--audit",
+        "@output_dir",
+        "tedz@192.168.0.104"
+      ],
+      "timeoutSeconds": 40
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "alice_runtime_status",
+      "file": "alice_runtime_readonly.json",
+      "format": "json"
+    }
+  ]
+}
