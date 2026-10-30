@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Two-only BDS/client coordinate alignment checks after verified FOLLOW",
+  "steps": [
+    {
+      "name": "follow_alignment_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-follow-alignment-two.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "follow_alignment_current",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-follow-alignment-two.py",
+      "args": [
+        "--run",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 140
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "follow_alignment",
+      "file": "alice_coord_witness.json",
+      "format": "json"
+    }
+  ]
+}
