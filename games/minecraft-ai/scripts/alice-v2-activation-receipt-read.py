@@ -63,10 +63,12 @@ def accept(x):
         'imports_observed','not_verified') or not isinstance(r['stages'],list) or len(r['stages'])>6:
         return None
     for item in r['stages']:
-        if not isinstance(item,dict) or set(item)!={'step','state'} or (
-            item['step'] not in ('pack-stage','beta-check','beta-enable','netns-check',
-             'netns-probe','aborted')) or not isinstance(item['state'],str) or
-            not re.fullmatch(r'[A-Za-z0-9_]{1,80}',item['state']):
+        if (not isinstance(item,dict) or
+            set(item)!={'step','state'} or
+            item['step'] not in ('pack-stage','beta-check','beta-enable',
+                                 'netns-check','netns-probe','aborted') or
+            not isinstance(item['state'],str) or
+            re.fullmatch(r'[A-Za-z0-9_]{1,80}',item['state']) is None):
             return None
     return x
 def run(output,target):
