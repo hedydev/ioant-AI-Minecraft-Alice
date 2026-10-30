@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "title": "Idempotently start existing Mac Alice dashboard on port 8788 without affecting BDS",
+  "steps": [
+    {
+      "name": "dashboard_launcher_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mac-dashboard-start.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "dashboard_start_verified",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mac-dashboard-start.py",
+      "args": [
+        "--start"
+      ],
+      "timeoutSeconds": 70
+    }
+  ]
+}
