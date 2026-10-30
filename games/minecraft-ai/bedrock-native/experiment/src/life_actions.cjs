@@ -12,8 +12,10 @@ function monstersNearBed(bot,bed){
  return Object.values(bot?.entities||{}).some(e=>{
   const p=e?.position
   if(!p||!(bedHostiles.has(e.name)||e.kind==='Hostile mobs'))return false
-  return Math.abs(p.y-bed.position.y)<=7&&
-   Math.abs(p.x-bed.position.x)<=9&&Math.abs(p.z-bed.position.z)<=9
+  // Bedrock forbids rest near a monster regardless of a separating wall.
+  // Range is 8 horizontal blocks (axis aligned), 5 vertically from bed head.
+  return Math.abs(p.y-bed.position.y)<=5&&
+   Math.abs(p.x-bed.position.x)<=8&&Math.abs(p.z-bed.position.z)<=8
  })
 }
 function armorScore(name,part){
@@ -171,7 +173,16 @@ async function sleepNearby(bot,api,{signal,radius=12,avoidBed=()=>false,
    timer=setTimeout(()=>{onStop();reject(Error('timeout'))},ms)
  })]).finally(()=>{clearTimeout(timer);signal?.removeEventListener('abort',listener)})
  try{
-   await race(Promise.resolve().then(()=>bot.pathfinder.goto(new api.GoalNear(bed.position.x,bed.position.y,bed.position.z,2))),14000,()=>bot.pathfinder.stop?.())
+   // A bed already in reach should never require an unnecessary
+   // navigation action (especially while Alice is injured indoors).
+   const adjacent=bot.entity.position.distanceTo(bed.position)<=2.4
+   if(!adjacent){
+     if(Number.isFinite(bot.health)&&bot.health<14)
+       return {ok:false,reason:'low_health_bed_not_adjacent',bedPosition}
+     await race(Promise.resolve().then(()=>bot.pathfinder.goto(
+       new api.GoalNear(bed.position.x,bed.position.y,bed.position.z,2))),
+       14000,()=>bot.pathfinder.stop?.())
+   }
    if(signal?.aborted)return {ok:false,reason:'cancelled'}
    if(bot.entity.position.distanceTo(bed.position)>3.5)return {ok:false,reason:'bed_not_reached',bedPosition}
    if(!canSleepNow(bot))return {ok:false,reason:'sleep_window_ended',bedPosition}
