@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "After-fast-reader 17879 two fixed single querytarget verification",
+  "steps": [
+    {
+      "name": "afterfast_query_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-after-fast-reader.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "afterfast_two_queries",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-after-fast-reader.py",
+      "args": [
+        "--run",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 140
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "afterfast",
+      "file": "alice_17879_two_query.json",
+      "format": "json"
+    }
+  ]
+}
