@@ -54,8 +54,14 @@ def lab_guard(*,privileged=False):
         raise ValueError('v3_binary_invalid')
     p=load('lab-probe')
     contents,props=p.properties(LAB/'server.properties')
-    if any(props.get(k)!=v for k,v in p.SAFE_PROPS.items()):
-        raise ValueError('v3_config_invalid')
+    # The control is deliberately uninstrumented: content-log-file-enabled
+    # is a probe-only setting and must not be required on this fresh clone.
+    for key in ('server-port','server-portv6','level-name','online-mode',
+                'enable-lan-visibility','allow-list',
+                'allow-inbound-script-debugging','allow-outbound-script-debugging',
+                'script-debugger-auto-attach'):
+        if props.get(key)!=p.SAFE_PROPS[key]:
+            raise ValueError('v3_config_invalid')
     allowed=LAB/'allowlist.json'
     if allowed.is_symlink() or not allowed.is_file() or allowed.read_bytes().strip()!=b'[]':
         raise ValueError('v3_allowlist_invalid')
