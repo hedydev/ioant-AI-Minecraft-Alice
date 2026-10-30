@@ -88,8 +88,8 @@ test('two 250ms-reader observations stay individually ingested inside 4-second w
 })
 test('live main has separate passive fast witness reader and clears it on every shutdown',()=>{
  const main=fs.readFileSync(path.join(__dirname,'../src/main.cjs'),'utf8')
-  assert.match(main,/const witnessTimer=live&&bdsWitness\\?setInterval\\(\\(\\)=>\\{/)
-  assert.match(main,/if\\(!bdsWitness\\.poll\\(movementEvidence\\)\\)return/)
+  assert.match(main,/const witnessTimer=live&&bdsWitness\?setInterval\(\(\)=>\{/)
+  assert.match(main,/if\(!bdsWitness\.poll\(movementEvidence\)\)return/)
   assert.match(main,/reconcileRespawnMirror/)
  assert.match(main,/const statusTimer=live\?setInterval\(\(\)=>\{\s*runtime\.refreshBehavior\(\);publishStatus\(\);reportIdleGate\(\)\s*\},2000\)/)
  assert.equal((main.match(/clearInterval\(witnessTimer\)/g)||[]).length,3)
