@@ -166,6 +166,20 @@ test('independent BDS distance excludes interleaved server packet corrections',(
  assert.equal(e.get().independentPreviousAt,null)
  e.detach()
 })
+test('death in same login invalidates previous-life independent witness',()=>{
+ const c=new EventEmitter();let now=10000
+ const e=attachMovementEvidence(c,{clock:()=>now})
+ c.emit('start_game',{runtime_entity_id:2n,player_position:{x:1,y:65.62,z:2}})
+ now=11000
+ assert.equal(e.ingestIndependentPosition({source:'mcsm_querytarget',
+  uniqueId:'player-id',feet:{x:1,y:64,z:2},observedAt:now-100,
+  serial:'1792572000000000001'}),true)
+ e.beginRespawnEpoch()
+ assert.equal(e.get().independentSamples,0)
+ assert.equal(e.get().independentLatestFeet,null)
+ assert.equal(e.get().loginAt,10000)
+ e.detach()
+})
 test('independent BDS teleport-sized jumps are not counted as walking',()=>{
  const client=new EventEmitter();let at=10000
  const e=attachMovementEvidence(client,{clock:()=>at})

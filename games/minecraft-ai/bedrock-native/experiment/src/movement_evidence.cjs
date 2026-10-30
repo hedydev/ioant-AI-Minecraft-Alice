@@ -86,6 +86,14 @@ function attachMovementEvidence(client,{clock=Date.now,eyeHeight=()=>1.62}={}){
     record(sample.feet,independentSource,null,sample.observedAt,true)
     return true
   }
+  // Respawn does not emit start_game on the existing Bedrock transport.
+  // Old-life BDS witness pairs cannot authorize post-death navigation.
+  function beginRespawnEpoch(){
+    independentSamples=0;lastIndependentSerial=null;independentUniqueId=null
+    independentLatestFeet=null;independentAt=null;independentPreviousAt=null
+    independentSource=null;independentPairTravel=null;independentTravel=0
+    last=null;lastAt=0;lastSource=null;events=0;packets=0;distance=0
+  }
   const onClose=()=>{closed=true;detach()}
   function detach(){
     client.off?.('start_game',onStart)
@@ -122,6 +130,7 @@ function attachMovementEvidence(client,{clock=Date.now,eyeHeight=()=>1.62}={}){
       return {confirmed:moved>=0.25,movedBlocks:round(moved),reason:moved>=0.25?'server_position_changed':'server_position_unchanged',packetCount:packets}
     },
     ingestIndependentPosition,
+    beginRespawnEpoch,
     detach
   }
 }

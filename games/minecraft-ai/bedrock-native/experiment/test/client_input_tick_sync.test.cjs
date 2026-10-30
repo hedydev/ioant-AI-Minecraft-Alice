@@ -10,7 +10,7 @@ const Vec3=fromRoot('vec3')
 const registry=fromRoot('minecraft-data')('bedrock_1.26.51')
 const plugin=path.resolve(root,'src/bedrock_client_input_sync.cjs')
 const pluginCode=fs.readFileSync(plugin,'utf8')
-function run(delay,{pathfinder=false,flip=false,beginForward=false}={}){
+function run(delay,{pathfinder=false,flip=false,beginForward=false,die=false,respawn=false}={}){
   let now=100000,timer=null,ticks=0
   const bot=new EventEmitter(),client=new EventEmitter(),packets=[],frames=[]
   bot._client=client;bot.registry=registry;bot.entities={};bot.game={minY:-64,height:384}
@@ -32,7 +32,7 @@ function run(delay,{pathfinder=false,flip=false,beginForward=false}={}){
   const mod={exports:{}}
   vm.runInNewContext(pluginCode,{module:mod,exports:mod.exports,require:createRequire(plugin),
     Date:{now:()=>now},setInterval:fn=>{timer=fn;return {unref(){}}},
-    clearInterval(){},setTimeout,clearTimeout,console},{filename:plugin})
+    clearInterval(){timer=null},setTimeout,clearTimeout,console},{filename:plugin})
   mod.exports(bot)
   client.emit('start_game',{current_tick:1000n,movement_authority:'server'})
   bot.emit('spawn')
@@ -53,7 +53,9 @@ function run(delay,{pathfinder=false,flip=false,beginForward=false}={}){
     bot.pathfinder.setMovements(moves)
     bot.pathfinder.setGoal(new pf.goals.GoalNear(.5,69,-4.5,.5))
   }else if(beginForward)bot.setControlState('forward',true)
-  now+=delay;timer()
+  if(die)bot.emit('death')
+  if(respawn)bot.emit('spawn')
+  now+=delay;if(timer)timer()
   const result={packets,frames,ticks,localMoved:bot.entity.position.distanceTo(from),
     stats:bot._aliceBedrockInputSync.summary()}
   client.emit('close')
@@ -96,6 +98,15 @@ test('750ms elapsed sends every frame with no unaccounted skipped tick',()=>{
   assert.equal(r.stats.lastBatchFrames,15)
   assert.equal(r.stats.skippedTicks,0)
   assert.equal(r.stats.overruns,0)
+})
+test('death pauses corpse physics; respawn resumes without stale movement',()=>{
+ const a=run(900,{beginForward:true,die:true})
+ assert.equal(a.packets.length,0);assert.equal(a.localMoved,0)
+ assert.equal(a.stats.deathPauses,1)
+ const b=run(900,{beginForward:true,die:true,respawn:true})
+ assert(b.packets.length>0)
+ assert(b.packets.every(p=>p.move.z===0))
+ assert.equal(b.stats.respawnResumes,1)
 })
 test('severe 1800ms event-loop stall stops controls and refuses phantom physics catchup',()=>{
   const r=run(1800,{beginForward:true})

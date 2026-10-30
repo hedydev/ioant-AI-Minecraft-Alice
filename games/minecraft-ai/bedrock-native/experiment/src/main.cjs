@@ -33,6 +33,7 @@ const {ENABLE:ANALOG_2193_MODE}=require('./analog_move_compat.cjs')
 const {BdsWitnessReader}=require('./bds_witness.cjs')
 const aliceClientInputSync=require('./bedrock_client_input_sync.cjs')
 const {installNavigationPositionGuard}=require('./navigation_position_guard.cjs')
+const {reconcileRespawnMirror}=require('./respawn_position_mirror.cjs')
 const {acquireAliceInstanceLock}=require('../../instance_lock.cjs')
 const {installSignalShutdown}=require('../../session_lifecycle.cjs')
 const {assertBdsSessionReleased}=require('../../server_session_guard.cjs')
@@ -316,8 +317,21 @@ async function main(args=process.argv.slice(2)){
   // Read it faster than the status heartbeat so two distinct operator-scoped
   // samples cannot silently overwrite one another between 2s status ticks.
   // This is file read ONLY: it never sends MCSManager commands or runs --loop.
+  // Passive reader only. Actual MCSManager querytarget is separately
+  // authorized and strictly bounded, never a polling loop.
+  let mirroredRespawnCycle=0
   const witnessTimer=live&&bdsWitness?setInterval(()=>{
-    bdsWitness.poll(movementEvidence)
+    if(!bdsWitness.poll(movementEvidence))return
+    const recovery=respawnRecovery.get()
+    const r=reconcileRespawnMirror({bot,evidence:movementEvidence,
+      phase:recovery.phase,cycle:recovery.cycles,mirroredCycle:mirroredRespawnCycle})
+    if(r.ok){
+      mirroredRespawnCycle=r.cycle
+      runtime.followGoal=null;runtime.followProgress.reset()
+      runtimeLogger.log('[Alice movement] respawn BDS-verified LOCAL mirror restored:',JSON.stringify({
+        cycle:r.cycle,correctionBlocks:r.distance,bdsTeleport:false,
+        bdsQuerySentByAlice:false}))
+    }
   },250):null
   witnessTimer?.unref?.()
   const statusTimer=live?setInterval(()=>{
@@ -348,6 +362,7 @@ async function main(args=process.argv.slice(2)){
   bot._client.on('inventory_content',pkt=>runtime.noteInventory(pkt))
   bot.on('health',()=>runtime.noteHealth())
   bot.on('death',()=>{
+    movementEvidence.beginRespawnEpoch()
     runtime.noteDeath()
     if(life?.death())runtimeLogger.log('[Alice life] death observed:',
       JSON.stringify({deathsSinceTracking:life.deaths}))

@@ -24,6 +24,7 @@ function inject (bot, options={}) {
   // sinking the bot through the world and leaving it underground on dismount. Java suspends physics on 'mount' and
   // resumes it from the server's authoritative position; mirror that here so the boat position stands.
   let ridingSuspended = false
+  let deathPaused = false
 
   // Bedrock server-authoritative movement uses a rewind buffer (start_game.rewind_history_size, e.g. 40 ticks) and
   // correlates each player_auth_input to a server tick. An input whose tick is outside that window is dropped, so the
@@ -43,7 +44,7 @@ function inject (bot, options={}) {
   let anchorTime = Date.now()
   let lastEmittedTick = null
   const MAX_CATCHUP_TICKS=32
-  const timeline={version:1,tickMode,emitted:0,batches:0,catchupFrames:0,
+  const timeline={version:1,tickMode,emitted:0,batches:0,deathPauses:0,respawnResumes:0,catchupFrames:0,
     maxBatchFrames:0,overruns:0,skippedTicks:0,lastBatchFrames:0,
     controlsChangedInsideFrame:0,lastOverrunReason:null,
     callbackPositionMutationsPrevented:0,callbackVelocityMutationsPrevented:0,
@@ -62,8 +63,23 @@ function inject (bot, options={}) {
     if (movementAuthority === 'client') stop()
     else if (spawned) start()
   })
+  bot.on('death',()=>{
+    deathPaused=true;spawned=false;timeline.deathPauses++
+    stop();bot.clearControlStates?.()
+    if(bot.entity?.velocity){
+      bot.entity.velocity.x=0;bot.entity.velocity.y=0;bot.entity.velocity.z=0
+    }
+    for(const k of Object.keys(prev))prev[k]=false
+  })
   bot.on('spawn', () => {
-    spawned = true
+    if(deathPaused)timeline.respawnResumes++
+    deathPaused=false;spawned=true
+    bot.clearControlStates?.()
+    for(const k of Object.keys(prev))prev[k]=false
+    if(bot.entity?.velocity){
+      bot.entity.velocity.x=0;bot.entity.velocity.y=0;bot.entity.velocity.z=0
+    }
+    if(lastEmittedTick!==null)lastEmittedTick=currentTick()-1n
     if (movementAuthority !== 'client') start()
   })
   // Suspend self-simulation while mounted; the server keeps bot.entity on the vehicle via move_player. On dismount the
@@ -297,7 +313,7 @@ function inject (bot, options={}) {
   // position. Pathfinder updates controls on physicsTick; those updates belong
   // to the NEXT frame, never to the frame just simulated.
   function send () {
-    if (!bot.entity) return
+    if (!bot.entity||deathPaused||!spawned) return
     const target=currentTick()
     const delta=lastEmittedTick==null?1:Number(target-lastEmittedTick)
     if(!Number.isSafeInteger(delta))return
