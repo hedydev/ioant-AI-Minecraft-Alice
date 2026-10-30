@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "title": "Read-only v2 first BDS probe continuation receipt",
+  "steps": [
+    {
+      "name": "resume_receipt_schema_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-v2-resume-status-read.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "resume_receipt_readonly",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-v2-resume-status-read.py",
+      "args": [
+        "--read",
+        "@output_dir",
+        "tedz@192.168.0.104"
+      ],
+      "timeoutSeconds": 45
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "v2_first_probe_status",
+      "file": "v2_first_probe_state.json",
+      "format": "json"
+    }
+  ]
+}
