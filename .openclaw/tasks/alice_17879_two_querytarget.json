@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Two bounded querytarget reads from verified live 17879 Alice world",
+  "steps": [
+    {
+      "name": "two_query_contract_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-two-querytarget.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "live_17879_two_querytarget",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-two-querytarget.py",
+      "args": [
+        "--run",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 145
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "live_witness",
+      "file": "alice_17879_two_query.json",
+      "format": "json"
+    }
+  ]
+}
