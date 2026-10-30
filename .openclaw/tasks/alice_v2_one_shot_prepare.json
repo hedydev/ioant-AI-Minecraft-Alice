@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "title": "Alice isolated v2 archived lab one-shot prepare without start",
+  "steps": [
+    {
+      "name": "one_shot_contract_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-v2-one-shot-prepare.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "isolated_v2_archive_prepare",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-v2-one-shot-prepare.py",
+      "args": [
+        "--prepare",
+        "@output_dir",
+        "tedz@192.168.0.104"
+      ],
+      "timeoutSeconds": 420
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "v2_prepare",
+      "file": "alice_v2_prepare_result.json",
+      "format": "json"
+    }
+  ]
+}
