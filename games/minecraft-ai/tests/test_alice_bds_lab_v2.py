@@ -110,7 +110,7 @@ class V2ArchiveTests(unittest.TestCase):
                 self.assertEqual(matches,[value])
 
     def test_only_exact_v2_sibling_name_is_eligible(self):
-        for dest in (self.home/"minecraft-bedrock-alice-lab-v4",
+        for dest in (self.home/"minecraft-bedrock-alice-lab-v5",
                      self.home/"other"/V2.V2_NAME):
             with self.subTest(destination=dest):
                 dest.parent.mkdir(exist_ok=True)
