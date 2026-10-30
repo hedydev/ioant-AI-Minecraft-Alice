@@ -69,17 +69,19 @@ function runCommand(runtime,command,report){
       '目标玩家不在线或当前位置不可验证，不会建立跟随意图')
     if(selected[0].toLowerCase()===String(bot.username||'').toLowerCase())
       return response('rejected','cannot_follow_self','Alice 不能将自己设为跟随目标')
-    if(runtime.threat()||runtime.safetyBusy||bot.health<14)
-      return response('rejected','safety_preempted','当前危险或正在保命，未切换跟随目标')
+    // An explicit verified ONLINE target can be saved while danger is nearby.
+    // Accepting a FOLLOW intent is NOT permission to walk through danger or
+    // interrupt an emergency retreat. Runtime escort checks control movement.
     const player=selected[0]
-    runtime.cancelActive('explicit console '+action)
+    if(!runtime.safetyBusy)runtime.cancelActive('explicit console '+action)
+    runtime.ownerMotion?.reset?.()
     runtime.refreshBehavior()
     core.setFollowIntent(player,runtime.liveBehavior.settings.followDistance)
     runtime.followSource='console';runtime.lastFollowEnd=null
     runtime.lastGuardedPlayer=action==='guard'?player:null
     runtime.lastHumanAt=runtime.clock()
     return response('started','follow_intent_set',
-      '已建立'+(action==='guard'?'保护':'跟随')+'目标 '+player+'；实际移动尚待服务器验证')
+      '已接受'+(action==='guard'?'保护':'跟随')+'目标 '+player+'；将依照障碍、近身威胁和服务器坐标安全行动')
   }
   if(bot.isSleeping||runtime.threat()||runtime.safetyBusy||bot.health<14)
     return response('rejected','safety_preempted','当前睡眠或有危险；任务未启动')
