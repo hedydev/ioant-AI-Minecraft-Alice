@@ -1,3 +1,9 @@
+## 2026-10-31 — FOLLOW 3-block proximity + visible owner facing (awaiting live validation)
+
+- The existing Dashboard followDistance has default 3, supports integer 2..12 with live applied-revision acknowledgement. New pure followProximity uses real-foot 3D distance; inside radius releases existing FOLLOW path; a one-block vertical gap still needs safe Pathfinder ascent. Goal no longer subtracts 0.55 from configured range. Facing a verified visible owner is rate-limited lookAt only, with no movement or attack.
+- Existing canDig=false, allowParkour=false, Bedrock BDS safety/navigation gates, non-FOLLOW autonomous behaviors, and other servers are unchanged. Stair hand-swing cause remains unknown pending live observation of jumpEdges, forwardPressedTicks, pathUpdate and BDS vertical delta. Do not claim a successful staircase ascent from this source change.
+- Mac/Mint regression, source sync, and CLIENT-only guarded restart are required to activate source changes; Alice restart loses live FOLLOW intent. Do not restart BDS 17879 or unrelated 17880.
+
 ## 2026-10-31 — Alice P0 witness gate + deterministic Mac/Mint verification ACCEPTED (source, not gameplay)
 
 - The OpenClaw Mac `alice-ai` project was connected to enrolled generic `repository_task` without changing Agent permissions or restarting Tunnel. Two bounded read-only report tasks succeeded: `alice_mint_parity_20261031_800cdc_72b5a4c1` verified Mint Node24 v24.22.0 and then-current Mac/Mint nav code parity; `alice_v2_existing_report_20261031_26f0b79_6ce3a1d2` found one historical v2 `check` report (`archive_sha256_isolated_restore_verified`, `absent`, `ready_for_explicit_lab_prepare`). Historical operation attribution remains unverified, so never replay its old started ID or claim the v2 BDS launched.

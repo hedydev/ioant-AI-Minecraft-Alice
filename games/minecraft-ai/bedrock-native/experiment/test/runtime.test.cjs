@@ -146,6 +146,7 @@ test('Bedrock noPath captures bounded read-only ground evidence once per cooldow
 test('follow goes through Pathfinder and STOP cancels without overwriting user intent',async()=>{
   const f=fixture(),e=new AliceBedrockRuntime({...f,policies:await policies()})
   e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+  f.bot.players.Steve.entity.position=vec(8,64,0)
   await e.onChat('Steve','AliceAI 跟着我')
   await e.followTick()
   assert(f.calls.some(x=>x[0]==='setGoal'&&x[1]?.entity))
@@ -777,6 +778,38 @@ test('a positively observed house wall shortens follow range for loss of line of
  e.stop()
 })
 
+test('within configured three blocks Alice releases follow and faces verified visible owner',async()=>{
+ const f=fixture(),e=new AliceBedrockRuntime({...f,policies:await policies()})
+ e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+ f.bot.players.Steve.entity.position=vec(7,64,0)
+ const faces=[]
+ f.bot.lookAt=async(pos)=>faces.push([pos.x,pos.y,pos.z])
+ f.bot.pathfinder.isMoving=()=>true
+ await e.onChat('Steve','AliceAI 跟着我')
+ await e.followTick()
+ assert.equal(e.followGoal,'Steve')
+ f.bot.players.Steve.entity.position=vec(2.6,64,0)
+ await e.followTick()
+ assert.equal(e.followGoal,null)
+ assert.equal(f.calls.filter(x=>x[0]==='setGoal').at(-1)[1],null)
+ assert.deepEqual(faces,[[2.6,65.4,0]])
+ await e.followTick()
+ assert.equal(faces.length,1,'look packets must be throttled')
+ assert.equal(f.calls.filter(x=>x[0]==='setGoal'&&x[1]?.entity).length,1,'no new path inside radius')
+ f.bot.players.Steve.entity.position=vec(4,64,0)
+ await e.followTick()
+ assert.equal(e.followGoal,'Steve','follow resumes beyond configured radius')
+ e.stop()
+})
+test('close XZ but player one floor above must retain safe Pathfinder navigation',async()=>{
+ const f=fixture(),e=new AliceBedrockRuntime({...f,policies:await policies()})
+ e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+ f.bot.players.Steve.entity.position=vec(1.5,65,0)
+ await e.onChat('Steve','AliceAI 跟着我')
+ await e.followTick()
+ assert.equal(e.followGoal,'Steve','a one-block rise is not a completed follow')
+ e.stop()
+})
 test('registry-backed item command handles diamond and other Minecraft goals safely',async()=>{
  const p=await policies(),f=fixture(),runtime=new AliceBedrockRuntime({...f,policies:p})
  assert.deepEqual(parseTask('收集5个钻石'),{type:'ITEM_REQUEST',term:'钻石',count:5})

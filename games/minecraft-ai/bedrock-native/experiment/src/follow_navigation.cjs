@@ -21,9 +21,10 @@ function createResponsiveFollowGoal(GoalFollow,entity,radius,{refreshBlocks=1}={
   // Pinned GoalFollow reports success when FLOORED bot/target coords are
   // within range. At (target x=4.9, bot x=1.1) the node delta is only 3,
   // even though player feet are 3.8 blocks apart. Use real target feet and
-  // candidate CELL CENTER, and a half-block clearance margin. This never
-  // authorizes moving through a wall, jumping without a route, or digging.
-  const reliableRadius=Math.max(0.35,radius-0.55)
+  // candidate CELL CENTER. Respect the full configured stop radius rather
+  // than shrinking it, which needlessly crowds the following player.
+  // Runtime also releases the active goal at real-foot distance <= radius.
+  const reliableRadius=radius
   goal.isEnd=function(node){
     const p=this.entity?.position
     if(!p||![p.x,p.y,p.z].every(Number.isFinite)||

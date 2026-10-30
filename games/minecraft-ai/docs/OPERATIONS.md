@@ -1,3 +1,9 @@
+## 2026-10-31 — FOLLOW 3-block proximity + visible owner facing (awaiting live validation)
+
+- The existing Dashboard followDistance has default 3, supports integer 2..12 with live applied-revision acknowledgement. New pure followProximity uses real-foot 3D distance; inside radius releases existing FOLLOW path; a one-block vertical gap still needs safe Pathfinder ascent. Goal no longer subtracts 0.55 from configured range. Facing a verified visible owner is rate-limited lookAt only, with no movement or attack.
+- Existing canDig=false, allowParkour=false, Bedrock BDS safety/navigation gates, non-FOLLOW autonomous behaviors, and other servers are unchanged. Stair hand-swing cause remains unknown pending live observation of jumpEdges, forwardPressedTicks, pathUpdate and BDS vertical delta. Do not claim a successful staircase ascent from this source change.
+- Mac/Mint regression, source sync, and CLIENT-only guarded restart are required to activate source changes; Alice restart loses live FOLLOW intent. Do not restart BDS 17879 or unrelated 17880.
+
 ## 2026-10-31 — ORIGINAL 17879 verified FOLLOW movement RESTORED (do not regress)
 
 **This is live original `Bedrock level` on Mint UDP 17879**, NOT simulated movement or any v1–v4 lab. The user requested continued work in the current world, no new world, and allowed project-controlled local tasks. Existing 17880 Zombie world and other BDS unchanged. Existing 8788 Mac web console and Alice client are operating; do not casually restart them now that real movement works.

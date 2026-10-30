@@ -25,6 +25,8 @@ test('pinned GoalFollow false success at 4.15 real blocks must not stop Alice',(
     'real target feet at x 4.65 are too far from cell center 1.5')
   assert.equal(goal.isEnd({x:3,y:64,z:0}),true,
     'a genuine nearby traversable candidate stays an end node')
+  assert.equal(goal.isEnd({x:2,y:64,z:0}),true,
+    'a cell center within three real blocks must not force crowding closer')
 })
 test('wooden doors only; no iron, trapdoors or blocks can be damaged',()=>{
   const moves={canOpenDoors:false,canDig:false,openable:new Set([51])}

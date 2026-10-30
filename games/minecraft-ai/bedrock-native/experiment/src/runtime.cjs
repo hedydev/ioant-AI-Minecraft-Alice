@@ -14,6 +14,7 @@ const {evaluateShelter,placeShelterBlock}=require('./night_shelter.cjs')
 const {ObservedBeds}=require('./observed_beds.cjs')
 const {planNightReposition,nightConditions}=require('./night_survival.cjs')
 const {configureDoors,createResponsiveFollowGoal,observedLineOfSight}=require('./follow_navigation.cjs')
+const {followProximity}=require('./follow_proximity.cjs')
 const {parseStorage}=require('./storage_actions.cjs')
 const {DEFAULTS}=require('./live_control.cjs')
 const {localFollowDiagnostic}=require('./follow_diagnostics.cjs')
@@ -123,6 +124,7 @@ class AliceBedrockRuntime {
         'death-experience.json'):null})
     this.lastCombatDecisionKey=null;this.lastCombatDecisionAt=0
     this.lastFollowReportAt=0;this.followPosition=null
+    this.lastFollowFaceAt=Number.NEGATIVE_INFINITY
     this.followGoalRadius=this.liveBehavior.settings.followDistance;this.lastFollowRadiusChange=0
     this.nextSleepAt=0;this.nextEquipAt=0;this.maintenanceBusy=false
     this.lastEquipObservation=null
@@ -1227,6 +1229,26 @@ class AliceBedrockRuntime {
       this.lastSightBlocked=visible===false
       this.log.log('[Alice follow] target visual contact:',this.lastSightBlocked?'occluded':'visible_or_unconfirmed',
         'desiredRadius:',wantedRadius)
+    }
+    // Actual foot distance controls arrival, not floored Pathfinder nodes.
+    // A player on a different floor still needs a collision-safe route.
+    const proximity=followProximity(this.bot.entity?.position,entity.position,wantedRadius)
+    if(proximity.inside){
+      if(this.followGoal){
+        this.bot.pathfinder.setGoal(null)
+        this.followGoal=null
+        this.followProgress.reset()
+      }
+      if(this.directFollowActive)this.stopDirectFollow('owner_inside_follow_radius')
+      // Looking never authorizes movement, combat or interacting with a block.
+      if(visible===true&&typeof this.bot.lookAt==='function'&&
+         typeof entity.position.offset==='function'&&
+         this.clock()-this.lastFollowFaceAt>=1000){
+        this.lastFollowFaceAt=this.clock()
+        try{await this.bot.lookAt(entity.position.offset(0,1.4,0),true)}
+        catch{this.log.warn('[Alice follow] owner look unavailable')}
+      }
+      return
     }
     this.followProgress.safeRadius=wantedRadius
     const changed=this.followGoal===player&&this.followGoalRadius!==wantedRadius&&
