@@ -17,6 +17,7 @@ import importlib.util,json,os,stat,subprocess,sys
 from pathlib import Path
 home=Path.home()
 scripts=home/'minecraft-ai'/'scripts'
+sys.path.insert(0,str(scripts))
 lab=home/'minecraft-bedrock-alice-lab-v2'
 spec=importlib.util.spec_from_file_location('alice_v2_netns_exact_check',scripts/'alice-bds-lab-probe.py')
 if spec is None or spec.loader is None:
@@ -106,6 +107,7 @@ def selftest():
     example['directChildExitCode']=0
     assert verify({'state':'observed','details':example})
     assert verify({'state':'observed','details':{**example,'extra':True}}) is None
+    assert 'sys.path.insert(0,str(scripts))' in REMOTE
     assert 'namespace_v2_loopback_preflight' in REMOTE
     assert 'NETNS_V2_LOOPBACK_SETUP' in REMOTE
     print('ALICE_V2_NETNS_DIAG_SELFTEST_PASS')
