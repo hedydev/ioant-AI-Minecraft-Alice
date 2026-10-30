@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Alice v2 consumed BDS static postmortem only",
+  "steps": [
+    {
+      "name": "postmortem_parser_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-v2-static-postmortem.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "consumed_v2_static_inspection",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-v2-static-postmortem.py",
+      "args": [
+        "--inspect",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 55
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "v2_static_postmortem",
+      "file": "alice_v2_static_postmortem.json",
+      "format": "json"
+    }
+  ]
+}
