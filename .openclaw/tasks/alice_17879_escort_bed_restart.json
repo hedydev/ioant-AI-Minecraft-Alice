@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Reload only existing Alice 17879 client after verified escort/equipment/bed regression",
+  "steps": [
+    {
+      "name": "client_only_restart_contract",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-escort-bed-restart-gated.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "one_replacement_client_only",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-escort-bed-restart-gated.py",
+      "args": [
+        "--restart",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 285
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "client_reconnect",
+      "file": "alice_17879_client_restart.json",
+      "format": "json"
+    }
+  ]
+}
