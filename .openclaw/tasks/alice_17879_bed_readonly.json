@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Read-only Alice 17879 current bed/night and sleep gate",
+  "steps": [
+    {
+      "name": "sleep_readonly_contract",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-bed-readonly.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "sleep_readonly_actual_mint",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-bed-readonly.py",
+      "args": [
+        "--inspect",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 45
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "bed_now",
+      "file": "alice_current_sleep.json",
+      "format": "json"
+    }
+  ]
+}
