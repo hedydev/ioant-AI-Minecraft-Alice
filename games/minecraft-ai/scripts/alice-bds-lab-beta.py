@@ -22,12 +22,19 @@ PACK_UUID = "e39b740e-fb97-47e5-b1e7-f61f5a8b87de"
 MODULE_UUID = "49abe19c-5c2e-4cd4-b826-d8e935ed9932"
 
 
-def pack_guard():
+def pack_guard(*, lab=None):
     spec = importlib.util.spec_from_file_location("alice_lab_pack_gate", HERE / "alice-bds-lab-pack.py")
     if spec is None or spec.loader is None:
         raise ValueError("gate_missing")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    if lab is not None:
+        # Explicit v2 routing is restricted to a verified named sibling.
+        # Never weaken the existing require_lab_stopped() process identity gate.
+        candidate = Path(lab)
+        if candidate.name != "minecraft-bedrock-alice-lab-v2" or candidate.is_symlink() or not candidate.is_dir():
+            raise ValueError("v2_lab_missing")
+        module.LAB = candidate
     module.require_eligible()  # Includes true BDS /proc identity check.
     world = module.LAB / "worlds" / module.WORLD
     registered = world / "world_behavior_packs.json"
