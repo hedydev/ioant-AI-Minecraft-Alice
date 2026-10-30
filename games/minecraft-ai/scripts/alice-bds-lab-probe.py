@@ -174,6 +174,29 @@ NETNS_V2_LOOPBACK_SETUP = (
 )
 
 
+def trusted_namespace_python():
+    """Accept only the packaged Python 3 executable or its trusted distro link."""
+    candidate = NETNS_PYTHON
+    if not candidate.is_file() or not os.access(candidate, os.X_OK):
+        return False
+    if not candidate.is_symlink():
+        return True
+    try:
+        link = candidate.lstat()
+        resolved = candidate.resolve(strict=True)
+        meta = resolved.stat()
+        return (candidate == Path("/usr/bin/python3")
+                and link.st_uid == 0
+                and resolved.parent == Path("/usr/bin")
+                and re.fullmatch(r"python3\\.[0-9]{1,2}", resolved.name) is not None
+                and stat.S_ISREG(meta.st_mode)
+                and meta.st_uid == 0
+                and meta.st_mode & 0o022 == 0
+                and os.access(resolved, os.X_OK))
+    except (OSError, ValueError, RuntimeError):
+        return False
+
+
 def namespace_v2_loopback_preflight(run=subprocess.run):
     """Set lo UP in a disposable child netns, then exec /usr/bin/true.
 
@@ -181,8 +204,7 @@ def namespace_v2_loopback_preflight(run=subprocess.run):
     refusal happens BEFORE creating the real lab's one-shot lock/backups.
     """
     if (not NETNS_UNSHARE.is_file() or NETNS_UNSHARE.is_symlink()
-            or not NETNS_PYTHON.is_file() or NETNS_PYTHON.is_symlink()
-            or not os.access(NETNS_PYTHON, os.X_OK)
+            or not trusted_namespace_python()
             or not NETNS_TRUE.is_file() or NETNS_TRUE.is_symlink()):
         return False
     cmd = [str(NETNS_UNSHARE), "--user", "--map-root-user", "--net",
