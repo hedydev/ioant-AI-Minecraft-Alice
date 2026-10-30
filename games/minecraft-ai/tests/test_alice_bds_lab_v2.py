@@ -129,7 +129,7 @@ class V2ArchiveTests(unittest.TestCase):
         self.assertIn("allow-list=true",props)
         self.assertIn("online-mode=true",props)
         self.assertIn("enable-lan-visibility=false",props)
-        self.assertEqual((v3/"allowlist.json").read_text(),"[]\\n")
+        self.assertEqual((v3/"allowlist.json").read_text(),"[]\n")
         for name in ("config","behavior_packs","permissions.json","whitelist.json"):
             self.assertFalse((v3/name).exists())
         self.assertEqual((self.prod/"worlds"/"Bedrock level"/"level.dat").read_bytes(),
@@ -141,8 +141,8 @@ class V2ArchiveTests(unittest.TestCase):
     def test_v3_duplicate_properties_are_forced_once(self):
         v3=self.home/"minecraft-bedrock-alice-lab-v3"
         with (self.prod/"server.properties").open("a") as f:
-            f.write("server-port=19132\\nonline-mode=false\\n"
-                    "allow-list=false\\nserver-portv6=19133\\n")
+            f.write("server-port=19132\nonline-mode=false\n"
+                    "allow-list=false\nserver-portv6=19133\n")
         self.prepare(v3)
         lines=(v3/"server.properties").read_text().splitlines()
         for key,value in (("server-port","17880"),("server-portv6","17881"),
