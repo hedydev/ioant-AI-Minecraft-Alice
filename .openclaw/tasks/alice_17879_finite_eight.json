@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Existing 17879 world one capped eight-querytarget runtime movement acceptance",
+  "steps": [
+    {
+      "name": "finite8_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-finite-eight.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "finite8_existingworld",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-finite-eight.py",
+      "args": [
+        "--run",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 405
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "finite8",
+      "file": "alice_17879_finite_test.json",
+      "format": "json"
+    }
+  ]
+}
