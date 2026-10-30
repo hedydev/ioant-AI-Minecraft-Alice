@@ -555,7 +555,10 @@ class PreflightWitnessSeparationTests(unittest.TestCase):
         proof=(SCRIPTS.parent/'bedrock-native'/'experiment'/'src'/
                'scout_start_proof.cjs').read_text()
         self.assertIn("s.independentSamples<2",proof)
-        self.assertIn("clock()-at>4000",proof)
+        self.assertIn("now-at>4000",proof)
+        self.assertIn("Number.isSafeInteger(previousAt)",proof)
+        self.assertIn("previousAt>=at",proof)
+        self.assertIn("now-previousAt>4000",proof)
         self.assertIn("scout_bds_position_unavailable",proof)
         self.assertIn("meters>0.75",proof)
 
