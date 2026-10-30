@@ -124,7 +124,18 @@ if [[ "$action" == sync || "$action" == deploy ]]; then
   [[ "$(git -C "$repo" branch --show-current)" == main ]] || { echo 'Use the approved main checkout; no branch switch performed.' >&2; exit 1; }
   [[ -z "$(git -C "$repo" status --porcelain --untracked-files=no)" ]] || { echo 'Commit reviewed tracked changes before sync.' >&2; exit 1; }
   git -C "$repo" log -1 --oneline
-  python3 -m unittest discover -s "$project/tests" -v
+  # /usr/bin/python3 on this Mac is 3.9 and cannot import all current tests.
+  # Prefer the same reviewed Homebrew Python used by the deterministic MCP
+  # regression runner. Refuse unsupported fallback interpreters before rsync.
+  local_python="/opt/homebrew/bin/python3"
+  if [[ ! -x "$local_python" ]]; then
+    local_python="$(command -v python3)"
+  fi
+  "$local_python" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 2)' || {
+    echo 'Alice Mac tests require Python 3.11+; no Mint files were synced.' >&2
+    exit 1
+  }
+  "$local_python" -m unittest discover -s "$project/tests" -v
   manifest=$(mktemp)
   trap 'rm -f "$manifest"' EXIT
   git -C "$project" ls-files -z -- . > "$manifest"

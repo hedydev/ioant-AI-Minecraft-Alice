@@ -564,6 +564,14 @@ class PreflightWitnessSeparationTests(unittest.TestCase):
 
 
 class MacTests(unittest.TestCase):
+    def test_sync_selects_supported_mac_python_before_rsync(self):
+        source = (SCRIPTS / 'alice-mac.sh').read_text()
+        self.assertIn('local_python="/opt/homebrew/bin/python3"', source)
+        self.assertIn('sys.version_info >= (3, 11)', source)
+        self.assertIn('"$local_python" -m unittest discover', source)
+        self.assertLess(source.index('"$local_python" -m unittest discover'),
+                        source.index('rsync -avc'))
+
     def test_dry_run_and_destination_validation(self):
         env={**os.environ,'ALICE_SSH_TARGET':'test@127.0.0.1'}
         p=subprocess.run(['bash',str(SCRIPTS/'alice-mac.sh'),'deploy','--dry-run'],env=env,capture_output=True,text=True)
