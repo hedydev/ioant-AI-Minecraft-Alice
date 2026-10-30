@@ -48,6 +48,46 @@ try:
    with binary.open('rb') as elf:
     elf.seek(phoff)
     headers=elf.read(phnum*phsize)
+    segments=[]
+    for i in range(phnum):
+     e=headers[i*56:(i+1)*56]
+     segments.append({
+       'type':struct.unpack_from('<I',e,0)[0],
+       'offset':struct.unpack_from('<Q',e,8)[0],
+       'vaddr':struct.unpack_from('<Q',e,16)[0],
+       'size':struct.unpack_from('<Q',e,32)[0]})
+    dynamic=next((p for p in segments if p['type']==2
+            and p['size']<=1048576 and p['offset']+p['size']<=st.st_size),None)
+    if dynamic is not None:
+     elf.seek(dynamic['offset'])
+     rawdyn=elf.read(dynamic['size'])
+     entries=[]
+     for n in range(0,len(rawdyn)-15,16):
+      tag,val=struct.unpack_from('<qQ',rawdyn,n)
+      if tag==0:break
+      entries.append((tag,val))
+     strings=next((v for k,v in entries if k==5),None)
+     length=next((v for k,v in entries if k==10),None)
+     if strings is not None and length is not None and 0<length<=65536:
+      seg=next((p for p in segments if p['type']==1 and
+            p['vaddr']<=strings and strings+length<=p['vaddr']+p['size']),None)
+      if seg:
+       off=seg['offset']+strings-seg['vaddr']
+       if off+length<=st.st_size:
+        elf.seek(off)
+        strtab=elf.read(length)
+        names=[]
+        for k,v in entries:
+         if k!=1 or v>=length:continue
+         name=strtab[v:].split(b'\0',1)[0].decode('ascii','replace')
+         if re.fullmatch(r'[a-zA-Z0-9._+-]{1,90}',name):names.append(name)
+        if len(names)<=50:
+         out['neededCount']=len(names)
+         out['neededUnavailableInLab']=[name for name in names
+            if not (lab/name).is_file() and not any(
+                (Path(root)/name).is_file() for root in (
+                  '/lib/x86_64-linux-gnu','/usr/lib/x86_64-linux-gnu',
+                  '/lib64','/lib','/usr/lib'))][:25]
     for i in range(phnum):
      entry=headers[i*56:(i+1)*56]
      if struct.unpack_from('<I',entry,0)[0]!=3:continue
