@@ -1,13 +1,19 @@
 'use strict'
 const test=require('node:test'),assert=require('node:assert/strict')
 const {observedHostileBarrier,OwnerMotion,escortAssessment}=require('../src/escort_threat.cjs')
-const loc=(x,y,z)=>({x,y,z})
+const loc=(x,y,z)=>({x,y,z,
+ offset(dx,dy,dz){return loc(x+dx,y+dy,z+dz)},
+ floored(){return loc(Math.floor(x),Math.floor(y),Math.floor(z))}
+})
 const enemy=(x,y,z)=>({name:'zombie',position:loc(x,y,z)})
 const self=loc(.5,65,.5)
 test('wall and glass block hostile melee despite Euclidean proximity',()=>{
  const t=enemy(6,65,.5)
- const bot={entity:{position:self},blockAt:p=>(
-   Math.floor(p.x)===3?{name:'stone',boundingBox:'block'}:{name:'air',boundingBox:'empty'})}
+ const bot={entity:{position:self},blockAt:p=>{
+   assert.equal(typeof p.floored,'function','world reader requires Vec3')
+   return (
+   Math.floor(p.x)===3?{name:'stone',boundingBox:'block'}:{name:'air',boundingBox:'empty'})
+  }}
  assert.equal(observedHostileBarrier(bot,t),'blocked')
  bot.blockAt=p=>Math.floor(p.x)===3?{name:'glass',boundingBox:'block'}:{name:'air',boundingBox:'empty'}
  assert.equal(observedHostileBarrier(bot,t),'blocked')
@@ -15,6 +21,8 @@ test('wall and glass block hostile melee despite Euclidean proximity',()=>{
  assert.equal(observedHostileBarrier(bot,t),'clear')
  bot.blockAt=()=>null
  assert.equal(observedHostileBarrier(bot,t),'unknown')
+ bot.blockAt=()=>{throw Error('world API rejected XYZ record')}
+ assert.equal(observedHostileBarrier({...bot,entity:{position:{x:.5,y:65,z:.5}}},t),'unknown')
 })
 test('human owner motion is bounded and expires when they stop',()=>{
  const m=new OwnerMotion()
