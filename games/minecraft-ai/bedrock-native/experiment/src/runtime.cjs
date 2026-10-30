@@ -977,7 +977,10 @@ class AliceBedrockRuntime {
     if(danger||critical||lowHealthHold)this.goalPlanner.cancel('safety')
     if(!danger&&this.job?.type==='RECOVER')return
     if(!danger&&!critical&&!lowHealthHold){
-      if(escort.allowFollow&&this.core.hasFollowIntent()){
+      // Do not bypass the 4.5-second cooldown when a hostile disappears.
+      // Immediate escorted movement is allowed only with a positive ongoing
+      // observation that the known danger is distant or behind a barrier.
+      if(observedDanger&&escort.allowFollow&&this.core.hasFollowIntent()){
         this.lastSafetyAt=0;this.lastDanger=null
         if(['SURVIVE','COMBAT','GUARD'].includes(this.core.state))
           this.core.resumeIntent('escort past distant or blocked hostile')
@@ -1174,7 +1177,8 @@ class AliceBedrockRuntime {
     if(!this.ready()||this.bot.isSleeping||this.job||this.safetyBusy||
       (danger&&!escort.allowFollow)||(this.bot.health<14&&!escort.allowFollow)||
       (['SURVIVE','COMBAT','GUARD'].includes(this.core.state)&&!escort.allowFollow)||
-      (this.lastSafetyAt>0&&this.clock()-this.lastSafetyAt<THREAT_CLEAR_MS&&!escort.allowFollow))return
+      (this.lastSafetyAt>0&&this.clock()-this.lastSafetyAt<THREAT_CLEAR_MS&&
+       (!danger||!escort.allowFollow)))return
     if(!this.core.hasFollowIntent()){
       if(this.followGoal){this.bot.pathfinder.setGoal(null);this.followGoal=null}
       return
