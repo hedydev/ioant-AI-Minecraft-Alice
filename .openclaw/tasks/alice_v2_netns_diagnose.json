@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "title": "Read-only v2 loopback check diagnosis no restart",
+  "steps": [
+    {
+      "name": "v2_diag_schema_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-v2-netns-diagnose.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "mint_v2_netns_diagnostic",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-v2-netns-diagnose.py",
+      "args": [
+        "--audit",
+        "@output_dir",
+        "tedz@192.168.0.104"
+      ],
+      "timeoutSeconds": 55
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "v2_netns_diagnosis",
+      "file": "v2_netns_diagnostic.json",
+      "format": "json"
+    }
+  ]
+}
