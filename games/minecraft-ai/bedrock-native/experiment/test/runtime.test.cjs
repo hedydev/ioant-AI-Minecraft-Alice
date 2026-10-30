@@ -716,6 +716,41 @@ test('safe hunger recovery works at full health and cannot be interrupted by low
  assert.equal(other.job?.type,'RECOVER')
  other.stop()
 })
+test('auto-food while following and shelter verified, retains durable owner intent and restores weapon schedule',async()=>{
+ const f=fixture(),e=new AliceBedrockRuntime({...f,policies:await policies()})
+ e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+ f.bot.food=10;f.bot.health=13
+ f.core.setFollowIntent('Steve',3)
+ const danger={target:{name:'zombie'}}
+ e.threat=()=>danger
+ e.escortDecision=()=>({allowFollow:true,reason:'hostile_behind_observed_barrier'})
+ f.setItems([{name:'bread',count:1}])
+ f.operator.eatIfSafe=async ({underThreat})=>{
+   assert.equal(underThreat,false)
+   return {ok:true,foodBefore:10,foodAfter:15}
+ }
+ await e.maintenanceTick()
+ assert.equal(e.job?.type,'RECOVER')
+ for(let i=0;i<8;i++)await new Promise(setImmediate)
+ assert.equal(f.core.hasFollowIntent(),true)
+ assert.equal(e.nextEquipAt,0)
+ e.stop()
+})
+test('auto-food refuses open mobs, unverified barriers and recent hits',async()=>{
+ const f=fixture(),e=new AliceBedrockRuntime({...f,policies:await policies()})
+ e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+ f.bot.food=8;f.bot.health=13;f.core.setFollowIntent('Steve',3)
+ f.setItems([{name:'bread',count:1}])
+ e.threat=()=>({target:{name:'zombie'}})
+ e.escortDecision=()=>({allowFollow:true,reason:'escort_moving_owner'})
+ await e.maintenanceTick()
+ assert.equal(e.job,null)
+ e.escortDecision=()=>({allowFollow:true,reason:'hostile_behind_observed_barrier'})
+ e.lastSelfDamageAt=f.clock()-1000
+ await e.maintenanceTick()
+ assert.equal(e.job,null)
+ e.stop()
+})
 test('no nearby known bed means night-time maintenance does not start a job',async()=>{
  const f=fixture(),e=new AliceBedrockRuntime({...f,policies:await policies()})
  e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true

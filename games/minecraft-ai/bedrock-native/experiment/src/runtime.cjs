@@ -15,6 +15,7 @@ const {ObservedBeds}=require('./observed_beds.cjs')
 const {planNightReposition,nightConditions}=require('./night_survival.cjs')
 const {configureDoors,createResponsiveFollowGoal,observedLineOfSight}=require('./follow_navigation.cjs')
 const {followProximity}=require('./follow_proximity.cjs')
+const {safeShelteredFood}=require('./food_safety.cjs')
 const {parseStorage}=require('./storage_actions.cjs')
 const {DEFAULTS}=require('./live_control.cjs')
 const {localFollowDiagnostic}=require('./follow_diagnostics.cjs')
@@ -683,7 +684,14 @@ class AliceBedrockRuntime {
       this.navigationHold=null
     }
     if(!this.ready())return this.say('还没有可信的生命值/服务端背包/位置，暂不能行动。')
-    if(this.threat()||(this.bot.health<14&&type!=='RECOVER'))return this.say('目前附近有危险或生命值过低，先暂停行动。')
+    const currentDanger=this.threat()
+    // A known SOLID wall may let a following Alice eat while sheltered;
+    // this applies ONLY to automatic food, never to optional sleep/crafting.
+    const shelteredFood=type==='RECOVER'&&source==='自主生存'&&label==='安全进食'&&
+      safeShelteredFood({danger:currentDanger,escort:this.escortDecision(currentDanger),
+        health:this.bot.health,recentHurtAt:this.lastSelfDamageAt,now:this.clock()})
+    if((currentDanger&&!shelteredFood)||(this.bot.health<14&&type!=='RECOVER'))
+      return this.say('目前附近有危险或生命值过低，先暂停行动。')
     if(this.bot.isSleeping)return this.say('我还在睡觉，暂不行动。')
     if(this.job)return this.say('上一项工作尚未停止，稍后重试。')
     const abort=new AbortController(),id=++this.epoch
@@ -1395,22 +1403,34 @@ class AliceBedrockRuntime {
       this.lastSleepOpportunityKey=opportunityKey
       this.log.log('[Alice sleep] opportunity:',JSON.stringify(this.lastSleepOpportunity))
     }
-    // All other non-equipment work still obeys threat and low-HP gates.
-    if(this.threat()||this.safetyBusy||this.job)return
+    // Food is a survival need, not optional exploration. A positively
+    // observed wall can isolate a distant mob; unknown/close danger cannot.
+    const foodDanger=this.threat()
+    const foodSafe=safeShelteredFood({danger:foodDanger,
+      escort:this.escortDecision(foodDanger),health:this.bot.health,
+      recentHurtAt:this.lastSelfDamageAt,now:this.clock()})
     const health=this.bot.health,food=this.bot.food
-    if(this.clock()>=this.nextFoodAt&&Number.isFinite(food)&&food<18){
+    if(foodSafe&&this.clock()>=this.nextFoodAt&&Number.isFinite(food)&&food<18){
       this.nextFoodAt=this.clock()+30000
       if(this.ops.inventory()?.some(i=>['bread','apple','baked_potato','cooked_beef','cooked_porkchop',
-        'cooked_chicken','cooked_mutton','cooked_cod','cooked_salmon','carrot','golden_carrot'].includes(i.name))){
+        'cooked_chicken','cooked_mutton','cooked_rabbit','cooked_cod','cooked_salmon','carrot',
+        'golden_carrot','pumpkin_pie','melon_slice','cookie'].includes(i.name))){
         this.cancelActive('safe food recovery')
         this.startJob('RECOVER','自主生存',async signal=>{
-          const result=await this.ops.eatIfSafe({signal,underThreat:Boolean(this.threat())})
+          const stillDanger=this.threat()
+          const safe=safeShelteredFood({danger:stillDanger,
+            escort:this.escortDecision(stillDanger),health:this.bot.health,
+            recentHurtAt:this.lastSelfDamageAt,now:this.clock()})
+          const result=await this.ops.eatIfSafe({signal,underThreat:!safe})
+          if(result.ok)this.nextEquipAt=0 // Re-equip best weapon after food replaced hand.
           return {ok:result.ok,message:'饥饿值 '+result.foodBefore+' → '+result.foodAfter,
             reason:result.reason||'饥饿值未确认增加'}
         },{label:'安全进食',announce:false})
         return
       }
     }
+    // All remaining non-equipment work remains blocked by any nearby danger.
+    if(foodDanger||this.safetyBusy||this.job)return
     if(health<14)return
   }
   verifyVerticalTransition(candidate){

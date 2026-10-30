@@ -1,3 +1,9 @@
+## 2026-10-31 — Food and equipment survival refinement (source only; pending field check)
+
+- Existing automatic best weapon/armor system checks about every 20 seconds; success is only logged after held-item or armor-slot confirmation. On eating, food occupies the hand; new logic forces an early next equipment review after confirmed food recovery. No automatic fabrication or duplication of gear.
+- Existing food maintenance triggered at food<18 but was categorically prevented by any nearby hostile, including a verified wall-separated mob in the original 17879 enclosure. Now auto-eat may proceed with inventory food only when no danger OR an observed solid barrier is explicitly admitted by escort threat logic, health>8, and no self-damage within 6.5 seconds. If target is close, exposed, unknown or a recent hit occurs, eating remains barred. Adds food names already supported by the Bedrock food executor; confirms food rose rather than assuming success. Tests cover sheltered, open threat, recent hit and preservation of FOLLOW intent.
+- No movement/witness/safety-recovery fallback relaxed and no BDS mutation. Requires Mint Node24 and live verification; new code not yet activated in running Alice.
+
 ## 2026-10-31 — FOLLOW 3-block proximity + visible owner facing (awaiting live validation)
 
 - The existing Dashboard followDistance has default 3, supports integer 2..12 with live applied-revision acknowledgement. New pure followProximity uses real-foot 3D distance; inside radius releases existing FOLLOW path; a one-block vertical gap still needs safe Pathfinder ascent. Goal no longer subtracts 0.55 from configured range. Facing a verified visible owner is rate-limited lookAt only, with no movement or attack.
