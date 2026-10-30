@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "One guarded reload of Alice client in original 17879 world, after Follow3/food sync",
+  "steps": [
+    {
+      "name": "restart_contract",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-follow-food-reload-20261031.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "one_approved_client_only_reload",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-follow-food-reload-20261031.py",
+      "args": [
+        "--restart",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 275
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "client_reconnect",
+      "file": "alice_17879_client_restart.json",
+      "format": "json"
+    }
+  ]
+}

@@ -1,3 +1,8 @@
+## 2026-10-31 — Deploy-only one-shot entrypoints for FOLLOW3/food (do not replay)
+
+- Gated client-only restart task `.openclaw/tasks/alice_follow3_food_client_reload.json` uses an exclusive new Mint intent marker, existing canonical `alice-mint.py check/restart/status`, verified current owner/PID, graceful logout, and waits for a fresh post-restart established game session. Never touch BDS/world, launch a second simultaneous bot, or reuse older restart intent markers.
+- A separate one-shot Web API FOLLOW reissue task `.openclaw/tasks/alice_follow3_food_reissue.json` operates only if current Bedrock level UDP17879 and named player are online; it has its own new Mac intent lock, captures typed command receipt; no console or forced movement. New job IDs are required and must not repeat ambiguous outcomes. They do not prove path movement/jump/food consumption until independent live evidence exists.
+
 ## 2026-10-31 — Food and equipment survival refinement (source only; pending field check)
 
 - Existing automatic best weapon/armor system checks about every 20 seconds; success is only logged after held-item or armor-slot confirmation. On eating, food occupies the hand; new logic forces an early next equipment review after confirmed food recovery. No automatic fabrication or duplication of gear.

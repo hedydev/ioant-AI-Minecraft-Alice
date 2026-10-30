@@ -1,3 +1,8 @@
+## 2026-10-31 — Deploy-only one-shot entrypoints for FOLLOW3/food (do not replay)
+
+- Gated client-only restart task `.openclaw/tasks/alice_follow3_food_client_reload.json` uses an exclusive new Mint intent marker, existing canonical `alice-mint.py check/restart/status`, verified current owner/PID, graceful logout, and waits for a fresh post-restart established game session. Never touch BDS/world, launch a second simultaneous bot, or reuse older restart intent markers.
+- A separate one-shot Web API FOLLOW reissue task `.openclaw/tasks/alice_follow3_food_reissue.json` operates only if current Bedrock level UDP17879 and named player are online; it has its own new Mac intent lock, captures typed command receipt; no console or forced movement. New job IDs are required and must not repeat ambiguous outcomes. They do not prove path movement/jump/food consumption until independent live evidence exists.
+
 ## 2026-10-31 — Follow-proximity regression fixture correction
 
 - Mint Node24 full regression of 8e04f78: 677 tests, 673 pass, 4 fail. All four failing legacy integration fixtures placed the owner at (2,64,2), i.e. only 2.83 blocks from Alice, yet asserted a NEW active Pathfinder FOLLOW goal. With the explicitly requested 3-block stop behavior this old expectation is invalid. Updated only these four owners to (8,64,0) so tests continue to assert active path setup, safety cooldown, temporary GATHER resume and roster-departure behavior when genuinely outside radius. Runtime safety and gameplay code unchanged in this commit. Requires rerun Mint Node24 regression.
