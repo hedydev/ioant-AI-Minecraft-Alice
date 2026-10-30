@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Alice Mint passwordless sudo availability (no password)",
+  "steps": [
+    {
+      "name": "sudo_noninteractive_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-v2-sudo-noninteractive-check.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "sudo_noninteractive_check",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-v2-sudo-noninteractive-check.py",
+      "args": [
+        "--check",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 35
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "sudo_noninteractive",
+      "file": "sudo_noninteractive_check.json",
+      "format": "json"
+    }
+  ]
+}
