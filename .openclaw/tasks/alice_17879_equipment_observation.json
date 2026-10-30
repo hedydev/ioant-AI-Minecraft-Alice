@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Read current Alice equipped weapon attempt from owner-safe local log",
+  "steps": [
+    {
+      "name": "equipment_log_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-equipment-log-readonly.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "equipment_log_current_17879",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-equipment-log-readonly.py",
+      "args": [
+        "--read",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 50
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "equipment_observation",
+      "file": "equipment_live.json",
+      "format": "json"
+    }
+  ]
+}
