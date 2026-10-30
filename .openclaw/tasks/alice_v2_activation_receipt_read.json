@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "title": "Read existing v2 interactive activation status without repeating",
+  "steps": [
+    {
+      "name": "receipt_schema_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-v2-activation-receipt-read.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "receipt_read_only",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-v2-activation-receipt-read.py",
+      "args": [
+        "--read",
+        "@output_dir",
+        "tedz@192.168.0.104"
+      ],
+      "timeoutSeconds": 45
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "v2_activation_receipt",
+      "file": "v2_activation_receipt.json",
+      "format": "json"
+    }
+  ]
+}
