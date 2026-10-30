@@ -15,6 +15,32 @@ def run(out):
         raw=(p.stdout+'\n'+p.stderr)
         if len(raw)<=250000:
             hits=re.findall(r'(?m)^not ok \d+ - ([^\r\n]+)',raw)
+            # Node24 spec reporter uses a separate '✖ failing tests' section.
+            # Never include arbitrary stdout; only safe, short test titles.
+            if not hits:
+                section=raw.rsplit('✖ failing tests:',1)[-1] if '✖ failing tests:' in raw else ''
+                hits=re.findall(r'(?m)^✖\s+([^\r\n]+?)(?:\s+\([0-9.]+ms\))?\s*
+            for title in hits[:12]:
+                title=re.sub(r'[^a-zA-Z0-9 _:-]','',title).strip()[:140]
+                if title:cleaned.append(title)
+            total=re.findall(r'(?m)^[ℹi] fail (\d+)',raw)
+            if total:
+                report['state']='observed'
+                report['failingTests']=cleaned
+                report['failCount']=int(total[-1])
+    except (OSError,ValueError,subprocess.SubprocessError):
+        pass
+    fd=os.open(out/'node24_fail_names.json',os.O_CREAT|os.O_EXCL|os.O_WRONLY|getattr(os,'O_NOFOLLOW',0),0o600)
+    with os.fdopen(fd,'w') as f:json.dump(report,f,separators=(',',':'));f.write('\n')
+    print(json.dumps({'state':report['state'],'failCount':report['failCount']}))
+def selftest():
+    assert re.findall(r'(?m)^not ok \d+ - ([^\r\n]+)','not ok 5 - bed suite')==['bed suite']
+    print('ALICE_NODE24_NAMES_SELFTEST_PASS')
+if __name__=='__main__':
+    if sys.argv[1:]==['--self-test']:selftest()
+    elif len(sys.argv)==3 and sys.argv[1]=='--read':run(sys.argv[2])
+    else:raise SystemExit('usage')
+,section)
             cleaned=[]
             for title in hits[:12]:
                 title=re.sub(r'[^a-zA-Z0-9 _:-]','',title).strip()[:140]
