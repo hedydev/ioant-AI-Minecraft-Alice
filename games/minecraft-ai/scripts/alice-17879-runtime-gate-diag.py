@@ -72,7 +72,7 @@ def run(output):
           'tedz@192.168.0.104','/usr/bin/python3 -c '+shlex.quote(REMOTE)],capture_output=True,text=True,timeout=40,check=False)
         if p.returncode==0 and len(p.stdout)<1600:obs=json.loads(p.stdout)
     except (OSError,ValueError,subprocess.SubprocessError):pass
-    valid=obs if isinstance(obs,dict) and obs.get('state') in ('observed','unverified') and len(obs)==15 else None
+    valid=obs if isinstance(obs,dict) and obs.get('state') in ('observed','unverified') and len(obs)==18 else None
     result={'audit':'ALICE_17879_RUNTIME_GATE_DIAG','schemaVersion':1,'readOnly':True,
       'bdsCommandSent':False,'aliceRestarted':False,'observation':valid}
     fd=os.open(out/'alice_gate_diag.json',os.O_CREAT|os.O_EXCL|os.O_WRONLY|getattr(os,'O_NOFOLLOW',0),0o600)
