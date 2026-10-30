@@ -30,6 +30,10 @@ function createResponsiveFollowGoal(GoalFollow,entity,radius,{refreshBlocks=1}={
     if(!p||![p.x,p.y,p.z].every(Number.isFinite)||
        !node||![node.x,node.y,node.z].every(Number.isFinite))return false
     const dx=node.x+0.5-p.x,dy=node.y-p.y,dz=node.z+0.5-p.z
+    // A nearby owner ONE BLOCK UP on a staircase is not 'reached':
+    // require the same floor-level arrival contract as runtime proximity.
+    // Pathfinder must find a legal ordinary step up instead of idling below.
+    if(Math.abs(dy)>0.65)return false
     return dx*dx+dy*dy+dz*dz<=reliableRadius*reliableRadius
   }
   goal.hasChanged=function(){

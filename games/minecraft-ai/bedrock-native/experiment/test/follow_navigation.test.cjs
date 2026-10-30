@@ -28,6 +28,14 @@ test('pinned GoalFollow false success at 4.15 real blocks must not stop Alice',(
   assert.equal(goal.isEnd({x:2,y:64,z:0}),true,
     'a cell center within three real blocks must not force crowding closer')
 })
+test('follow goal does not falsely arrive at a nearby player one stair above',()=>{
+ const player={position:v(1.5,65,0.5)},goal=createResponsiveFollowGoal(GoalFollow,player,3)
+ assert.equal(goal.isEnd({x:1,y:64,z:0}),false,
+   'one full block higher still needs a legitimate step-up route')
+ assert.equal(goal.isEnd({x:1,y:65,z:0}),true,
+   'correct floor and 3-block distance counts as arrived')
+ assert.equal(goal.isEnd({x:20,y:65,z:0}),false)
+})
 test('wooden doors only; no iron, trapdoors or blocks can be damaged',()=>{
   const moves={canOpenDoors:false,canDig:false,openable:new Set([51])}
   const r=configureDoors(moves,{blocksArray:[

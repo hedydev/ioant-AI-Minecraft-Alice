@@ -1,3 +1,8 @@
+## 2026-10-31 — Stair root-cause fix: GoalFollow must NOT finish a floor below target
+
+- Follow arrival now requires both configured 3D radius AND same-floor vertical tolerance (|target feet Y - node feet Y| <=0.65); the old goal was willing to succeed one full block below the owner when within 3 horizontal blocks. This false success explained a plausible step-stall and now has a dedicated regression. Normal safe Pathfinder can seek a loaded valid one-block step-up route; no blind jumps, block breaking, unsafe parkour, or floor spoofing added. The user's observed hand swing is NOT independently attributed until real input/path logs.
+- Continue to require actual BDS evidence before claiming stairs worked in game. Keep current world 17879 and other BDS intact.
+
 ## 2026-10-31 — Deploy-only one-shot entrypoints for FOLLOW3/food (do not replay)
 
 - Gated client-only restart task `.openclaw/tasks/alice_follow3_food_client_reload.json` uses an exclusive new Mint intent marker, existing canonical `alice-mint.py check/restart/status`, verified current owner/PID, graceful logout, and waits for a fresh post-restart established game session. Never touch BDS/world, launch a second simultaneous bot, or reuse older restart intent markers.
