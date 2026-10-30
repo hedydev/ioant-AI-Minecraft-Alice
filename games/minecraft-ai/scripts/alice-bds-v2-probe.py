@@ -17,7 +17,8 @@ REASONS={'missing_lab_beta_tool','lab_beta_not_enabled','lab_process_guard_unava
   'duplicate_lab_property','lab_port_world_or_auth_changed','unsafe_lab_allowlist',
   'lab_probe_already_prepared','lab_probe_already_running','unsafe_lab_config',
   'unsafe_lab_instrumentation','lab_script_drift','lab_script_unexpected_imports',
-  'lab_udp_ports_busy','lab_netns_unavailable','invalid_action','lab_pack_not_staged',
+  'lab_udp_ports_busy','lab_netns_unavailable','lab_netns_loopback_unavailable',
+  'invalid_action','lab_pack_not_staged',
   'unsafe_lab_postmortem_file','lab_bds_is_running','bds_cwd_requires_privileged_read',
   'bds_cwd_unverified','proc_unavailable','v2_lab_missing','v2_generation_mismatch',
   'v2_lab_marker_unavailable'}
