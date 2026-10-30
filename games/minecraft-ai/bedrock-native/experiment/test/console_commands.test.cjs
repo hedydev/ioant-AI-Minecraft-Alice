@@ -39,7 +39,7 @@ test('console never impersonates a player; only explicit online & locatable name
  assert.equal(result.status,'started')
  assert.equal(result.reason,'follow_intent_set')
  assert.deepEqual(calls.at(-1),['follow','Steve',3])
- assert.match(result.message,/实际移动尚待服务器验证/)
+ assert.match(result.message,/服务器坐标安全行动/)
 })
 test('online name without entity must not be treated as a valid follow target',()=>{
  const {runtime}=makeRuntime()
@@ -106,4 +106,17 @@ test('STOP works even when initial inventory sync is unavailable',()=>{
  assert.equal(r.status,'completed')
  assert(calls.some(c=>c[0]==='stop'))
  assert.equal(runCommand(runtime,{action:'follow',target:'Steve'},()=>{}).reason,'alice_not_ready')
+})
+
+test('explicit online FOLLOW is accepted during danger and low health without stealing safety owner',()=>{
+ const {runtime,calls}=makeRuntime()
+ runtime.bot.health=13
+ runtime.safetyBusy=true
+ runtime.threat=()=>({type:'SURVIVE',target:{name:'zombie'}})
+ const result=runCommand(runtime,{action:'follow',target:'Steve'},()=>{})
+ assert.equal(result.status,'started')
+ assert.equal(result.reason,'follow_intent_set')
+ assert.deepEqual(calls.at(-1),['follow','Steve',3])
+ assert.equal(calls.some(c=>c[0]==='cancel'),false,'emergency controller not cancelled')
+ assert.equal(runCommand(runtime,{action:'gather_wood'},()=>{}).reason,'safety_preempted')
 })
