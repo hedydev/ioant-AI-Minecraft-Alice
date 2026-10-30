@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Read failing Mint Node24 test titles without changing game",
+  "steps": [
+    {
+      "name": "node24_names_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-node24-failure-names.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "mint_node24_failing_names",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-node24-failure-names.py",
+      "args": [
+        "--read",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 145
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "node_fail_names",
+      "file": "node24_fail_names.json",
+      "format": "json"
+    }
+  ]
+}
