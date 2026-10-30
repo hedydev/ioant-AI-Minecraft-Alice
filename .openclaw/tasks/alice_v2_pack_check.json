@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "title": "Alice v2 witness pack stage readonly preflight",
+  "steps": [
+    {
+      "name": "v2_pack_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-v2-pack-stage.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "v2_pack_readonly_check",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-v2-pack-stage.py",
+      "args": [
+        "--run",
+        "@output_dir",
+        "tedz@192.168.0.104",
+        "check"
+      ],
+      "timeoutSeconds": 50
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "v2_pack_check",
+      "file": "alice_v2_pack_result.json",
+      "format": "json"
+    }
+  ]
+}
