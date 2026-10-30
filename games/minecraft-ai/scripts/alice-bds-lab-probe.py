@@ -468,6 +468,9 @@ def probe(lab, *, duration=12, popen=subprocess.Popen, sleep=time.sleep,
 
 
 def run_action(mode, *, lab=None):
+    # The returned gate lab path is always non-null, including consumed v1.
+    # Preserve the caller's explicit v2 selection BEFORE overwriting lab.
+    strict_v2 = lab is not None
     netns = mode.startswith("netns-")
     stage = mode[6:] if netns else mode
     if stage not in ("check", "probe", "postmortem"):
@@ -487,7 +490,7 @@ def run_action(mode, *, lab=None):
     # any lab-only backup/config edits, so failure cannot consume the probe.
     if netns and not namespace_preflight():
         raise ValueError("lab_netns_unavailable")
-    if netns and lab is not None and not namespace_v2_loopback_preflight():
+    if netns and strict_v2 and not namespace_v2_loopback_preflight():
         raise ValueError("lab_netns_loopback_unavailable")
     if stage == "check":
         props, keys = properties(lab / "server.properties")
@@ -517,7 +520,7 @@ def run_action(mode, *, lab=None):
         instrument_lab_script(lab)
         gate.require_lab_stopped()
         state, flags = (probe(lab, network_namespace=True,
-                              v2_enable_loopback=(lab is not None))
+                              v2_enable_loopback=strict_v2)
                         if netns else probe(lab))
         flags["networkNamespacePreflightPassed"] = netns
         # Only a completed config/instrumentation guard may positively attest
