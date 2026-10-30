@@ -4,6 +4,8 @@
 // are loaded by the entrypoint. The game actions are Bedrock-specific adapters.
 const {BedrockOperations,qty,WOOD_LOGS} = require('./operations.cjs')
 const {stationaryDefense,defenseDelay}=require('./defensive_melee.cjs')
+const {equipmentSnapshot}=require('./life_actions.cjs')
+const {observedHostileBarrier,OwnerMotion,escortAssessment}=require('./escort_threat.cjs')
 const {OllamaPlanner} = require('./planner.cjs')
 const {FollowProgress} = require('./follow_progress.cjs')
 const {FollowInputObservation}=require('./follow_input_observation.cjs')
@@ -114,6 +116,7 @@ class AliceBedrockRuntime {
     this.lastFollowEnd=null
     this.lastGuardedPlayer=null;this.lastSafetyAt=0;this.lastCombatAt=0;this.lastRetreatAt=0
     this.lastDanger=null;this.lastSelfDamageAt=0;this.lastThreatObservedAt=0
+    this.ownerMotion=new OwnerMotion();this.lastEscortDecision=null
     this.deathNoted=false
     this.deathExperience=new DeathExperience({clock,log,file:experienceFile?
       require('node:path').join(require('node:path').dirname(experienceFile),
@@ -208,6 +211,7 @@ class AliceBedrockRuntime {
       }
       this.followGoal=null;this.followSource=null;this.followPosition=null
       this.lastSeenPlayer=null;this.lastTargetLostAt=0;this.lastGuardedPlayer=null
+        this.ownerMotion.reset()
       this.lastFollowDiagnostic=null;this.lastFollowDiagnosticAt=0
       this.followProgress.reset()
       if(!this.job&&!safetyActive){
@@ -445,6 +449,25 @@ class AliceBedrockRuntime {
     const owner=this.action?.source||this.core.intent?.data?.playerName||'自主任务'
     const goal=this.driveJournal?.get()?.goal
     return `Alice状态：${act}，来源${owner}；目标${goal||'观察环境'}；生命${this.bot.health}/20，饥饿${Number.isFinite(this.bot.food)?this.bot.food:'未知'}；坐标${Math.floor(p.x)},${Math.floor(p.y)},${Math.floor(p.z)}。`
+  }
+  equipmentEvidence(){
+    return {...equipmentSnapshot(this.bot,this.p.equipment?.chooseWeapon),
+      lastAttempt:this.lastEquipObservation}
+  }
+  escortDecision(danger=this.threat(),{observeOwner=true}={}){
+    const owner=this.core.intent?.data?.playerName
+    const entity=this.core.hasFollowIntent?.()?this.visiblePlayer(owner):null
+    const now=this.clock()
+    const moving=entity&&observeOwner?this.ownerMotion.observe(entity.position,now):
+      this.ownerMotion.lastMoveAt>-Infinity&&now-this.ownerMotion.lastMoveAt<=1800
+    const recentHurt=this.lastSelfDamageAt>0&&now-this.lastSelfDamageAt<=6500
+    const barrier=danger?.target?observedHostileBarrier(this.bot,danger.target):'unknown'
+    const result=escortAssessment({hasIntent:!!entity&&this.core.hasFollowIntent(),
+      health:this.bot.health,danger,barrier,ownerMoving:!!moving,
+      recentSelfHurt:recentHurt,self:this.bot.entity?.position,target:danger?.target?.position})
+    this.lastEscortDecision={reason:result.reason,allowFollow:result.allowFollow,
+      barrier,ownerMoving:!!moving,at:now}
+    return result
   }
   inventorySummary(){
     const items=this.ops.inventory()
