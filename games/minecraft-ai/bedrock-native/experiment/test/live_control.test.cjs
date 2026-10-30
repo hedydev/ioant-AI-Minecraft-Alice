@@ -317,3 +317,19 @@ test('death memory and job timers cannot displace producer PID and health',()=>w
   assert.equal(saved.connected,true)
   assert(Buffer.byteLength(JSON.stringify(saved))<=4096)
 }))
+
+test('explicit escort gate and acknowledged sword are exposed without breaking 4KiB heartbeat',()=>withDir(root=>{
+  const pub=new LiveStatus({root})
+  pub.publish({connected:true,sessionEstablished:true,world:'Bedrock level',
+    serverPort:17879,state:'SURVIVE',followTarget:'MolarParsley191',
+    escort:{reason:'hostile_behind_observed_barrier',barrier:'blocked',
+      ownerMoving:false,followPermitted:true},
+    equipment:{inventoryKnown:true,weaponInInventory:'stone_sword',
+      heldItem:'stone_sword',armorInInventory:[],wornArmor:null,
+      lastAttempt:{ok:true,item:'stone_sword',kind:'weapon',reason:'unknown',at:100000}}})
+  const result=JSON.parse(fs.readFileSync(path.join(root,'status.json'),'utf8'))
+  assert.equal(result.escort.barrier,'blocked')
+  assert.equal(result.escort.followPermitted,true)
+  assert.equal(result.equipment.heldItem,'stone_sword')
+  assert(Buffer.byteLength(JSON.stringify(result))<=4096)
+}))
