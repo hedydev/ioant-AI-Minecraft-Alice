@@ -41,7 +41,8 @@ class V3ControlStartTests(unittest.TestCase):
                 m.namespace_preflight=lambda:True
                 m.namespace_v2_loopback_preflight=lambda:True
             return m
-        with patch.object(P,'load',side_effect=patched):
+        with patch.object(P,'load',side_effect=patched), patch.object(
+                P.Path,'home',return_value=self.home):
             P.lab_guard()
             (self.lab/P.INTENT).write_text('already used')
             with self.assertRaisesRegex(ValueError,'control_already_consumed'):
@@ -49,8 +50,9 @@ class V3ControlStartTests(unittest.TestCase):
     def test_non_v3_or_behavior_pack_refused(self):
         marker=self.lab/'.alice-sandbox.json'
         marker.write_text('{"labGeneration":"fresh-isolated-v2","kind":"alice-disposable-bedrock-lab","port":17880,"world":"Bedrock level"}')
-        with self.assertRaisesRegex(ValueError,'v3_marker_invalid'):
-            P.lab_guard()
+        with patch.object(P.Path,'home',return_value=self.home):
+            with self.assertRaisesRegex(ValueError,'v3_marker_invalid'):
+                P.lab_guard()
     def test_log_categories_bounded_and_not_raw(self):
         self.assertEqual(P.classify_error(b'error while loading shared libraries: private.so'),
                          'elf_loader_error')
