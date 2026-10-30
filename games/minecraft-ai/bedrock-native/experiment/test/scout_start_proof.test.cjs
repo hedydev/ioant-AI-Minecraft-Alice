@@ -3,7 +3,8 @@ const test=require('node:test'),assert=require('node:assert/strict')
 const {scoutStartProof}=require('../src/scout_start_proof.cjs')
 const base=()=>({get:()=>({
   lastSource:'bds_querytarget',independentSamples:4,
-  latestFeet:{x:.5,y:69,z:.5},lastAt:8000
+  latestFeet:{x:.5,y:69,z:.5},lastAt:8000,
+  independentPreviousAt:7600
 })})
 const bot=()=>({entity:{position:{x:.5,y:69,z:.5}}})
 test('accepts aligned fresh independent witness with two or more samples',()=>{
@@ -24,7 +25,11 @@ test('rejects untrusted missing stale future or single witness',()=>{
    {...base().get(),lastSource:'correct_player_move_prediction'},
    {...base().get(),lastAt:5000},
    {...base().get(),lastAt:11000},
-   {...base().get(),latestFeet:null}
+   {...base().get(),latestFeet:null},
+   {...base().get(),independentPreviousAt:null},
+   {...base().get(),independentPreviousAt:8000},
+   {...base().get(),independentPreviousAt:12000},
+   {...base().get(),independentPreviousAt:3000}
  ]) {
    const result=scoutStartProof(bot(),{get:()=>s},()=>10000)
    assert.equal(result.ok,false)
@@ -43,11 +48,35 @@ test('script API evidence can satisfy start only when fresh, multiple and positi
  assert.equal(scoutStartProof(bot(),{get:()=>({...sample,independentSamples:1})},()=>10000).ok,false)
 })
 
+test('fresh latest BDS sample cannot reuse an old independent position pair',()=>{
+ const s={...base().get(),
+   independentSource:'bds_querytarget',independentLatestFeet:{x:.5,y:69,z:.5},
+   independentAt:9900,independentPreviousAt:1500,independentSamples:100}
+ const result=scoutStartProof(bot(),{get:()=>s},()=>10000)
+ assert.deepEqual(result,{ok:false,reason:'scout_bds_position_unavailable'})
+ // Once two fresh independent observations exist, alignment is admissible.
+ s.independentPreviousAt=9600
+ assert.equal(scoutStartProof(bot(),{get:()=>s},()=>10000).ok,true)
+})
+
+test('previous independent timestamp must be safe, strictly ordered and within 4s',()=>{
+ const sample={...base().get(),independentSource:'bds_script_api',
+   independentLatestFeet:{x:.5,y:69,z:.5},independentAt:9800}
+ for(const before of [undefined,null,NaN,9800,10000,3000,1e20]){
+   const s={...sample,independentPreviousAt:before}
+   assert.deepEqual(scoutStartProof(bot(),{get:()=>s},()=>10000),
+      {ok:false,reason:'scout_bds_position_unavailable'})
+ }
+ sample.independentPreviousAt=6000
+ assert.equal(scoutStartProof(bot(),{get:()=>sample},()=>10000).ok,true)
+})
+
 test('interleaved ordinary server corrections do not erase recent independent witness',()=>{
  const s={...base().get(),lastSource:'correct_player_move_prediction',
    latestFeet:{x:200,y:80,z:200},lastAt:10000,
    independentLatestFeet:{x:.5,y:69,z:.5},
-   independentSource:'bds_script_api',independentAt:9800}
+   independentSource:'bds_script_api',independentAt:9800,
+   independentPreviousAt:9400}
  assert.equal(scoutStartProof(bot(),{get:()=>s},()=>10000).ok,true)
  assert.equal(scoutStartProof(bot(),{get:()=>s},()=>14050).ok,false)
 })

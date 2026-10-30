@@ -10,10 +10,15 @@ function scoutStartProof(bot,evidence,clock=Date.now){
   const source=s?.independentSource||s?.lastSource
   const independent=s?.independentLatestFeet||s?.latestFeet
   const at=s?.independentAt??s?.lastAt
+  // Requiring two lifetime samples is insufficient: a sample from an old
+  // session/window must not make one new sample look like a fresh pair.
+  const previousAt=s?.independentPreviousAt
+  const now=clock()
   if(!s||!['bds_querytarget','bds_script_api'].includes(source)||
      !Number.isInteger(s.independentSamples)||s.independentSamples<2||
      !finite(independent)||!Number.isSafeInteger(at)||
-     clock()-at<0||clock()-at>4000)
+     !Number.isSafeInteger(previousAt)||previousAt>=at||
+     now-at<0||now-at>4000||now-previousAt<0||now-previousAt>4000)
     return {ok:false,reason:'scout_bds_position_unavailable'}
   if(!finite(p))return {ok:false,reason:'scout_client_position_unavailable'}
   const meters=Math.hypot(
