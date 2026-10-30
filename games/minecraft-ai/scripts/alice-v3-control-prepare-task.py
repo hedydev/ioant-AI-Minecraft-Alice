@@ -54,7 +54,11 @@ def validate(d):
     if d['backupRestore'] not in ('not_verified','archive_sha256_isolated_restore_verified'):
         return None
     if type(d['labCreated']) is not bool:return None
-    if d['labCreated'] and (d['state']!='prepared' or d['reason']!='new_control_without_script_api'):
+    if d['state']=='prepared' and (d['labCreated'] is not True or
+        d['reason']!='new_control_without_script_api' or
+        d['backupRestore']!='archive_sha256_isolated_restore_verified'):
+        return None
+    if d['state']=='preflight_blocked' and d['labCreated']:
         return None
     return d
 def run(output):
