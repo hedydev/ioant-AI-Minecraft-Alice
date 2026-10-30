@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Alice v3 control BDS outcome, read-only receipt",
+  "steps": [
+    {
+      "name": "receipt_parser_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-v3-control-receipt-read.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "v3_receipt_readonly",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-v3-control-receipt-read.py",
+      "args": [
+        "--read",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 45
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "v3_control_receipt",
+      "file": "alice_v3_control_receipt.json",
+      "format": "json"
+    }
+  ]
+}
