@@ -154,6 +154,46 @@ NETNS_UNSHARE = Path("/usr/bin/unshare")
 NETNS_TRUE = Path("/usr/bin/true")
 NETNS_CAT = Path("/usr/bin/cat")
 NETNS_PYTHON = Path("/usr/bin/python3")
+# Executed ONLY after a fresh unshare --user --map-root-user --net. The lo
+# interface is initially DOWN in this child netns; a BDS import attempt could
+# otherwise waste the one-shot fixture before its server ever becomes ready.
+# Never run this setup on the host: it is argv data exclusively for unshare.
+NETNS_V2_LOOPBACK_SETUP = (
+    "import os,sys,socket,fcntl,struct\n"
+    "s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)\n"
+    "try:\n"
+    " current=fcntl.ioctl(s.fileno(),0x8913,struct.pack('256s',b'lo'))\n"
+    " flags=struct.unpack_from('H',current,16)[0]\n"
+    " if not flags & 1:\n"
+    "  fcntl.ioctl(s.fileno(),0x8914,struct.pack('16sH14s',b'lo',flags|1,b''))\n"
+    " current=fcntl.ioctl(s.fileno(),0x8913,struct.pack('256s',b'lo'))\n"
+    " if not struct.unpack_from('H',current,16)[0] & 1: sys.exit(76)\n"
+    "finally:\n"
+    " s.close()\n"
+    "os.execv(sys.argv[1],[sys.argv[1]])\n"
+)
+
+
+def namespace_v2_loopback_preflight(run=subprocess.run):
+    """Set lo UP in a disposable child netns, then exec /usr/bin/true.
+
+    Strictly no host-network fallback, sudo, world access, or BDS run. A
+    refusal happens BEFORE creating the real lab's one-shot lock/backups.
+    """
+    if (not NETNS_UNSHARE.is_file() or NETNS_UNSHARE.is_symlink()
+            or not NETNS_PYTHON.is_file() or NETNS_PYTHON.is_symlink()
+            or not os.access(NETNS_PYTHON, os.X_OK)
+            or not NETNS_TRUE.is_file() or NETNS_TRUE.is_symlink()):
+        return False
+    cmd = [str(NETNS_UNSHARE), "--user", "--map-root-user", "--net",
+           "--", str(NETNS_PYTHON), "-I", "-c", NETNS_V2_LOOPBACK_SETUP,
+           str(NETNS_TRUE)]
+    try:
+        p = run(cmd, capture_output=True, timeout=8, check=False,
+                env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"})
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return p.returncode == 0
 
 
 def namespace_preflight(run=subprocess.run):
@@ -373,7 +413,7 @@ def classify(log):
 
 
 def probe(lab, *, duration=12, popen=subprocess.Popen, sleep=time.sleep,
-          network_namespace=False):
+          network_namespace=False, v2_enable_loopback=False):
     # Host route still requires both ports. Namespace route does not touch
     # the host UDP table and MUST exec unshare; never fall back to a host bind.
     if not network_namespace and not ports_free():
@@ -384,9 +424,14 @@ def probe(lab, *, duration=12, popen=subprocess.Popen, sleep=time.sleep,
     run = None
     with tempfile.TemporaryFile(mode="w+b") as logs:
         try:
-            command = ([str(NETNS_UNSHARE), "--user", "--map-root-user",
-                        "--net", "--", "./bedrock_server"]
-                       if network_namespace else ["./bedrock_server"])
+            command = (
+                [str(NETNS_UNSHARE), "--user", "--map-root-user", "--net",
+                 "--", str(NETNS_PYTHON), "-I", "-c",
+                 NETNS_V2_LOOPBACK_SETUP, "./bedrock_server"]
+                if network_namespace and v2_enable_loopback else
+                [str(NETNS_UNSHARE), "--user", "--map-root-user",
+                 "--net", "--", "./bedrock_server"]
+                if network_namespace else ["./bedrock_server"])
             run = popen(command, cwd=lab, env=env,
                         stdin=subprocess.PIPE, stdout=logs, stderr=subprocess.STDOUT,
                         start_new_session=True)
@@ -442,6 +487,8 @@ def run_action(mode, *, lab=None):
     # any lab-only backup/config edits, so failure cannot consume the probe.
     if netns and not namespace_preflight():
         raise ValueError("lab_netns_unavailable")
+    if netns and lab is not None and not namespace_v2_loopback_preflight():
+        raise ValueError("lab_netns_loopback_unavailable")
     if stage == "check":
         props, keys = properties(lab / "server.properties")
         return ("ready_for_isolated_lab_probe", {
@@ -469,7 +516,8 @@ def run_action(mode, *, lab=None):
         gate.require_lab_stopped()
         instrument_lab_script(lab)
         gate.require_lab_stopped()
-        state, flags = (probe(lab, network_namespace=True)
+        state, flags = (probe(lab, network_namespace=True,
+                              v2_enable_loopback=(lab is not None))
                         if netns else probe(lab))
         flags["networkNamespacePreflightPassed"] = netns
         # Only a completed config/instrumentation guard may positively attest
@@ -516,7 +564,7 @@ def main():
             "lab_probe_already_prepared", "lab_probe_already_running", "unsafe_lab_config",
             "unsafe_lab_instrumentation", "lab_script_drift",
             "lab_script_unexpected_imports",
-            "lab_udp_ports_busy", "lab_netns_unavailable", "invalid_action", "lab_pack_not_staged",
+            "lab_udp_ports_busy", "lab_netns_unavailable", "lab_netns_loopback_unavailable", "invalid_action", "lab_pack_not_staged",
             "unsafe_lab_postmortem_file",
             "lab_bds_is_running", "bds_cwd_requires_privileged_read",
             "bds_cwd_unverified", "proc_unavailable",

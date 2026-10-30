@@ -119,6 +119,64 @@ class NetworkNamespaceTests(unittest.TestCase):
         self.assertIn("lab_netns_unavailable",wrapper)
         self.assertNotIn("sudo -S",wrapper)
 
+
+    def test_v2_netns_preflight_only_enables_loopback_in_child_namespace(self):
+        calls=[]
+        def run(args, **kwargs):
+            calls.append((args,kwargs))
+            return SimpleNamespace(returncode=0)
+        with patch.object(P.NETNS_UNSHARE.__class__, "is_file", return_value=True), patch.object(
+                P.NETNS_UNSHARE.__class__, "is_symlink", return_value=False), patch.object(
+                P.os, "access", return_value=True):
+            self.assertTrue(P.namespace_v2_loopback_preflight(run=run))
+        args,opts=calls[0]
+        self.assertEqual(args[:8],[
+            "/usr/bin/unshare","--user","--map-root-user","--net",
+            "--","/usr/bin/python3","-I","-c"])
+        self.assertEqual(args[-1],"/usr/bin/true")
+        self.assertIn("0x8914",args[8])
+        self.assertIn("os.execv(sys.argv[1]",args[8])
+        self.assertNotIn("shell",opts)
+        self.assertEqual(opts["timeout"],8)
+
+    def test_v2_loopback_denial_is_before_one_shot_lock_or_lab_mutation(self):
+        gate=Mock()
+        with tempfile.TemporaryDirectory() as tmp, patch.object(
+                P,"beta_gate",return_value=(gate,Path(tmp))), patch.object(
+                P,"namespace_preflight",return_value=True), patch.object(
+                P,"namespace_v2_loopback_preflight",return_value=False), patch.object(
+                P,"secure_config",side_effect=AssertionError("config written")), patch.object(
+                P,"instrument_lab_script",side_effect=AssertionError("script written")), patch.object(
+                P,"probe",side_effect=AssertionError("BDS launched")):
+            with self.assertRaisesRegex(ValueError,"lab_netns_loopback_unavailable"):
+                P.run_action("netns-probe",lab=Path(tmp))
+            self.assertFalse((Path(tmp)/".alice-lab-probe.lock").exists())
+        gate.require_lab_stopped.assert_called_once_with()
+
+    def test_v2_probe_execs_loopback_setup_inside_netns_before_bds(self):
+        invocations=[]
+        class FakeBds:
+            def __init__(self, args, **kwargs):
+                invocations.append(args)
+                self.returncode=None
+                kwargs["stdout"].write(b"Server started.\\nALICE_LAB_IMPORTS_READY_17880\\n".replace(b"\\n",b"\n"))
+            def poll(self): return self.returncode
+            def communicate(self, input=None, timeout=None): self.returncode=0
+            def send_signal(self, kind):pass
+            def wait(self, timeout=None):self.returncode=0
+        with tempfile.TemporaryDirectory() as tmp,patch.object(P,"ports_free",
+                   side_effect=AssertionError("host port touched")):
+            state,flags=P.probe(Path(tmp),duration=0,popen=FakeBds,
+                 sleep=lambda _s:None,network_namespace=True,
+                 v2_enable_loopback=True)
+        self.assertEqual(state,"lab_module_imports_observed")
+        args=invocations[0]
+        self.assertEqual(args[:8],[
+            "/usr/bin/unshare","--user","--map-root-user","--net",
+            "--","/usr/bin/python3","-I","-c"])
+        self.assertEqual(args[-1],"./bedrock_server")
+        self.assertIn("0x8914",args[8])
+
     def test_loopback_uses_child_socket_ioctl_not_inherited_sysfs(self):
         seen=[]
         def run(args, **kwargs):

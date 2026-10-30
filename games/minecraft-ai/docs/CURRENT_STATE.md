@@ -1,3 +1,9 @@
+## 2026-10-31 — v2 isolated netns loopback readiness before one-shot startup
+
+- A real deterministic Mint user/netns diagnostic `alice_netns_lo_check_b49470_20261031_c2e58a19` succeeded: `beforeUp=false`, `afterUp=true`, `attemptedUp=true`, `hostNetworkModified=false`. Fresh user+network namespaces start with loopback DOWN, but the unprivileged namespace-mapped root can enable its **own** `lo` using `SIOCSIFFLAGS` without modifying the host or using sudo.
+- For v2 ONLY, the guarded `netns-check` now additionally proves child lo can be brought UP before the one-shot lock/backup is created; otherwise it returns `lab_netns_loopback_unavailable`. The v2 startup uses `unshare --user --map-root-user --net -- /usr/bin/python3 -I -c <fixed-lo-setup> ./bedrock_server`; the Python code enables and verifies child lo then `execv`s the isolated BDS. Existing consumed v1 netns path is unchanged, no host fallback, no production world/BDS changes. Added offline tests for child-only argv, denial before lock, and v2 BDS argv.
+- This is **not yet** a successful live BDS module import or independent position witness; the separately authorized Mint interactive activation remains blocked pending one user-entered sudo authentication for read-only root BDS cwd disambiguation.
+
 ## 2026-10-31 — v2 lab pack staging blocked by root-owned BDS process identity, fail-closed
 
 - Current v2 clone was created by one-shot prepared archive report `alice_v2_prepare_20261031_b4d2c471_36a5e821` (`new_disposable_copy_created_not_started`, SHA+restore verified, production and old v1 untouched). User netns available; Mint had 107.55 GiB available before cloning.
