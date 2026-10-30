@@ -1,3 +1,7 @@
+## 2026-10-30 — P0 querytarget delayed witness freshness fix (source-only)
+
+- Read-only Alice status reported stale_or_invalid_witness / sample_predates_current_login. This reports an old sample, not a new BDS query. The opt-in querytarget parser previously assigned observedAt at delayed HTTP/log read time and could mislabel old server coordinates as fresh. Now it uses the time the single fixed querytarget was issued and rejects target data parsed >4 seconds later using a monotonic clock; it reports only a sanitized querytarget_response_too_late enum and never publishes stale coordinates. Offline delayed and prompt tests were added. This does not enable the disabled console polling loop or change BDS commands. No Mint sync, new querytarget, server restart, world changes or movement acceptance was executed for this source change. Run Mac Python/Mint Node24 regressions before any separately authorized deployment; real independent position evidence is still missing.
+
 ## 2026-10-25 — Bedrock stationary self-defense P0, source staged
 
 - User approved Phase 1 combat survival repair. Last 3-hour acceptance evidence (2026-10-25 23:31 +08): 6,236 entries, 232 death observations, 496 failed retreat results split 212 `retreat_pathfinder_error`, 174 `retreat_flat_geometry_not_verified`, 110 `retreat_no_verified_away_corridor`; 132 cornered melee attempts and 132 unattributed target-hurt events. No verified independent BDS positions or autonomous walking. The old runaway client was started before current source sync; disk changes are NOT live process proof.

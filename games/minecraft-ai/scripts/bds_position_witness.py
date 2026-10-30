@@ -42,6 +42,7 @@ SAFE_REASONS = frozenset({
     "querytarget_outputlog_unchanged", "querytarget_log_advanced_without_target_data",
     "querytarget_no_matching_player_reported", "querytarget_command_unrecognized",
     "local_log_rotated_or_replaced", "oversized_local_log_delta",
+    "querytarget_response_too_late",
 })
 
 
@@ -256,7 +257,8 @@ def publish(sample, path=OUTPUT):
             os.unlink(tmp)
 
 
-def probe_once(cfg, key, api_call=api, sleep=time.sleep, local_log_factory=None):
+def probe_once(cfg, key, api_call=api, sleep=time.sleep, local_log_factory=None,
+               clock=time.monotonic):
     def call(endpoint, extra=None):
         try:
             return api_call(cfg, key, endpoint, extra)
@@ -270,6 +272,9 @@ def probe_once(cfg, key, api_call=api, sleep=time.sleep, local_log_factory=None)
     local_appended = local_log_factory(cfg["instanceId"]) if local_log_factory else None
     # The only fixed console query permitted by this script.
     command = 'querytarget @a[name="' + cfg["gamertag"] + '"]'
+    # A delayed console result must not be stamped with its later poll time.
+    issued_at_ms = int(time.time() * 1000)
+    issued_at_clock = clock()
     accepted = call("command", {"command": command})
     if not is_confirmed_command_ack(accepted, cfg.get("instanceId")):
         raise ValueError("querytarget_command_rejected_" + ack_kind(accepted))
@@ -309,11 +314,15 @@ def probe_once(cfg, key, api_call=api, sleep=time.sleep, local_log_factory=None)
                     incomplete_target = True
                     continue
                 raise
+            # No stale command response may become fresh BDS position proof.
+            elapsed = clock() - issued_at_clock
+            if not 0 <= elapsed <= 4.0:
+                raise ValueError("querytarget_response_too_late")
             # Bedrock querytarget Y denotes eye height; Alice runtime works in feet.
             return {
                 "version": 1, "source": "mcsm_querytarget",
                 "gamertag": cfg["gamertag"], "serial": str(time.time_ns()),
-                "uniqueId": uid, "observedAt": int(time.time() * 1000),
+                "uniqueId": uid, "observedAt": issued_at_ms,
                 "feet": {"x": p["x"], "y": p["y"] - 1.62, "z": p["z"]}
             }
     if incomplete_target:

@@ -158,6 +158,58 @@ class BdsWitnessTests(unittest.TestCase):
         self.assertGreaterEqual(calls.count("outputlog"), 9)
         self.assertEqual(sample["source"],"mcsm_querytarget")
 
+    def test_delayed_reply_is_not_published_as_fresh(self):
+        uuid = "a5a0753061f5456e95ef63fad1d5a0fb"
+        elapsed = [100.0]
+        calls = {"outputlog": 0, "command": 0}
+        def fake_sleep(seconds):
+            elapsed[0] += seconds
+        def fake_api(cfg, key, endpoint, extra):
+            calls[endpoint] += 1
+            if endpoint == "command":
+                return {"instanceUuid": uuid}
+            if calls["outputlog"] <= 10:
+                return "anchor"
+            return "anchor[INFO] Target data: " + json.dumps([{
+                "dimension": 0,
+                "uniqueId": "615bca9b-ea00-316a-8bc3-650a0c8991c4",
+                "position": {"x": 5, "y": 70.62, "z": 9}
+            }])
+        with self.assertRaisesRegex(ValueError, "^querytarget_response_too_late$"):
+            m.probe_once({"gamertag": "AliceXbox", "instanceId": uuid},
+                         "dummy", api_call=fake_api, sleep=fake_sleep,
+                         clock=lambda: elapsed[0])
+        self.assertEqual(calls["command"], 1)
+        self.assertGreater(elapsed[0] - 100, 4)
+        self.assertEqual(m.safe_failure(ValueError("querytarget_response_too_late")),
+                         "querytarget_response_too_late")
+
+    def test_fresh_reply_uses_command_issue_timestamp(self):
+        uuid = "a5a0753061f5456e95ef63fad1d5a0fb"
+        elapsed = [50.0]
+        count = [0]
+        def fake_sleep(seconds):
+            elapsed[0] += seconds
+        def fake_api(cfg, key, endpoint, extra):
+            if endpoint == "command":
+                return {"instanceUuid": uuid}
+            count[0] += 1
+            if count[0] == 1:
+                return "anchor"
+            return "anchor[INFO] Target data: " + json.dumps([{
+                "dimension": 0,
+                "uniqueId": "615bca9b-ea00-316a-8bc3-650a0c8991c4",
+                "position": {"x": 5, "y": 70.62, "z": 9}
+            }])
+        from unittest.mock import patch
+        with patch.object(m.time, "time", return_value=1234.5):
+            sample = m.probe_once({"gamertag": "AliceXbox", "instanceId": uuid},
+                                  "dummy", api_call=fake_api, sleep=fake_sleep,
+                                  clock=lambda: elapsed[0])
+        self.assertEqual(sample["observedAt"], 1234500)
+        self.assertEqual(elapsed[0], 50.5)
+        self.assertEqual(sample["source"], "mcsm_querytarget")
+
     def test_unrelated_log_activity_cannot_be_a_position_witness(self):
         uuid = "a5a0753061f5456e95ef63fad1d5a0fb"
         def fake_api(cfg,key,endpoint,extra):
