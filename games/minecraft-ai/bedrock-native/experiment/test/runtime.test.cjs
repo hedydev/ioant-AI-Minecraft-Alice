@@ -2948,3 +2948,55 @@ test('unstopped failed Pathfinder and diverged BDS coordinates forbid fallback a
   e.stop()
  }
 })
+
+test('low-health Alice can inspect and use an adjacent safe bed at night instead of refusing all recovery',async()=>{
+ const f=fixture(),e=new AliceBedrockRuntime({...f,policies:await policies()})
+ e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+ f.bot.time={timeOfDay:15000};f.bot.health=13;f.bot.food=16
+ f.bot.entity.position=vec(.5,69,.5)
+ let scanned=0,sleepJobs=0
+ e.observedBeds.observe=()=>{scanned++;return {changed:false}}
+ e.observedBeds.nearby=()=>[{x:1,y:69,z:1}]
+ f.operator.inspectNightBeds=()=>({status:'safe_bed_candidate',phase:'night',
+   found:1,eligible:1,hostile:0,excluded:0,occupied:0,unknown:0})
+ e.startJob=(type,source,task,options)=>{
+   sleepJobs++;assert.equal(type,'RECOVER')
+   assert(options.label.includes('床'))
+ }
+ await e.maintenanceTick()
+ assert.equal(scanned,1)
+ assert.equal(sleepJobs,1,'a nearby safe bed is not blocked by health<14')
+ assert.equal(e.lastSleepOpportunity.status,'safe_bed_candidate')
+ e.stop()
+})
+test('bed observations and honest monster-blocked diagnosis persist during survival',async()=>{
+ const f=fixture(),e=new AliceBedrockRuntime({...f,policies:await policies()})
+ e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+ f.bot.time={timeOfDay:15000};f.bot.health=13
+ let seen=0,sleepJobs=0
+ e.threat=()=>({type:'SURVIVE',target:{name:'zombie'}})
+ e.observedBeds.observe=()=>{seen++;return {changed:false}}
+ e.observedBeds.nearby=()=>[{x:1,y:64,z:1}]
+ f.operator.inspectNightBeds=()=>({status:'nearby_hostile_bed_unavailable',phase:'night',
+    found:1,eligible:0,hostile:1,excluded:0,occupied:0,unknown:0})
+ e.startJob=()=>{sleepJobs++}
+ await e.maintenanceTick()
+ assert.equal(seen,1,'reading nearby blocks must not require NO threats')
+ assert.equal(sleepJobs,0,'sleep is rejected by Bedrock monster radius')
+ assert.equal(e.lastSleepOpportunity.status,'nearby_hostile_bed_unavailable')
+ e.stop()
+})
+test('equipment is attempted in threatened survival while new sleep work stays gated',async()=>{
+ const f=fixture(),e=new AliceBedrockRuntime({...f,policies:await policies()})
+ e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+ f.bot.health=13;f.bot.time={timeOfDay:15000}
+ e.threat=()=>({type:'SURVIVE',target:{name:'zombie'}})
+ let equips=0,starts=0
+ f.operator.equipAuto=async()=>{equips++;return {ok:false,reason:'no_weapon'}}
+ e.startJob=()=>{starts++}
+ await e.maintenanceTick()
+ assert.equal(equips,1)
+ assert.equal(starts,0)
+ assert.equal(e.lastEquipObservation.reason,'no_weapon')
+ e.stop()
+})
