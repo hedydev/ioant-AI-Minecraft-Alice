@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "One safe original-world Alice client restart only after operator production preflight",
+  "steps": [
+    {
+      "name": "alice_client_restart_contract",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-client-restart-gated.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "alice_only_restart",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-client-restart-gated.py",
+      "args": [
+        "--restart",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 275
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "alice_restart",
+      "file": "alice_17879_client_restart.json",
+      "format": "json"
+    }
+  ]
+}
