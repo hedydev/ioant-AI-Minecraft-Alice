@@ -13,9 +13,10 @@ import json,os,sys
 from pathlib import Path
 p=Path.home()/'minecraft-ai/scripts'
 sys.path.insert(0,str(p))
-from alice_mint import status
-from alice_operator.process import AliceProcess
-s=status(AliceProcess())
+import subprocess
+cmd=subprocess.run([sys.executable,str(p/'alice-mint.py'),'status'],
+                   capture_output=True,text=True,timeout=10,check=False)
+s=json.loads(cmd.stdout) if cmd.returncode==0 else {}
 allow={'processAlive','statusSource','heartbeatFresh','reportedConnected',
  'sessionEstablished','state','bdsWitnessStatus','bdsIndependentSource',
  'bdsLastIndependentAgeSeconds','bdsSamples'}
@@ -80,6 +81,8 @@ def selftest():
        bdsWitnessStatus='stale_or_invalid_witness',bdsIndependentSource=None,
        bdsLastIndependentAgeSeconds=None,bdsSamples=0,idleHoldReason='scout_bds_position_unavailable',
        v2Directory='absent')
+    assert (Path(__file__).resolve().parent/'alice-mint.py').is_file()
+    assert "from alice_mint import" not in REMOTE
     assert sanitize(data)['v2Directory']=='absent'
     assert sanitize({**data,'state':'SECRET'})['state']=='unknown'
     assert sanitize({**data,'bdsSamples':'12'})['independentSamples'] is None
