@@ -546,7 +546,8 @@ class AliceBedrockRuntime {
       if(this.bot.isSleeping)return this.say('尚未收到起床确认，暂不行动。')
     }
     if(task.type==='FOLLOW'||task.type==='GUARD'){
-      this.cancelActive('new movement order from '+sender)
+      if(!this.safetyBusy)this.cancelActive('new movement order from '+sender)
+      this.ownerMotion.reset()
       this.continuousGoal.interrupt('player_override')
       this.refreshBehavior()
       this.core.setFollowIntent(sender,this.liveBehavior.settings.followDistance)
@@ -968,12 +969,20 @@ class AliceBedrockRuntime {
         this.core.resumeIntent('vertical observation hold')
       }
     }
-    const danger=this.threat()
-    // Emergency survival must preempt pending LLM thinking, even when no
-    // physical job exists yet. Never await model latency in this 300ms gate.
-    if(danger||this.bot.health<14)this.goalPlanner.cancel('safety')
+    const observedDanger=this.threat()
+    const escort=this.escortDecision(observedDanger)
+    const danger=escort.allowFollow?null:observedDanger
+    const critical=this.bot.health<=8
+    const lowHealthHold=this.bot.health<14&&!escort.allowFollow
+    if(danger||critical||lowHealthHold)this.goalPlanner.cancel('safety')
     if(!danger&&this.job?.type==='RECOVER')return
-    if(!danger&&this.bot.health>=14){
+    if(!danger&&!critical&&!lowHealthHold){
+      if(escort.allowFollow&&this.core.hasFollowIntent()){
+        this.lastSafetyAt=0;this.lastDanger=null
+        if(['SURVIVE','COMBAT','GUARD'].includes(this.core.state))
+          this.core.resumeIntent('escort past distant or blocked hostile')
+        return
+      }
       // Spatial threat boundaries are noisy: a single missing entity update or
       // 0.5m movement must not start another path while safety is intervening.
       if(this.lastSafetyAt&&this.clock()-this.lastSafetyAt<THREAT_CLEAR_MS)return
@@ -1160,9 +1169,12 @@ class AliceBedrockRuntime {
   }
   async followTick(){
     this.refreshBehavior()
-    if(!this.ready()||this.bot.isSleeping||this.job||this.safetyBusy||this.threat()||this.bot.health<14||
-      this.core.state==='SURVIVE'||this.core.state==='COMBAT'||this.core.state==='GUARD'||
-      (this.lastSafetyAt>0&&this.clock()-this.lastSafetyAt<THREAT_CLEAR_MS))return
+    const danger=this.threat()
+    const escort=this.escortDecision(danger)
+    if(!this.ready()||this.bot.isSleeping||this.job||this.safetyBusy||
+      (danger&&!escort.allowFollow)||(this.bot.health<14&&!escort.allowFollow)||
+      (['SURVIVE','COMBAT','GUARD'].includes(this.core.state)&&!escort.allowFollow)||
+      (this.lastSafetyAt>0&&this.clock()-this.lastSafetyAt<THREAT_CLEAR_MS&&!escort.allowFollow))return
     if(!this.core.hasFollowIntent()){
       if(this.followGoal){this.bot.pathfinder.setGoal(null);this.followGoal=null}
       return
@@ -1232,7 +1244,8 @@ class AliceBedrockRuntime {
         // An asynchronous Bedrock look may yield to a new human command or
         // emergency safety controller. Do not resume the obsolete follow goal.
         if(stepStarted||!this.core.hasFollowIntent()||this.job||this.safetyBusy||
-           this.core.state==='SURVIVE'||this.threat())return
+           (this.core.state==='SURVIVE'&&!this.escortDecision().allowFollow)||
+           (this.threat()&&!this.escortDecision().allowFollow))return
       }
       const pathMoving=this.bot.pathfinder.isMoving?.()??null
       const result=this.followProgress.observe({name:player,now:this.clock(),
