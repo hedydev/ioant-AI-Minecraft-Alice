@@ -31,7 +31,8 @@ def prepare(source, manifest_file, destination, *, run_verify=mod.verify):
     if destination==source or source in destination.parents or destination in source.parents:
         raise ValueError('Sandbox must be a separate sibling, not inside production server')
     generations={'minecraft-bedrock-alice-lab-v2':'fresh-isolated-v2',
-                 'minecraft-bedrock-alice-lab-v3':'fresh-isolated-v3'}
+                 'minecraft-bedrock-alice-lab-v3':'fresh-isolated-v3',
+                 'minecraft-bedrock-alice-lab-v4':'fresh-isolated-v4'}
     if destination.name not in ('minecraft-bedrock-alice-lab', *generations):
         raise ValueError('Only explicitly named Alice lab directories are allowed')
     strict_new = destination.name in generations
@@ -84,7 +85,9 @@ def prepare(source, manifest_file, destination, *, run_verify=mod.verify):
         before=props.read_text()
         update={'server-port':str(PORT),'server-portv6':str(PORT+1),'server-name':'AliceAI Lab (disposable)','level-name':WORLD,'allow-list':'false','online-mode':'true'}
         if strict_new:
-            update.update({'server-name':('AliceAI v3 Control (network-isolated)' if
+            update.update({'server-name':('AliceAI v4 Nonroot Control (network-isolated)' if
+                                          destination.name.endswith('-v4') else
+                                          'AliceAI v3 Control (network-isolated)' if
                                           destination.name.endswith('-v3') else
                                           'AliceAI v2 Lab (network-isolated)'),
                            'allow-list':'true','enable-lan-visibility':'false',
