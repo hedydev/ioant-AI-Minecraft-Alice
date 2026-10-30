@@ -306,8 +306,15 @@ async function main(args=process.argv.slice(2)){
         reason,state:'IDLE',mode:runtime.liveBehavior.settings.agentMode}))
     }
   }
+  // Independent querytarget is written as an atomic, short-lived 4s file.
+  // Read it faster than the status heartbeat so two distinct operator-scoped
+  // samples cannot silently overwrite one another between 2s status ticks.
+  // This is file read ONLY: it never sends MCSManager commands or runs --loop.
+  const witnessTimer=live&&bdsWitness?setInterval(()=>{
+    bdsWitness.poll(movementEvidence)
+  },250):null
+  witnessTimer?.unref?.()
   const statusTimer=live?setInterval(()=>{
-    bdsWitness?.poll(movementEvidence)
     runtime.refreshBehavior();publishStatus();reportIdleGate()
   },2000):null
   statusTimer?.unref?.()
@@ -371,18 +378,18 @@ async function main(args=process.argv.slice(2)){
   bot._client.once('close',()=>{
     networkSessionEstablished=false
     if(!runtime.closed)runtime.stop('Bedrock transport closed')
-    clearInterval(statusTimer);clearInterval(viewTimer);clearInterval(commandTimer)
+    clearInterval(witnessTimer);clearInterval(statusTimer);clearInterval(viewTimer);clearInterval(commandTimer)
     publishStatus(false);publishView(false)
   })
   bot.on('end',why=>{networkSessionEstablished=false
     if(sessionExit.kind==='none')noteExit('transport_ended')
     acceptance?.event('warn',['[Alice Bedrock] disconnected'])
-    runtime.stop('network ended');clearInterval(statusTimer);clearInterval(viewTimer);clearInterval(commandTimer);
+    runtime.stop('network ended');clearInterval(witnessTimer);clearInterval(statusTimer);clearInterval(viewTimer);clearInterval(commandTimer);
     publishStatus(false);publishView(false);console.log(tag,'connection ended:',String(why||''))})
   installSignalShutdown({client:bot._client,stop:()=>{
     noteExit('operator_shutdown')
     respawnRecovery.stop()
-    runtime.stop('operator interrupted');clearInterval(statusTimer);clearInterval(viewTimer);clearInterval(commandTimer)
+    runtime.stop('operator interrupted');clearInterval(witnessTimer);clearInterval(statusTimer);clearInterval(viewTimer);clearInterval(commandTimer)
     publishStatus(false);publishView(false)
   }})
 }
