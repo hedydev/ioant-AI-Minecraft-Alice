@@ -2,8 +2,8 @@
 const test=require('node:test'),assert=require('node:assert/strict')
 const {scoutStartProof}=require('../src/scout_start_proof.cjs')
 const base=()=>({get:()=>({
-  lastSource:'bds_querytarget',independentSamples:4,
-  latestFeet:{x:.5,y:69,z:.5},lastAt:8000,
+  independentSource:'bds_querytarget',independentSamples:4,
+  independentLatestFeet:{x:.5,y:69,z:.5},independentAt:8000,
   independentPreviousAt:7600
 })})
 const bot=()=>({entity:{position:{x:.5,y:69,z:.5}}})
@@ -22,10 +22,10 @@ test('rejects locally predicted 9m walk with BDS stationary without moving bot',
 test('rejects untrusted missing stale future or single witness',()=>{
  for(const s of [
    {...base().get(),independentSamples:1},
-   {...base().get(),lastSource:'correct_player_move_prediction'},
-   {...base().get(),lastAt:5000},
-   {...base().get(),lastAt:11000},
-   {...base().get(),latestFeet:null},
+   {...base().get(),independentSource:'correct_player_move_prediction'},
+   {...base().get(),independentAt:5000},
+   {...base().get(),independentAt:11000},
+   {...base().get(),independentLatestFeet:null},
    {...base().get(),independentPreviousAt:null},
    {...base().get(),independentPreviousAt:8000},
    {...base().get(),independentPreviousAt:12000},
@@ -42,10 +42,27 @@ test('rejects undefined client coordinates',()=>{
 })
 
 test('script API evidence can satisfy start only when fresh, multiple and position-aligned',()=>{
- const sample={...base().get(),lastSource:'bds_script_api'}
+ const sample={...base().get(),independentSource:'bds_script_api'}
  assert.equal(scoutStartProof(bot(),{get:()=>sample},()=>10000).ok,true)
- assert.equal(scoutStartProof(bot(),{get:()=>({...sample,lastAt:1000})},()=>10000).ok,false)
+ assert.equal(scoutStartProof(bot(),{get:()=>({...sample,independentAt:1000})},()=>10000).ok,false)
  assert.equal(scoutStartProof(bot(),{get:()=>({...sample,independentSamples:1})},()=>10000).ok,false)
+})
+
+test('ordinary position cannot substitute for missing independent proof',()=>{
+ const source=base().get(),correction={...source,
+  lastSource:'correct_player_move_prediction',
+  latestFeet:{x:.5,y:69,z:.5},lastAt:9999}
+ const variants=[
+  {...correction,independentSource:null},
+  {...correction,independentLatestFeet:null},
+  {...correction,independentAt:null},
+  {...correction,independentSource:undefined},
+  {...correction,independentLatestFeet:undefined}
+ ]
+ for(const sample of variants){
+  assert.deepEqual(scoutStartProof(bot(),{get:()=>sample},()=>10000),
+    {ok:false,reason:'scout_bds_position_unavailable'})
+ }
 })
 
 test('fresh latest BDS sample cannot reuse an old independent position pair',()=>{

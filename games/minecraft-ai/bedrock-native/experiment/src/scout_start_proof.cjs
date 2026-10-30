@@ -7,9 +7,12 @@ function scoutStartProof(bot,evidence,clock=Date.now){
   const s=evidence?.get?.(),p=bot?.entity?.position
   // Corrections can arrive between Script API samples. They must never erase
   // the freshest independent observation or renew its 4s freshness deadline.
-  const source=s?.independentSource||s?.lastSource
-  const independent=s?.independentLatestFeet||s?.latestFeet
-  const at=s?.independentAt??s?.lastAt
+  // Never substitute packet corrections or client-local positions when the
+  // independent BDS fields are missing. The evidence producer publishes
+  // these fields together only after a validated querytarget/Script API sample.
+  const source=s?.independentSource
+  const independent=s?.independentLatestFeet
+  const at=s?.independentAt
   // Requiring two lifetime samples is insufficient: a sample from an old
   // session/window must not make one new sample look like a fresh pair.
   const previousAt=s?.independentPreviousAt
