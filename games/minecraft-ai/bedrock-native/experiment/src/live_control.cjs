@@ -161,6 +161,13 @@ function compactStatus(state){
     delete data.currentJobTiming
     if(Buffer.byteLength(encode())<=STATUS_MAX_BYTES)return encode()
   }
+  // New observability is helpful, never allowed to break the 2-second
+  // essential status heartbeat if the client has a large world view.
+  if(data.equipment||data.escort){
+    delete data.equipment
+    delete data.escort
+    if(Buffer.byteLength(encode())<=STATUS_MAX_BYTES)return encode()
+  }
   throw Error('Alice essential status too large')
 }
 class LiveStatus {
