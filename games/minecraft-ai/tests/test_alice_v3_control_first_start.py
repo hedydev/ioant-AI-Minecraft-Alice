@@ -33,23 +33,18 @@ class V3ControlStartTests(unittest.TestCase):
         P.LAB=self.lab
         self.addCleanup(setattr,P,'LAB',self.original)
     def test_exact_fresh_control_without_pack_is_eligible(self):
-        with patch.object(P,'load',wraps=P.load) as source, patch.object(
-                P.os,'access',return_value=True),patch(
-                'alice_bds_level_metadata.beta_api_experiment',return_value='absent') if False else patch.object(
-                P,'MAX_SECONDS',55):
-            # Stub only the network checks; original parser and marker are real.
-            original_load=P.load
-            def patched(name):
-                m=original_load(name)
-                if name=='lab-probe':
-                    m.namespace_preflight=lambda:True
-                    m.namespace_v2_loopback_preflight=lambda:True
-                return m
-            with patch.object(P,'load',side_effect=patched):
-                P.lab_guard()
-        (self.lab/P.INTENT).write_text('already used')
-        with self.assertRaisesRegex(ValueError,'control_already_consumed'):
-            with patch.object(P,'load',side_effect=patched):
+        # Stub only the namespace preflight; actual parser and marker are used.
+        original_load=P.load
+        def patched(name):
+            m=original_load(name)
+            if name=='lab-probe':
+                m.namespace_preflight=lambda:True
+                m.namespace_v2_loopback_preflight=lambda:True
+            return m
+        with patch.object(P,'load',side_effect=patched):
+            P.lab_guard()
+            (self.lab/P.INTENT).write_text('already used')
+            with self.assertRaisesRegex(ValueError,'control_already_consumed'):
                 P.lab_guard()
     def test_non_v3_or_behavior_pack_refused(self):
         marker=self.lab/'.alice-sandbox.json'
