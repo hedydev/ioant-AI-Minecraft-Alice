@@ -18,7 +18,7 @@ function make(){
    version:1,source:'mcsm_querytarget',gamertag:'AliceXbox',serial,uniqueId,
    observedAt:now-200,feet:{x,y:65,z:2}
  }),{mode:0o600})
- return {root,file,e,reader,write,step:()=>{now+=1000},close:()=>{e.detach();fs.rmSync(root,{recursive:true,force:true})}}
+ return {root,file,e,reader,write,step:(ms=1000)=>{now+=ms},close:()=>{e.detach();fs.rmSync(root,{recursive:true,force:true})}}
 }
 test('two distinct independent BDS samples confirm movement, packets stay zero',()=>{
  const f=make()
@@ -70,4 +70,26 @@ test('wrong identity, repeat serial, stale, symlink and group-readable proof all
   fs.symlinkSync(path.join(f.root,'absent'),f.file)
   assert.equal(f.reader.poll(f.e),false)
  }finally{f.close()}
+})
+
+test('two 250ms-reader observations stay individually ingested inside 4-second window',()=>{
+ const f=make()
+ try{
+  f.step(300);f.write(1,'1792572000000000003')
+  assert.equal(f.reader.poll(f.e),true)
+  assert.equal(f.e.get().independentSamples,1)
+  f.step(1100);f.write(1,'1792572000000000004')
+  assert.equal(f.reader.poll(f.e),true)
+  const got=f.e.get()
+  assert.equal(got.independentSamples,2)
+  assert.equal(got.independentAt-got.independentPreviousAt,1100)
+  assert.equal(got.independentPairTravelBlocks,0)
+ }finally{f.close()}
+})
+test('live main has separate passive fast witness reader and clears it on every shutdown',()=>{
+ const main=fs.readFileSync(path.join(__dirname,'../src/main.cjs'),'utf8')
+ assert.match(main,/const witnessTimer=live&&bdsWitness\?setInterval\(\(\)=>\{\s*bdsWitness\.poll\(movementEvidence\)\s*\},250\)/)
+ assert.match(main,/const statusTimer=live\?setInterval\(\(\)=>\{\s*runtime\.refreshBehavior\(\);publishStatus\(\);reportIdleGate\(\)\s*\},2000\)/)
+ assert.equal((main.match(/clearInterval\(witnessTimer\)/g)||[]).length,3)
+ assert.doesNotMatch(main,/bds_position_witness\.py.*--loop/)
 })
