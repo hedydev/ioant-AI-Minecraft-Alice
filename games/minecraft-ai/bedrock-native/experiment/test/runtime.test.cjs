@@ -493,6 +493,8 @@ test('safety threat loss requires 4.5s quiet window before restoring FOLLOW',asy
   let clock=100000
   const f=fixture(()=>clock),e=new AliceBedrockRuntime({...f,policies:await policies()})
   e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+  // The owner must actually be OUTSIDE the configured 3-block stop radius.
+  f.bot.players.Steve.entity.position=vec(8,64,0)
   f.core.setFollowIntent('Steve');e.followGoal='Steve'
   let danger={type:'GUARD',target:{name:'zombie',position:vec(3,64,0)}}
   e.threat=()=>danger
@@ -539,6 +541,8 @@ test('attack API aims first, never treats packet send as a verified hit',async()
 test('Paper durable FOLLOW: gather temporarily leaves player, then resumes follow on failure',async()=>{
   const f=fixture(),e=new AliceBedrockRuntime({...f,policies:await policies()})
   e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+  // The owner must actually be OUTSIDE the configured 3-block stop radius.
+  f.bot.players.Steve.entity.position=vec(8,64,0)
   await e.onChat('Steve','AliceAI 跟着我')
   await e.followTick()
   assert.equal(f.core.hasFollowIntent(),true)
@@ -620,6 +624,8 @@ test('gather searches wider, still refuses built logs, bounds candidates to star
 test('protect me follows player during peace and switches to GUARD only for real threats',async()=>{
   const f=fixture(),e=new AliceBedrockRuntime({...f,policies:await policies()})
   e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+  // The owner must actually be OUTSIDE the configured 3-block stop radius.
+  f.bot.players.Steve.entity.position=vec(8,64,0)
   await e.onChat('Steve','AliceAI 保护我')
   assert.equal(f.core.state,'FOLLOW','guard order must not freeze movement in peacetime')
   assert.equal(e.lastGuardedPlayer,'Steve')
@@ -1379,6 +1385,8 @@ test('verified playerLeft revokes departed owner but NOT entityGone or unrelated
   f.bot.on=bus.on.bind(bus);f.bot.off=bus.off.bind(bus)
   const e=new AliceBedrockRuntime({...f,policies:await policies()})
   e.start();e.hasHealth=true;e.hasInventorySync=true
+  // The owner must actually be OUTSIDE the configured 3-block stop radius.
+  f.bot.players.Steve.entity.position=vec(8,64,0)
   f.bot.players.Alex={entity:{position:vec(2,64,3)}}
   await e.onChat('Steve','AliceAI 跟着我')
   await e.followTick()

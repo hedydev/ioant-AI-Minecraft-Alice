@@ -1,3 +1,7 @@
+## 2026-10-31 — Follow-proximity regression fixture correction
+
+- Mint Node24 full regression of 8e04f78: 677 tests, 673 pass, 4 fail. All four failing legacy integration fixtures placed the owner at (2,64,2), i.e. only 2.83 blocks from Alice, yet asserted a NEW active Pathfinder FOLLOW goal. With the explicitly requested 3-block stop behavior this old expectation is invalid. Updated only these four owners to (8,64,0) so tests continue to assert active path setup, safety cooldown, temporary GATHER resume and roster-departure behavior when genuinely outside radius. Runtime safety and gameplay code unchanged in this commit. Requires rerun Mint Node24 regression.
+
 ## 2026-10-31 — Food and equipment survival refinement (source only; pending field check)
 
 - Existing automatic best weapon/armor system checks about every 20 seconds; success is only logged after held-item or armor-slot confirmation. On eating, food occupies the hand; new logic forces an early next equipment review after confirmed food recovery. No automatic fabrication or duplication of gear.
