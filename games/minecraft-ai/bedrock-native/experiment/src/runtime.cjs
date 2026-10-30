@@ -1298,7 +1298,7 @@ class AliceBedrockRuntime {
     // Read-only bed observations can happen while Alice is exploring, not
     // just when idle at home. They are paced to once per 60 seconds and must
     // never interrupt active safety/combat or force a new navigation task.
-    if(this.ready()&&!this.bot.isSleeping&&!this.safetyBusy&&!this.threat())
+    if(this.ready()&&!this.bot.isSleeping&&!this.safetyBusy)
       this.observedBeds.observe(this.bot)
     if(!this.ready()||this.bot.isSleeping||this.job||this.safetyBusy||
        this.maintenanceBusy)return
@@ -1325,8 +1325,51 @@ class AliceBedrockRuntime {
         this.log.warn('[Alice equipment] deferred:',JSON.stringify(this.lastEquipObservation))
       }finally{this.maintenanceBusy=false}
     }
-    // Threat or low-health recovery still blocks ALL non-equipment activities.
-    // Never launch food, bed, crafting, follow or scout tasks from this branch.
+    // A nearby known bed has priority over optional crafting/shelter.
+    // Minecraft can forbid sleeping near monsters even through solid walls.
+    // Observe and explain the bed opportunity even while a safety gate holds.
+    const phase=environment(this.bot)
+    const known=phase.canSleep?this.observedBeds.nearby(this.bot):[]
+    if(phase.canSleep&&known.length){
+      const avoidBed=p=>!!this.failureMemory.blocked('bed',p)
+      const survey=this.ops.inspectNightBeds?.(12,{avoidBed,knownPositions:known})||null
+      const eligible=survey?survey.eligible>0:
+        this.ops.hasNearbyBed(12,{avoidBed,knownPositions:known})
+      const danger=this.threat(),here=this.bot.entity?.position
+      const closest=here?known.reduce((d,p)=>Math.min(d,Math.hypot(
+        p.x+.5-here.x,p.y-here.y,p.z+.5-here.z)),Infinity):Infinity
+      const adjacent=Number.isFinite(closest)&&closest<=2.4
+      const blocked=this.safetyBusy||this.job||this.core.hasFollowIntent()
+      // At low health, never initiate a long walk to a bed. A bed already
+      // within 2.4 blocks can be interacted with without any path movement.
+      const travelOK=adjacent||this.bot.health>=14
+      this.lastSleepOpportunity={status:!eligible?survey?.status||'bed_candidate_unverified':
+          blocked?'deferred_for_active_owner_or_job':
+          danger?'deferred_for_immediate_danger':
+          !travelOK?'deferred_low_health_bed_too_far':
+          this.clock()<this.nextSleepAt?'sleep_retry_cooldown':'safe_bed_candidate',
+        phase:phase.phase,knownBeds:known.length,eligible:survey?.eligible??(eligible?1:0),
+        hostile:survey?.hostile??null,occupied:survey?.occupied??null,
+        unknown:survey?.unknown??null,adjacent}
+      if(eligible&&!blocked&&!danger&&travelOK&&this.clock()>=this.nextSleepAt&&
+         !this.failureMemory.blocked('sleep',this.bot.entity.position)){
+        this.nextSleepAt=this.clock()+120000
+        this.startJob('RECOVER','自主生存',
+          signal=>this.ops.sleepNearby({signal,radius:12,avoidBed,knownPositions:known}),
+          {label:'利用已发现的安全床位睡觉',announce:false})
+        return
+      }
+    }else{
+      this.lastSleepOpportunity={
+        status:phase.canSleep?'no_observed_bed_currently_loaded':'outside_sleep_window',
+        phase:phase.phase,knownBeds:known.length}
+    }
+    const opportunityKey=JSON.stringify(this.lastSleepOpportunity)
+    if(opportunityKey!==this.lastSleepOpportunityKey){
+      this.lastSleepOpportunityKey=opportunityKey
+      this.log.log('[Alice sleep] opportunity:',JSON.stringify(this.lastSleepOpportunity))
+    }
+    // All other non-equipment work still obeys threat and low-HP gates.
     if(this.threat()||this.safetyBusy||this.job)return
     const health=this.bot.health,food=this.bot.food
     if(this.clock()>=this.nextFoodAt&&Number.isFinite(food)&&food<18){
@@ -1343,53 +1386,6 @@ class AliceBedrockRuntime {
       }
     }
     if(health<14)return
-    // Sleep is an OPPORTUNITY at an observed landmark, never a recurring
-    // night-wide search. Stored coordinates are only hints; currently loaded
-    // bed block/occupancy, hostile proximity, failure cooldown and BDS start
-    // guard must all be checked again before actually using the bed.
-    const sleepingWindow=environment(this.bot).canSleep
-    const known=sleepingWindow?this.observedBeds.nearby(this.bot):[]
-    const items=this.ops.inventory()||[]
-    const armed=items.some(i=>i?.name?.endsWith('_sword')||i?.name?.endsWith('_axe'))
-    const wood=items.filter(i=>WOOD_LOGS.has(i?.name)||i?.name?.endsWith('_planks'))
-      .reduce((n,i)=>n+(i.count||0),0)
-    const craftable=!armed&&wood>=2&&this.clock()>=this.nextAutonomousCraftAt
-    const shelterReady=sleepingWindow&&known.length>0&&
-      evaluateShelter(this.bot).status==='placement_candidate'
-    if(sleepingWindow&&known.length>0&&!this.core.hasFollowIntent()&&
-       !craftable&&!shelterReady&&health>=16){
-      const avoidBed=p=>!!this.failureMemory.blocked('bed',p)
-      const survey=this.ops.inspectNightBeds?.(12,{avoidBed,knownPositions:known})||null
-      const eligible=survey?survey.eligible>0:
-        this.ops.hasNearbyBed(12,{avoidBed,knownPositions:known})
-      this.lastSleepOpportunity=survey?{
-        status:survey.status,phase:survey.phase,found:survey.found,
-        eligible:survey.eligible,hostile:survey.hostile,
-        excluded:survey.excluded,occupied:survey.occupied,unknown:survey.unknown
-      }:{status:eligible?'candidate_found':'remembered_bed_unverified',
-        phase:environment(this.bot).phase,knownBeds:known.length}
-      if(eligible&&this.clock()>=this.nextSleepAt&&
-         !this.failureMemory.blocked('sleep',this.bot.entity.position)){
-        this.nextSleepAt=this.clock()+120000
-        this.startJob('RECOVER','自主生存',
-          signal=>this.ops.sleepNearby({signal,radius:12,avoidBed,knownPositions:known}),
-          {label:'利用已记住的安全床位睡觉',announce:false})
-        return
-      }
-    }else{
-      this.lastSleepOpportunity=sleepingWindow&&known.length>0?
-        {status:craftable?'deferred_for_weapon_preparation':
-          shelterReady?'deferred_for_shelter':
-          health<16?'deferred_for_health':'deferred_for_safety',
-          phase:environment(this.bot).phase,knownBeds:known.length,eligible:0}:
-        null
-    }
-    const opportunityKey=JSON.stringify(this.lastSleepOpportunity)
-    if(opportunityKey!==this.lastSleepOpportunityKey){
-      this.lastSleepOpportunityKey=opportunityKey
-      if(this.lastSleepOpportunity)this.log.log('[Alice sleep] remembered bed opportunity:',
-        JSON.stringify(this.lastSleepOpportunity))
-    }
   }
   verifyVerticalTransition(candidate){
     if(candidate?.kind!=='observed_one_cell_vertical')return false
