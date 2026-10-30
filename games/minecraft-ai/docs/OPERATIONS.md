@@ -1,3 +1,7 @@
+## 2026-10-31 — Postreload 2-query independent BDS pair verification
+
+- Historical `alice_17879_follow_alignment2.json` task was safely blocked BEFORE any console request because its prior one-shot intent already exists (queriesSent=0, `one_shot_already_claimed`). Do not delete its marker or replay the same operation. New distinct, explicitly bounded `.openclaw/tasks/alice_follow3_food_alignment2.json` uses a unique marker and checks original MCSManager instance working directory, active operator session, two sequential on-demand queries, 4s freshness, and <=0.75m client alignment. It does not move/teleport Alice, mutate the world, or enable continuous polling.
+
 ## 2026-10-31 — Stair root-cause fix: GoalFollow must NOT finish a floor below target
 
 - Follow arrival now requires both configured 3D radius AND same-floor vertical tolerance (|target feet Y - node feet Y| <=0.65); the old goal was willing to succeed one full block below the owner when within 3 horizontal blocks. This false success explained a plausible step-stall and now has a dedicated regression. Normal safe Pathfinder can seek a loaded valid one-block step-up route; no blind jumps, block breaking, unsafe parkour, or floor spoofing added. The user's observed hand swing is NOT independently attributed until real input/path logs.

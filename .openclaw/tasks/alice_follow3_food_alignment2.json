@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Postreload original 17879 only two independent BDS coordinate checks, no loops",
+  "steps": [
+    {
+      "name": "fresh_witness_contract",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-follow3-food-alignment2.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "two_limited_original_world_queries",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-follow3-food-alignment2.py",
+      "args": [
+        "--run",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 140
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "coordinate_pair",
+      "file": "alice_coord_witness.json",
+      "format": "json"
+    }
+  ]
+}
