@@ -1,3 +1,11 @@
+## AliceAI update 2026-10-31 — v2 blocked preflight fixed; first BDS probe still not run
+
+- Actual player Alice client on Mint was observed alive and connected, with fresh heartbeat but `IDLE`, `independentSamples=0`, and `idleHoldReason=scout_bds_position_unavailable`. No evidence of successful real server-authoritative movement.
+- v2 fresh archived-world clone exists and its Script API pack is staged; Beta NBT flag was enabled and original bytes preserved in the new disposable copy only. The first activation ended at `netns-check:blocked` before any v2 BDS startup. Its one-shot activation marker is consumed, never repeat.
+- Root cause confirmed by direct Mint diagnostic: conservative Python symlink refusal, not broken network namespace. Scoped trusted root-managed distro Python path rule fixed and tested; post-sync read-only diagnostic confirms `v2LoopbackPreflight=true` with `directChildExitCode=0`. Host network and three existing Bedrock servers remain untouched.
+- Separate `alice-v2-resume-first-probe.py` now gates the **first actual unconsumed BDS lab startup** on the exact prior receipt, no old probe lock/backups, trusted proc identity, child netns and exclusive new once-only lock. Read-only real eligibility `eligible_for_privileged_preflight` proven; user must provide one local Mint sudo authentication for root-owned BDS /proc cwd checks. No new assistant-side BDS start has been performed.
+- Current latest technical regression on Mac 255 Python (3 skipped), Mint Node24 658/658, nonrestart sync passed; no runtime Alice process restart or in-game acceptance. Full safe operator command is in `docs/OPERATIONS.md`. After command, retrieve new read-only report through `.openclaw/tasks/alice_v2_first_probe_status.json`.
+
 ## 2026-10-31 — v2 isolated netns loopback readiness before one-shot startup
 
 - A real deterministic Mint user/netns diagnostic `alice_netns_lo_check_b49470_20261031_c2e58a19` succeeded: `beforeUp=false`, `afterUp=true`, `attemptedUp=true`, `hostNetworkModified=false`. Fresh user+network namespaces start with loopback DOWN, but the unprivileged namespace-mapped root can enable its **own** `lo` using `SIOCSIFFLAGS` without modifying the host or using sudo.
