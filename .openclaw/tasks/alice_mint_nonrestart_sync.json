@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "title": "Alice pinned non-restart Mint sync and Node24 regression",
+  "steps": [
+    {
+      "name": "summary_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mint-sync-task.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "mint_nonrestart_sync",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mint-sync-task.py",
+      "args": [
+        "--sync",
+        "@output_dir",
+        "tedz@192.168.0.104"
+      ],
+      "timeoutSeconds": 480
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "mint_sync",
+      "file": "mint_sync_result.json",
+      "format": "json"
+    }
+  ]
+}
