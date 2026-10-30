@@ -1,3 +1,8 @@
+## 2026-10-31 — Browser refresh FOLLOW selector is UI-only; BDS position still blocked
+
+- User observed that refreshing the 3D Web page loses the selected player. Confirmed code cause: `world.js` always rebuilds `world-command-target` from online players and only remembers the old in-page DOM selection; a full page reload resets it. Fixed to restore from **current live backend `run.followTarget` only when that player is online**, retaining deliberate manual selection if still online. Added `world-current-follow` status to separate an active FOLLOW intent from actual BDS-aligned movement; never persist obsolete player IDs in browser or automatically issue an order on reload. Mac UI tests added. No Alice gameplay changes or BDS restart.
+- Current original-world FOLLOW was still acknowledged in two read-only observations, but no new independent BDS travel, and previous fresh pair failed <=0.75-m alignment. Newly added read-only `.openclaw/tasks/alice_follow_death_position_diag.json` captures current death/respawn phase and client-vs-BDS coordinate *differences only*, without revealing player positions, issuing BDS queries, rebooting or changing game. Separate between UI state bug and physical positioning/respawn issue; do NOT bypass navigation guard.
+
 ## 2026-10-31 — FOLLOW3 live acceptance and current blocker
 
 - Follow distance 3 blocks is exposed in Web Control Center at `http://127.0.0.1:8788` under 2..12 normal follow and separately occluded distance. New code exits active FOLLOW path within configured same-floor range and optionally looks at verified visible owner, no forced action. A 1-block vertical separation is no longer a completed Follow goal; still requires legal Pathfinder movement, no blind jump/dig.

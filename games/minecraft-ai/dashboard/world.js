@@ -130,7 +130,28 @@ async function refreshCommandState(){
       .filter(n=>typeof n==='string'&&/^[A-Za-z0-9_]{3,16}$/.test(n));
     select.replaceChildren(new Option('未选择玩家',''));
     for(const name of players)select.add(new Option(name,name));
+    // A browser reload loses DOM selection, not the Alice runtime FOLLOW intent.
+    // Always restore from the current verified online runtime, not localStorage.
+    const followed=typeof run?.followTarget==='string'&&
+      players.includes(run.followTarget)?run.followTarget:null;
     if(players.includes(current))select.value=current;
+    else if(followed)select.value=followed;
+    const activeFollow=run?.followTarget||null;
+    const witness=run?.movementEvidence||{};
+    const now=Date.now();
+    const freshPair=Number.isSafeInteger(witness.independentPreviousAt)&&
+      Number.isSafeInteger(witness.independentAt)&&
+      witness.independentPreviousAt<witness.independentAt&&
+      now-witness.independentPreviousAt>=0&&now-witness.independentPreviousAt<=4000;
+    const self=run?.position,serverFeet=witness.independentLatestFeet;
+    const distance=self&&serverFeet&&[self.x,self.y,self.z,serverFeet.x,serverFeet.y,serverFeet.z]
+      .every(Number.isFinite)?Math.hypot(self.x-serverFeet.x,self.y-serverFeet.y,self.z-serverFeet.z):null;
+    const moveVerified=freshPair&&distance!==null&&distance<=.75;
+    setText('world-current-follow',!run?'当前跟随：Alice 离线，状态未知':
+      !activeFollow?'当前跟随：未设置':
+      '当前跟随：'+activeFollow+
+      (moveVerified?' · 已有新鲜位置对齐证据（不代表正在走动）':
+        ' · 指令已保存于运行时，实际移动尚未通过 BDS 验证'));
     setText('world-command-readonly',!commandIsLocal?'局域网只读':
       !online?'Alice 离线 · 禁止发送':'Mac 本机 · 受控指令');
     if(pendingModeRevision!==null&&data.appliedRevision>=pendingModeRevision){

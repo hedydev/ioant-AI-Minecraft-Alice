@@ -89,6 +89,18 @@ class ObservedWorldCoverageTests(unittest.TestCase):
         self.assertNotIn('horizontalFade',script)
         self.assertNotIn('bottomFade',script)
 
+class FollowWebRefreshTests(unittest.TestCase):
+    def test_refresh_restores_verified_live_follow_not_browser_session(self):
+        script=(ROOT/'dashboard'/'world.js').read_text()
+        html=(ROOT/'dashboard'/'index.html').read_text()
+        self.assertIn("players.includes(run.followTarget)?run.followTarget:null",script)
+        self.assertIn("else if(followed)select.value=followed;",script)
+        self.assertIn("if(players.includes(current))select.value=current;",script)
+        self.assertIn("setText('world-current-follow'",script)
+        self.assertIn('id="world-current-follow"',html)
+        self.assertIn('实际移动尚未通过 BDS 验证',script)
+        self.assertNotIn("localStorage.setItem('world-command-target'",script)
+
 class ExpandedWorldTransportTests(unittest.TestCase):
 
     def test_expanded_world_transport_bounds_match_native_snapshot(self):

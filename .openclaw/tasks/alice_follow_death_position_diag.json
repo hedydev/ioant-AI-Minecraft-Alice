@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Read current 17879 Alice post-death position difference, life and FOLLOW state without game commands",
+  "steps": [
+    {
+      "name": "diag_contract",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-follow-death-position-readonly-20261031.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "current_mint_readonly_diff",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-follow-death-position-readonly-20261031.py",
+      "args": [
+        "--read",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 65
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "death_position",
+      "file": "follow_death_position.json",
+      "format": "json"
+    }
+  ]
+}
