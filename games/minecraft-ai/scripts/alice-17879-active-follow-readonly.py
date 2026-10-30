@@ -12,6 +12,7 @@ def read():
         return None
     m=d.get('movementEvidence') or {};out=d.get('outboundInput') or {}
     fd=d.get('followDiagnostic') or {};fw=d.get('worldRoutine') or {}
+    escort=d.get('escort') or {};equipment=d.get('equipment') or {}
     def num(x,high=1e9):
         return x if type(x) in (int,float) and 0<=x<high else None
     def safe(x):
@@ -29,7 +30,24 @@ def read():
       'inputEmitted':num(out.get('emitted')),
       'followDiagReason':safe(fd.get('reason')),
       'followDiagState':safe(fd.get('status')),
-      'idleGate':safe(fw.get('idleGate'))}
+      'idleGate':safe(fw.get('idleGate')),
+      'escortReason':escort.get('reason') if escort.get('reason') in (
+        'no_active_threat','hostile_behind_observed_barrier',
+        'escort_moving_owner','owner_stopped_defend',
+        'close_or_unverified_hostile','emergency_or_no_escort') else None,
+      'escortBarrier':escort.get('barrier') if escort.get('barrier') in ('clear','blocked','unknown') else None,
+      'escortAllowed':escort.get('followPermitted') if type(escort.get('followPermitted')) is bool else None,
+      'ownerMoving':escort.get('ownerMoving') if type(escort.get('ownerMoving')) is bool else None,
+      'inventoryKnown':equipment.get('inventoryKnown') if type(equipment.get('inventoryKnown')) is bool else None,
+      'heldItem':equipment.get('heldItem') if equipment.get('heldItem') in (
+        None,'stone_sword','wooden_sword','iron_sword','diamond_sword','netherite_sword','golden_sword') else 'other_item',
+      'lastEquipOk':(equipment.get('lastAttempt') or {}).get('ok') if type((equipment.get('lastAttempt') or {}).get('ok')) is bool else None,
+      'sleepOpportunity':(fw.get('sleepOpportunity') or {}).get('status')
+        if (fw.get('sleepOpportunity') or {}).get('status') in (
+          'safe_bed_candidate','outside_sleep_window',
+          'no_observed_bed_currently_loaded','nearby_hostile_bed_unavailable',
+          'deferred_for_immediate_danger','deferred_low_health_bed_too_far',
+          'sleep_retry_cooldown','deferred_for_active_owner_or_job') else None}
 def main(out):
     out=Path(out)
     if out.is_symlink() or not out.is_dir():raise ValueError('bad output')
