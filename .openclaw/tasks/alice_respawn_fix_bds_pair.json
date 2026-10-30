@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Two on-demand strictly bounded BDS witness checks after repaired client",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-respawn-fix-bds-pair-20261031.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "two_independent_queries_only",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-respawn-fix-bds-pair-20261031.py",
+      "args": [
+        "--run",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 145
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "bds_pair",
+      "file": "alice_coord_witness.json",
+      "format": "json"
+    }
+  ]
+}
