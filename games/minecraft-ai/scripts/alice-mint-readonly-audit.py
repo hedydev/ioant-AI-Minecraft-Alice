@@ -83,7 +83,7 @@ def classify(local,remote):
 def audit(output, target):
     if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]{0,31}@[0-9]{1,3}(?:\.[0-9]{1,3}){3}',target):
         raise ValueError('invalid_fixed_target')
-    root=Path(__file__).resolve().parents[2]
+    root=Path(__file__).resolve().parents[1]
     local={name:sha(root/name) for name in FILES}
     remote=None
     try:
@@ -113,6 +113,8 @@ def audit(output, target):
     return 0
 
 def self_test():
+    project=Path(__file__).resolve().parents[1]
+    assert all((project/name).is_file() for name in FILES)
     sig='a'*64
     local={name:sig for name in FILES}
     ok={'files':dict(local),'nodeVersion':'v24.22.1','node24Verified':True}
