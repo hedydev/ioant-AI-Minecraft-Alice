@@ -26,6 +26,16 @@ class DemandTimerTests(unittest.TestCase):
         self.assertFalse(m.demand_now({**x,"health":12}))
         self.assertFalse(m.demand_now({**x,"settings":{"autonomyEnabled":False,"agentMode":"autonomous"}}))
         self.assertFalse(m.demand_now({**x,"worldRoutine":{"idleGate":"human_grace_period"}}))
+        # The live 17879 original-world audit observed IDLE/eligible_for_work
+        # while independent proof had expired. This is not "no demand".
+        self.assertTrue(m.demand_now({**x,"worldRoutine":{"idleGate":"eligible_for_work"}}))
+        for reason in ("follow_intent","human_stop","job_active","threat_nearby",
+                       "post_threat_window","work_cooldown","companion_mode",
+                       "startup_observation_pending"):
+            self.assertFalse(m.demand_now({**x,"worldRoutine":{"idleGate":reason}}))
+        self.assertFalse(m.demand_now({**x,"movementEvidence":{
+          "loginAt":100,"witnessDemand":{"state":"client_server_diverged",
+          "positionGateSatisfied":False}}}))
     def test_no_continuous_legacy_loop_or_live_binding_in_selftest(self):
         source=SOURCE.read_text()
         self.assertNotIn('["--loop"]',source)

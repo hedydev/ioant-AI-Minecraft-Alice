@@ -91,7 +91,12 @@ def demand_now(d):
         d.get("health", 0) >= 16 and
         settings.get("autonomyEnabled") is True and
         settings.get("agentMode") == "autonomous" and
-        (d.get("worldRoutine") or {}).get("idleGate") == "position_witness_unverified" and
+        # The 5s idle controller may have cleared navigationHold during
+        # a brief proof window, leaving "eligible_for_work" while the BDS
+        # pair has expired. That is still a real pending autonomy need,
+        # whereas STOP, threats, FOLLOW, cooldowns and jobs are excluded.
+        (d.get("worldRoutine") or {}).get("idleGate") in
+            ("position_witness_unverified", "eligible_for_work") and
         isinstance(e.get("witnessDemand"), dict) and
         e["witnessDemand"].get("state") in ("needs_two_fresh_samples", "needs_second_fresh_sample") and
         e["witnessDemand"].get("positionGateSatisfied") is False and

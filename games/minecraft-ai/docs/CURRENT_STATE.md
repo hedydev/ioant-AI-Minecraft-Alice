@@ -1,3 +1,10 @@
+## 2026-11-01 — 定时器安装后真实现场状态及需求门禁修复
+
+- 安装`alice_mcsm_timer_install_apply_20261101_bc01` PASS `timerActive=true,timerEnabled=true`，未修改世界/重启BDS/发送安装命令。只读`alice_mcsm_timer_live_audit_20261101_bd01`发现新opt-in=true、旧服务inactive、当小时额度已记录**4次**查询预算、当前Alice同PID已验证、`witnessNeed=needs_two_fresh_samples`，但`idleGate=eligible_for_work`、`demandFlag=false`，最近一次timer结果`no_navigation_demand`。`timerTriggered=false`来自systemd LastTriggerUSecMonotonic属性读取，不应据此否认已经有budget/journal证明的服务活动。
+- `alice_mcsm_timer_gate_postinstall_20261101_be01` 只读实机：Alice在线autonomous IDLE、HP20 food16、独立BDS样本累计**6**（重登后先2；随后4增量），`movingQueued=28`，样本expired、无当期freshPair、`independentPairTravelBlocks=0`，**不能称本次自主物理移动已完成**。
+- 根因是5秒`idleTick`在4秒见证窗口中清除了`navigationHold`，从而`idleGate`变为`eligible_for_work`，但`witnessDemand`仍明确需新证据。修复`demand_now`接受`position_witness_unverified` **或** `eligible_for_work`（只在 IDLE+自主+安全+有确切缺证据状态+当前登录/有效身份时）。`human_stop/follow_intent/threat_nearby/job_active/work_cooldown`仍返回false，不提高2条/批次、40条/小时、55秒间隔的频率，不改4秒/0.75m门禁。新增纯测试覆盖真实出现的状态组合。
+- 修改后需Mac/Mint完整回归同步到原Mint，当前运行的Python oneshot会在下一次启动时读取更新源码，无需重启BDS或Alice。实际新自动查询结果仍须进一步只读观测。
+
 ## 2026-11-01 — 定时器真实安装回执及后验只读验收
 
 - `alice_mcsm_timer_install_mac_regression_20261101_ba01`：Mac Python289项（skip3）/0fail；`alice_mcsm_timer_install_mint_validation_20261101_bb01`：Mint Node24 **745/745**、Mac Python289 PASS；BDS、Alice均未重启，世界/console均未更改。
