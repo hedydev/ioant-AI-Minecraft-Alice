@@ -40,7 +40,7 @@ def summarize(view):
         'unknownCells':view.get('unknown') if type(view.get('unknown')) is int else None}
 
 REMOTE=r"""
-import json,os,subprocess,sys,time
+import json,math,os,re,subprocess,sys,time
 from pathlib import Path
 root=Path.home()/'.alice-bedrock-control'
 tool=Path.home()/'minecraft-ai/scripts/alice-mint.py'
@@ -79,6 +79,8 @@ def selftest():
     assert x['doorVoxelCount']==1 and x['doorWithinSurvey7']==1
     assert x['bedVoxelCount']==1 and x['nearestDoorHorizontal']==3.0
     assert 'def summarize(view):' in build_remote()
+    assert 'import json,math,os,re,subprocess,sys,time' in build_remote()
+    compile(build_remote(),'<reviewed-remote-readonly>','exec')
     assert 'querytarget' not in REMOTE and 'restart' not in REMOTE
     print('ALICE_DOOR_VOXEL_READONLY_SELFTEST_PASS')
 
