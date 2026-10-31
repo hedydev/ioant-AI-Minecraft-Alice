@@ -1,3 +1,9 @@
+## 2026-11-01 — 正式17879离线备份进程证明 fail-closed（源代码待回归）
+
+- 对照现有 `backup-world.py` 发现：旧版直接读取 `/proc/<pid>/cwd`，但该字段在 root 启动的 BDS 上可能不可读；原实现遇 `PermissionError` 直接 continue，随后错误把“无可见 BDS 进程”当作“已停止”，可能对运行中的 LevelDB 打包。改为先读取 Linux `/proc/<pid>/comm` 识别 `bedrock_server` / `java`，再核对其 cwd；游戏进程 cwd 无法确认时直接阻止离线备份。只有被确认属于其它目录的进程才可略过。保留对真实进程退出竞态的处理。新增目标/异实例/权限拒绝/缺失 cwd 回归用例。
+- 此修复仅涉及备份脚本、回归测试和说明，**不是正式17879离线备份已完成的证据**；当前不停止 BDS、不修改世界、不产出实际备份，不授权安装行为包。下次维护须确保生产 BDS 实际停服且使用足够的 /proc 可见权限，随后调用原离线备份及隔离恢复校验，不能以空 PID 列表代替停服证明。
+- 代码初次提交阶段待 Mac 全量 Python 回归和 Mint 非重启同步结果；未有测试回执前不得把本修复标为已验收。
+
 ## 2026-11-01 — 稳定BDS原生Actionbar独立坐标源（仅源代码预备）
 
 - `bds-stable-witness-pack`仅用稳定版`@minecraft/server`、对部署者指定的唯一Alice账号发送服务器亲自采样坐标到专用Actionbar，完全避免`server-net`/Beta APIs实验依赖。配套`stable_actionbar_witness.cjs`以私有owner-only配置为唯一激活入口，过滤非Actionbar/无效/重放/过期，并经原双4秒见证、安全阈值、respawn epoch验证。

@@ -30,23 +30,42 @@ def properties(root):
 
 
 def active_game_process(root, proc=Path('/proc')):
+    """Refuse offline snapshots when any potentially relevant game process
+    cannot be positively identified. /proc/<pid>/cwd may be unreadable when
+    MCSManager launches a root-owned BDS process under a normal Mint account.
+    An unreadable game process is UNKNOWN, never proof that BDS is stopped.
+    """
+    root = Path(root).expanduser().resolve(strict=True)
     if not proc.is_dir():
         raise ValueError('/proc required for checking live server state')
     for entry in proc.iterdir():
         if not entry.name.isdigit():
             continue
         try:
-            cwd = (entry / 'cwd').resolve(strict=True)
-            if cwd != root:
-                continue
-            args = (entry / 'cmdline').read_bytes().split(b'\0')
-            command = Path(os.fsdecode(args[0])).name if args and args[0] else ''
-            if command in ('java', 'bedrock_server'):
-                return int(entry.name), command
-        except (PermissionError, FileNotFoundError, ProcessLookupError, OSError):
+            # Linux /proc/<pid>/comm is typically readable even when the
+            # root-owned process cwd/cmdline is inaccessible to this user.
+            command = (entry / 'comm').read_text(encoding='ascii').strip()
+        except FileNotFoundError:
+            if entry.exists():
+                raise RuntimeError('Cannot verify process identity: ' + entry.name)
+            continue  # PID exited during inspection
+        except OSError as exc:
+            raise RuntimeError('Cannot verify process identity: ' + entry.name) from exc
+        if command not in ('java', 'bedrock_server'):
             continue
+        try:
+            cwd = (entry / 'cwd').resolve(strict=True)
+        except (OSError, RuntimeError) as exc:
+            if not entry.exists():
+                continue  # exited while resolving the cwd
+            raise RuntimeError(
+                'Game process ' + entry.name + ' (' + command +
+                ') has an unverified cwd; offline backup blocked. '
+                'Verify server shutdown with sufficient /proc permissions.'
+            ) from exc
+        if cwd == root:
+            return int(entry.name), command
     return None
-
 
 def find_worlds(root, kind, explicit=()):
     # macOS /var is an alias of /private/var. World candidates are resolved

@@ -35,6 +35,48 @@ class BackupTests(unittest.TestCase):
         self.assertTrue(manifest['verified'])
         self.assertEqual((self.world/'level.dat').read_bytes(),b'\x01\x02leveldata')
 
+    def test_proc_detects_target_even_if_cmdline_is_unreadable(self):
+        proc=Path(self.tmp.name)/'proc';proc.mkdir()
+        pid=proc/'321';pid.mkdir()
+        (pid/'comm').write_text('bedrock_server\n')
+        (pid/'cwd').symlink_to(self.root,target_is_directory=True)
+        self.assertEqual(backup.active_game_process(self.root,proc),(321,'bedrock_server'))
+
+    def test_proc_allows_verified_unrelated_game_cwd(self):
+        proc=Path(self.tmp.name)/'proc';proc.mkdir()
+        elsewhere=Path(self.tmp.name)/'other-server';elsewhere.mkdir()
+        pid=proc/'322';pid.mkdir()
+        (pid/'comm').write_text('bedrock_server\n')
+        (pid/'cwd').symlink_to(elsewhere,target_is_directory=True)
+        self.assertIsNone(backup.active_game_process(self.root,proc))
+        other=proc/'323';other.mkdir()
+        (other/'comm').write_text('sleep\n')
+        self.assertIsNone(backup.active_game_process(self.root,proc))
+
+    def test_proc_refuses_root_owned_game_when_cwd_is_inaccessible(self):
+        proc=Path(self.tmp.name)/'proc';proc.mkdir()
+        pid=proc/'324';pid.mkdir()
+        (pid/'comm').write_text('bedrock_server\n')
+        original_resolve=Path.resolve
+        def deny_game_cwd(path,*args,**kwargs):
+            if path == pid/'cwd':
+                raise PermissionError('root-owned cwd denied')
+            return original_resolve(path,*args,**kwargs)
+        with patch.object(Path,'resolve',deny_game_cwd):
+            with self.assertRaisesRegex(RuntimeError,'unverified cwd'):
+                backup.active_game_process(self.root,proc)
+
+    def test_proc_refuses_missing_game_cwd_instead_of_assuming_offline(self):
+        proc=Path(self.tmp.name)/'proc';proc.mkdir()
+        pid=proc/'325';pid.mkdir()
+        (pid/'comm').write_text('bedrock_server\n')
+        with self.assertRaisesRegex(RuntimeError,'unverified cwd'):
+            backup.active_game_process(self.root,proc)
+        with patch.object(backup,'active_game_process',side_effect=RuntimeError('unverified cwd')):
+            with self.assertRaisesRegex(RuntimeError,'unverified cwd'):
+                backup.write_backup(self.root,self.out,'bedrock',[self.world])
+        self.assertFalse(self.out.exists())
+
     def test_running_server_blocks_backup_before_any_output(self):
         with patch.object(backup,'active_game_process',return_value=(123,'java')):
             with self.assertRaisesRegex(RuntimeError,'running'):
