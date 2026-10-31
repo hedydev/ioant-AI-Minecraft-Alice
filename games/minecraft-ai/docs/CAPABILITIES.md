@@ -1,3 +1,8 @@
+## 2026-11-01 — Raised spruce-door HOME geometry, original 17879 world confirmed
+
+- `escape_survey` now accepts loaded wooden-door bottom one level above a provably fully supported neighboring cell (and matching upper half) as a **non-executable geometric candidate**, not a movement path. 3 additional Node regressions; full Mint Node24 **702/702** and Mac Python **267** passed. Client-only guarded reload succeeded; original world passive HOME observer returned `observed_indoor_home_candidate` with bed + roof + wooden-door observed. No BDS/other-world restart, new world, game interaction or BDS query.
+- Personal bed respawn, bed sleep, true enclosed shelter, door crossing, return-home navigation and server-authoritative travel remain explicitly UNVERIFIED. Persisted HOME withheld without server-confirmed personal spawn. The report's `doorKnown=false` means there is no established persistent HOME record, **not** that the transient door wasn't seen. Independent movement gate unchanged.
+
 ## 2026-11-01 — Staged elevated wooden-door observation (not traversal)
 
 When a Bedrock wooden door's bottom half is one block above a BFS-reachable standing floor, `surveyEscape` now records a non-permitted raised door approach only if both door halves are loaded and the lower support is a known full-cube block. It does not assume walkable steps, permission, server motion or safe return. HOME may classify observed geometry without claiming enclosure, personal spawn, exit or return. Source regression and original-world observation required; BDS query/movement gate unchanged.
