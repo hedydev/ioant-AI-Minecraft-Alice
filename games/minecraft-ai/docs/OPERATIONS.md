@@ -1,3 +1,9 @@
+## 2026-11-01 — MCSManager双见证触发原自主决策：客户端-only上线准备
+
+- 修复后的`src/witness_idle_resume.cjs` + `main.cjs` 被动消费当前登录后的4秒双样本，优先床检查完成后按正常安全保护调用一次`idleTick`，不自动查询MCSManager、不绕过危险/STOP/Pathfinder或行动冷却。真实Mint`alice_mcsm_idle_resume_mint_fixed_20261101_u01` PASS Node24 **740/740**、Mac Python285（skip3），源码已同步但运行中Node进程尚需单次安全reload。
+- 新`.openclaw/tasks/alice_mcsm_idle_resume_client_reload_20261101.json`只在已有`alice-mint.py check`给出`preflight=passed,action=use_restart`和已验证唯一旧Alice PID后，使用新私有一次性intent调用原`alice-mint.py restart`一次，检查新PID和心跳、登录。**不是BDS/MCSManager重启**，无其他世界操作、无第二Xbox会话。若工具拒绝或预检失败，停在原运行进程，不强制替换。
+- 重载验收还不等于后续真实动作成功；必须再次取得新鲜合法BDS双位置与后验独立真实位移。禁止重放任何既有reload task/intent，避免多重客户端。
+
 ## 2026-11-01 — MCSManager按需见证状态字段最终回归
 
 - 语义审查发现`navigationAuthorized:true`会错误暗示全部安全与导航条件已获授权；最终源码commit `21ed6d307450226c58b3f9de4f65afb2c4336f11`将其更名为`positionGateSatisfied:true`，且该字段只在已有`scoutStartProof`通过时为true；全局导航仍由原FOLLOW/停止/危险/路径门禁单独控制，绝不能把只读状态视为操作授权。
