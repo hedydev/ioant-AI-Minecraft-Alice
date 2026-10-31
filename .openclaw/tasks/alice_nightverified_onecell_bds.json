@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "One one-cell walk in original world with full-night-or-day safety and <=6 BDS observations",
+  "steps": [
+    {
+      "name": "contract",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-nightverified-onecell-once-20261031.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "one_only_verified_walk",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-nightverified-onecell-once-20261031.py",
+      "args": [
+        "--once",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 245
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "real_walk",
+      "file": "alice_real_walk_result.json",
+      "format": "json"
+    }
+  ]
+}
