@@ -24,6 +24,19 @@ def summarize(text):
     return {'node24':stats if set(stats)==set(NODE_FIELDS) else None,
             'failureNames':labels[:20]}
 
+def extract_home_failures(text):
+    # Permit only our source-free fixture assertion's reason/value token;
+    # never emit traceback, cwd, player data or arbitrary test log lines.
+    found=[]
+    for block in re.split(r'(?m)^✖\\s+',text):
+        if not block.startswith(('recognize roof, loaded enclosure', 'do not persist an unconfirmed bed')):
+            continue
+        name=block.splitlines()[0].split(' (')[0][:90]
+        reasons=re.findall(r'reason["\']?\\s*[:=]\\s*["\']([a-z_]{3,65})',block)
+        words=re.findall(r'(?m)^\\s*(?:actual|expected):\\s*[\'\"]?([a-z_]{3,65})',block)
+        found.append({'test':name,'reasonTokens':reasons[:4],'assertionTokens':words[:4]})
+    return found[:4]
+
 def selftest():
     sample='✖ path-finder respects confirmed witness (2.0ms)\nℹ tests 3\nℹ pass 2\nℹ fail 1\nℹ skipped 0\n'
     x=summarize(sample)
@@ -41,13 +54,15 @@ def run(out,target):
     result={'audit':'ALICE_MINT_NODE24_FAILURE_DIAG','schemaVersion':1,
             'readOnly':True,'sourceSynced':False,'bdsCommandSent':False,
             'aliceRestarted':False,'worldModified':False,
-            'state':'unavailable','exitCode':None,'node24':None,'failureNames':[]}
+            'state':'unavailable','exitCode':None,'node24':None,'failureNames':[],
+            'homeFailureDetails':[]}
     try:
         env={**os.environ,'ALICE_SSH_TARGET':target}
         p=subprocess.run(['/bin/bash',str(wrapper),'test'],env=env,cwd=project,
                          capture_output=True,text=True,timeout=160,check=False)
         result['exitCode']=p.returncode
         result.update(summarize(p.stdout+'\n'+p.stderr))
+        result['homeFailureDetails']=extract_home_failures(p.stdout+'\n'+p.stderr)
         result['state']='passed' if p.returncode==0 else 'tests_failed'
     except subprocess.TimeoutExpired:
         result['state']='timeout_unverified'
@@ -59,7 +74,8 @@ def run(out,target):
         json.dump(result,file,separators=(',',':'))
         file.write('\n')
     print(json.dumps({'state':result['state'],'node24':result['node24'],
-                      'failureNames':result['failureNames']}))
+                      'failureNames':result['failureNames'],
+                      'homeFailureDetails':result['homeFailureDetails']}))
 
 if __name__=='__main__':
     if sys.argv[1:]==['--self-test']:
