@@ -1,3 +1,11 @@
+## 2026-11-01 — BED只读路径 phase3 生产回执及后续验收条件
+
+- `alice_bed_plan_mint_nonrestart_20261101_v02`: 确认`90d2082` Mint Node24 710/710 + Mac Python269，运行时未重启。
+- `alice_bed_plan_ops_mac_regression_20261101_v01`: 操作脚本`c7ec9b4` Mac Python269通过。
+- `alice_bed_plan_client_only_reload_20261101_v01`: 只替换原17879 Alice客户端并获得原Bedrock会话和owner新进程证明；BDS未重启、其他世界没动；一次性标记`alice-bed-observed-route-phase3-20261101.intent` 已消耗，不得重放。
+- `alice_bed_plan_postlive_readonly_20261101_v01`: 从当期owner status确认 BED 5步只读候选、homeAgenda进入床计划、无BDS移动证据、个人spawn未确认。当前实际服务器移动 **不准标记成功**。
+- 首要下阶段是可信且被工具权限允许的BDS独立见证入口（script_api需当前生产世界配置资格/授权，之前明确没有实验Beta标志；MCSManager两次 querytarget操作此前因工具安全阻止，严禁改走绕行路径）。任何见证源不得利用客户端自身预测坐标模拟。独立BDS样本达标后才开始受控、可证实的一段一段移动、床spawn和出门返程验收。
+
 ## 2026-11-01 — BED路径候选安全上线流程
 
 - 修复重复import后`alice_bed_plan_mint_nonrestart_20261101_v02` PASS 710 Node24 / 269 Mac Python，不重启BDS、不中断其他世界。后续唯一受控任务`.openclaw/tasks/alice_bed_plan_client_reload.json`只允许单次客户端进程替换；任何私有intent存在即停止，不能删锁、重试不明结果或使用已消耗旧任务。

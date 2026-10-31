@@ -1,3 +1,11 @@
+## 2026-11-01 — 原世界 BED近距路线5步候选：实机状态验收PASS（非实走）
+
+- 源码`11b4244` 初次Mint回归552/553，`runtime.cjs`重复导入`surveyEscape`触发SyntaxError；安全只读测试诊断`alice_bed_plan_fail_diag_20261101_v02`确认并经`90d208285e40b2c0f9bc95f0607ee5c225c8f998`修复。随后`alice_bed_plan_mint_nonrestart_20261101_v02` 确认 **710/710 Mint Node24、269 Mac Python** 全绿，未修改世界、未重启Alice/BDS。测试诊断仅检查回归，未操作Minecraft。
+- 专用受控一次性Alice客户端reload（`c7ec9b4ff5d7ac1f7703fa2f31db9c365aedd975`）通过`alice_bed_plan_client_only_reload_20261101_v01`：真实`client_reconnected_17879`，旧新客户端PID身份、心跳和Minecraft会话验证，BDS/其他服务器原封不动、无新世界；该**单次intent标记已消耗，严禁重放**。
+- `alice_bed_plan_postlive_readonly_20261101_v01` 原世界当前运行时真实回执：connected/health20、night、rememberedBeds=2、`homeCandidateFresh=true` age19s、`homeLastSurvey=observed_indoor_home_candidate`、`homeAgenda=plan_candidate_bed_approach`、`homeAgendaReason=independent_bds_gate_not_ready`、**`bedApproachStatus=observed_route_candidate`、`bedApproachSteps=5`**、`lastBedReach=bed_needs_verified_approach`、`lastPositionGate=scout_bds_position_unavailable`、`personalBedStatus=not_verified`、`exitVerified=false`、`returnVerified=false`、`jobActive=false`、`hasFollowTarget=false`。
+- 此证明加载的地图观测能够规划通往床的 **5步候选**，且未被误判为已确认HOME、可行动或服务器实际位移。UI字段已更新但浏览器像素渲染未单独验收。真实床互动、个人spawn packet、短暂睡眠、出门与返程、运动仍无实证。
+- 核心外部阻塞仍为独立BDS `independentSamples=0`（前一轮只读验收）；本轮并没有创造新的见证，也未绕过被工具安全评估阻止的`querytarget`任务。后续如需实际行走，必须由可信已获授权的BDS机制持续提供两份4秒新鲜、与客户端≤0.75格的独立样本，然后每段安全地执行/验收；没有这个前提不得强行开门、走向床或修改世界。
+
 ## 2026-11-01 — BED路径候选模型全量回归通过、单次Alice客户端重载准备
 
 - 初版 `11b4244` 通过Mac同步，但Mint失败：Node24 552 pass / 1 fail，原因是`runtime.cjs`重复声明`surveyEscape`触发`SyntaxError`，并非导航策略已验收。经只读Node24测试收据 `alice_bed_plan_fail_diag_20261101_v02`确认，`90d208285e40b2c0f9bc95f0607ee5c225c8f998`修复多余import。

@@ -1,3 +1,9 @@
+## 2026-11-01 — 床位只读短程路线规划：正式世界观测通过
+
+- 新`escape_survey` 可从当前已加载的完整安全站立格BFS到已加载空床附近，且不触碰世界，最多暴露12步路径建议（全局半径7、最多160节点、1600次读取）；所有候选`permitted:false`、`serverVerified:false`。实际原世界明确观察到向床 5 步候选。
+- `homeAgenda` now considers same-session 45秒新鲜候选室内房屋，在个人spawn确认前也能输出`plan_candidate_bed_approach`，仅为只读意图，绝不自动将候选房屋提升为持久HOME。STOP/FOLLOW/危险均优先，出门及返程尚未实际验证。全套 **710 Mint Node24 / 269 Mac Python** 通过，原世界受控客户端reload、只读状态回执通过。
+- 限制：没有独立BDS坐标见证因此无实际位移和重生点设置，前端浏览器视觉未单独验收。
+
 ## 2026-11-01 — HOME分层观测功能已在原世界通过状态验收
 
 - `lastObservedAt` 提供 <=45秒的局部几何观察新鲜度，持久HOME依旧只在确认个人床spawn后建立；`bedReach`和`positionGate`各自报告阻塞原因，且都不准自动越权移动/互动。Mac Python268、Mint Node24 705/705；客户端-only受控reload成功；原世界实际读回候选庇护所新鲜22秒、床位需验证接近、BDS证据缺失。

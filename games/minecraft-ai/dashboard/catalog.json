@@ -1,7 +1,7 @@
 {
   "version": "Bedrock native 1.26.51 / control-center 0.4",
   "asOf": "2026-11-01",
-  "notice": "2026-11-01：正式17879新版本已通过705/705 Mint Node24和268 Mac Python；实际只读验收显示候选屋内几何新鲜、但床需要验证靠近且独立BDS坐标样本0，Alice自主模式因此安全IDLE。床spawn、开门、返程、服务器位移均未验证，不能禁用安全门禁；不重启BDS、不改地图。",
+  "notice": "2026-11-01：Mint Node24 710/710、Mac Python269回归通过。正式17879仅Alice客户端受控重载，实机只读观察到床5步只读路线候选以及45秒新鲜室内HOME候选；BDS独立见证未就绪，因此真实移动、个人重生点、睡眠、开门、返程均不能声称完成。BDS与世界未改动。",
   "statusNames": {
     "observed": "已有实机证据",
     "staged": "代码已接入·待验收",
@@ -9,6 +9,13 @@
     "pending": "尚未实现"
   },
   "capabilities": [
+    {
+      "name": "原世界 BED 5步只读路径候选与HOME自主意图",
+      "icon": "🧭",
+      "group": "生存与安全",
+      "status": "observed",
+      "detail": "实机17879在同会话观察候选室内床和木门后，homeAgenda=plan_candidate_bed_approach，bedApproachStatus=observed_route_candidate、steps=5；已通过710/710 Mint Node24、269 Mac Python及单次客户端重载。permitted=false，serverVerified=false，独立BDS坐标证据0；绝非已行走或已设置spawn。"
+    },
     {
       "name": "HOME候选庇护所与床位前置门禁分级显示",
       "icon": "🏠",
