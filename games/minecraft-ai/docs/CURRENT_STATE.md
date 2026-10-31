@@ -1,3 +1,9 @@
+## 2026-11-01 — 新增有界自主导航MCSManager按需定时服务（上线前回归）
+
+- 真实`alice_mcsm_ack_pair_live_20261101_af01`：原BDS17879 `querytarget` **2/2 accepted**、Alice 250ms private ACK **2/2**、`gateSatisfiedAtAck=true`，证明4秒/0.75m门禁已在接收事件瞬间通过。同期`alice_mcsm_ack_post_movement_readonly_20261101_ag01`：当前Alice仍autonomous+IDLE，独立样本2，过4秒已expired，移动输入7，但BDS两次见证之间位移0，**不能声称本次物理移动成功**。
+- 为避免用户重复手动触发，`scripts/alice-bds-demand-timer.py`拟使用独立**systemd用户timer**，每60秒至多做一次本地owner-pinned状态检查，且仅当`IDLE/autonomous/HP>=16/no current connected failure/位置门禁缺证据`才考虑查询；每次最多2条`bds_position_witness.py --once`、基于250ms ACK协调，同小时持久上限40条、批次至少55秒，控制台刷屏相比旧2秒一条降低显著，**不使用`--loop`**、不改变世界/BDS或位置/危险门禁。真正调用前再次绑定MCSManager InstanceConfig cwd和原server.properties=17879、确认旧loop service inactive，用户opt-in owner-only私有文件、flock防并发。
+- installer仅在显式`--install`下新增`alice-bds-demand.timer/.service`用户态服务并启用timer，代码review/单测/Mint测试通过前不得部署；始终不启用旧无限服务、不重启正式BDS、不更换账号。user timer会在本地持续运行，停止方式`systemctl --user disable --now alice-bds-demand.timer`。触发心跳不会查询，只有有效当期导航阻塞且预算未耗尽才查询。性能/节流可由后续真实日志验收调整。
+
 ## 2026-11-01 — BDS见证实时消费ACK：修复2秒心跳与4秒双样本竞争（源码待回归/上线）
 
 - 11/1重载后新一轮2次`querytarget`由MCSManager 2/2成功、Alice也接纳2/2当期样本，但最后`freshPairObserved=false`、`positionAligned=false`（`alice_mcsm_postreload_pair_live_20261101_z01`），显示**查询通道成功但两份样本未在同一4秒窗口有效**。禁止扩大4秒/0.75格门禁，也不继续无限尝试。
