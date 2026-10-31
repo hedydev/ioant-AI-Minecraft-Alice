@@ -8,6 +8,7 @@ const validPosition=p=>p&&[p.x,p.y,p.z].every(v=>typeof v==='number'&&Number.isF
 class BdsWitnessReader{
   constructor({file=DEFAULT_FILE(),clock=Date.now,name=()=>null}={}){
     this.file=file;this.clock=clock;this.name=name;this.lastStatus='not_configured'
+    this.lastAccepted=null
   }
   poll(evidence){
     if(typeof evidence?.ingestIndependentPosition!=='function')return false
@@ -41,10 +42,20 @@ class BdsWitnessReader{
       if(row.observedAt>now||now-row.observedAt>4000){
         this.lastStatus='expired_witness';return false
       }
+      // A 250ms passive poll sees the same file repeatedly. A byte-identical
+      // already consumed sample is not a new position, nor an ingestion error.
+      // Keep an explicit 'already_consumed' status rather than falsely
+      // reporting failure after every successful external query.
+      const fingerprint=[row.serial,row.uniqueId,row.observedAt,
+        row.feet.x,row.feet.y,row.feet.z,row.source,row.gamertag].join('|')
+      if(this.lastAccepted===fingerprint){
+        this.lastStatus='already_consumed';return false
+      }
       const ok=evidence.ingestIndependentPosition({
         feet:row.feet,serial:row.serial,uniqueId:row.uniqueId,
         observedAt:row.observedAt,source:row.source
       })
+      if(ok)this.lastAccepted=fingerprint
       this.lastStatus=ok?'accepted':'duplicate_or_rejected'
       return ok
     }catch{

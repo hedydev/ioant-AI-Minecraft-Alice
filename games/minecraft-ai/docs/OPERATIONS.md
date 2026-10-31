@@ -1,3 +1,11 @@
+## 2026-11-01 — MCSManager 已有位置见证链路：按需诊断与250ms重复采样修复（仅源码）
+
+- **路线纠正**：BDS 17879 的 `MCSManager /api/protected_instance/command` + `querytarget @a[name=...]` 已实机证明有效（10/23 BDS 3.02格、10/31 4.65格），无需先新增观察者、行为包或BDS实例。当前坐标阻塞是旧连续见证服务因刷屏主动停用，当前登录无新鲜独立样本、之前私有文件来自旧登录；不是已经证明客户端移动算法再次失效。
+- 新 `src/witness_demand.cjs` 仅根据原 `scoutStartProof`、登录/重生epoch、样本4秒年龄、客户端坐标输出分类：`session_not_connected` / `login_not_verified` / `respawn_not_verified` / `client_position_unavailable` / `needs_two_fresh_samples` / `needs_second_fresh_sample` / `fresh_pair_aligned` / `client_server_diverged`。结果为operator-on-demand**只读诊断**，明确`querySent=false`、`permissionGranted=false`，不下发MCSM命令、不自动授权运动；`navigationAuthorized`只有原`scoutStartProof`通过时才true。运行时 `movementEvidence.witnessDemand` 发布状态。
+- `BdsWitnessReader` 250ms轮询同一owner-only原子文件的完全相同快照，现报告`already_consumed`而非误记`duplicate_or_rejected`；保留单调serial/时间、唯一身份、4秒、旧登录/旧生命、权限与文件大小校验。新serial或任何篡改不因dedupe获得通过。保留旧系统配置与已停用的服务，**绝不启用 `--loop`**。
+- MCSManager官方HTTP文档区分 `/api/protected_instance/outputlog`（读日志）与`/api/protected_instance/command`（真正向控制台下命令）。此前操作工具安全拦截了某些生产`querytarget`任务，不得借新脚本/工具绕行。实际生成新样本需要**另行获准的执行通道**。本轮只能声明源码和单元测试通过，不得宣称恢复了生产BDS位置源、Alice移动、床spawn、开门或正式服变更。
+- 后续审批前可用只读现有`witness-diagnose`与status来排查身份/服务和状态，不发送任何服务器命令。正式BDS/其它服务器/世界不改不重启，安全2样本/4秒/0.75格门禁不变。
+
 ## 2026-11-01 — 另建隔离稳定版BDS测试服：Mac代码修复与Mint资源只读验收
 
 - 用户拒绝生产17879 BDS短停和原世界行为包修改，改为**优先独立BDS测试**，已确认现有17878/17879/17880、历史v2/v3等实验目录须保持原状。隔离方案：Mint新目录 `~/minecraft-bedrock-alice-stable-lab`（尚未创建）、新生成独立世界，候选IPv4 UDP 17882、IPv6 UDP 27882；行为包仅安装到新世界；不允许复制正在运行的生产LevelDB，不允许同时登录第二个Alice Xbox进程。

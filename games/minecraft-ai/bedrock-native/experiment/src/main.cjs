@@ -31,6 +31,7 @@ const {OutboundInputStatus}=require('./outbound_input_status.cjs')
 const {applyInstalled:applyProtocol2193InputCompat}=require('./input_flag_compat.cjs')
 const {ENABLE:ANALOG_2193_MODE}=require('./analog_move_compat.cjs')
 const {BdsWitnessReader}=require('./bds_witness.cjs')
+const {witnessDemand}=require('./witness_demand.cjs')
 const {attachStableActionbarWitness}=require('./stable_actionbar_witness.cjs')
 const aliceClientInputSync=require('./bedrock_client_input_sync.cjs')
 const {installNavigationPositionGuard}=require('./navigation_position_guard.cjs')
@@ -276,7 +277,9 @@ async function main(args=process.argv.slice(2)){
       movementEvidence:{...movementEvidence.get(),
         witnessStatus:movementEvidence.get().independentSource==='bds_stable_actionbar'?
           stableWitness?.get().status||'not_configured':bdsWitness?.lastStatus||'disabled',
-        stableWitnessStatus:stableWitness?.get().status||'not_configured'},
+        stableWitnessStatus:stableWitness?.get().status||'not_configured',
+        witnessDemand:witnessDemand({connected:!!connected,sessionEstablished:networkSessionEstablished,
+          bot,evidence:movementEvidence})},
       ...(outboundSummary?{outboundInput:outboundSummary}:{}),
       worldRoutine:{...environment(bot),idleGate:runtime.idleGateReason(),
         verticalSafety:runtime.verticalWatch.summary(),

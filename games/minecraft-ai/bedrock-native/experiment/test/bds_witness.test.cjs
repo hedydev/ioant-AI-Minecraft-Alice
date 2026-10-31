@@ -137,3 +137,20 @@ test('main advances BDS witness floor only after verified positive-health Bedroc
  assert.match(main,/if\(respawnRecovery\.get\(\)\.phase==='respawn_verified'&&\s*movementEvidence\.completeRespawnEpoch\(\)\)/)
  assert.doesNotMatch(main,/movementEvidence\.completeRespawnEpoch\(\).*bot\.on\('death'/)
 })
+
+// An ordinary 250ms file re-read cannot manufacture another independent sample
+// or make an accepted sample appear rejected in the operator dashboard.
+test('reader distinguishes an already consumed atomic snapshot from rejection',()=>{
+ const f=make()
+ try{
+  f.step(1000);f.write(1,'1792572000000000001')
+  assert.equal(f.reader.poll(f.e),true)
+  assert.equal(f.reader.lastStatus,'accepted')
+  assert.equal(f.reader.poll(f.e),false)
+  assert.equal(f.reader.lastStatus,'already_consumed')
+  assert.equal(f.e.get().independentSamples,1)
+  f.step(1000);f.write(1,'1792572000000000002')
+  assert.equal(f.reader.poll(f.e),true)
+  assert.equal(f.e.get().independentSamples,2)
+ }finally{f.close()}
+})
