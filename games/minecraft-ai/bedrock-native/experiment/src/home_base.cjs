@@ -20,8 +20,12 @@ function observeHome(bot,confirmedBed,{maxDistance=12,escape=null}={}){
  const at=(x,y,z)=>{try{return bot.blockAt(self.offset(x-self.x,y-self.y,z-self.z))}catch{return null}}
  if(!bed(at(ref.x,ref.y,ref.z)?.name))return fail('bed_block_not_loaded')
  const survey=escape||surveyEscape(bot,{radius:7,maxNodes:100})
- if(!survey?.center||survey?.unknownCells>0||survey?.openFrontier||
-    survey.reachableCells<3)return fail('enclosure_or_loaded_blocks_unverified')
+ // Unknown blocks at the OUTER survey frontier are not evidence that the
+ // observed bed, interior roof or reachable door approach are unknown.
+ // Preserve separate unknown/open-frontier evidence and NEVER classify this
+ // as a fully sealed monster-proof house or a route verified by BDS.
+ if(!survey?.center||survey.reachableCells<3)
+  return fail('reachable_room_floor_unverified')
  const candidates=(survey.doorCandidates||[]).filter(d=>
   d.kind==='wooden_door'&&d.permitted===false&&
   Array.isArray(d.position)&&d.position.length===3&&
@@ -52,6 +56,9 @@ function observeHome(bot,confirmedBed,{maxDistance=12,escape=null}={}){
    bed:ref,door:{x:door.position[0],y:door.position[1],z:door.position[2]},
    doorApproach:{x:door.approach.position[0],y:door.approach.position[1],z:door.approach.position[2]},
    roofSamples,roofConfirmed,reachableCells:survey.reachableCells,
+   outerSurveyUnknown:Math.max(0,Number(survey.unknownCells)||0),
+   outerSurveyFrontierObserved:!!survey.openFrontier,
+   enclosureVerified:false,roofAndDoorObserved:true,
    returnVerified:false,doorPassageVerified:false,hostilesNear:!!knownHostiles(bot).near}
 }
 function homeAgenda(bot,base,{mode='companion',stopped=false,following=false,
@@ -105,7 +112,7 @@ class HomeBaseMemory{
   if(result.status!=='observed_indoor_home_candidate'||!spawnConfirmed)return this.last
   const record={version:1,dimension:'overworld',bed:result.bed,
     door:result.door,doorApproach:result.doorApproach,observedAt:now,
-    verifiedExit:false,verifiedReturn:false}
+    verifiedExit:false,verifiedReturn:false,enclosureVerified:false}
   this.record=record
   if(this.file)try{
    const dir=path.dirname(this.file)
@@ -123,7 +130,9 @@ class HomeBaseMemory{
     'observed_candidate_not_route_verified',
    bed:this.record?.bed||null,door:this.record?.door||null,
    observedAt:this.record?.observedAt||null,
-   exitVerified:false,returnVerified:false,
+   exitVerified:false,returnVerified:false,enclosureVerified:false,
+   outerSurveyUnknown:this.last?.outerSurveyUnknown??null,
+   outerSurveyFrontierObserved:this.last?.outerSurveyFrontierObserved??null,
    lastSurvey:this.last?.status||null,
    lastReason:this.last?.reason||null}}
 }
