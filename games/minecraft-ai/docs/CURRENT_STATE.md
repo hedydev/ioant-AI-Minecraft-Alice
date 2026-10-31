@@ -1,3 +1,13 @@
+## 2026-11-01 — 持续BDS坐标见证的新候选：稳定Script API Actionbar，无Beta实验（未部署）
+
+- 此前在原17879单次目标(-6,58,1)的实际“安全试走”失败`probe_arm_expired`、客户端起终(-6.62,58,1.52)、独立BDS样本0，不能称坐标同步失效（10/31历史4.65格BDS已通过），必须建立合法持续独立服务端证据。
+- 根据Microsoft官方Script API文档，新稳定版`@minecraft/server` 2.10.0 支持`Player.onScreenDisplay.setActionBar`、`world.getAllPlayers`及`system.runInterval`，不依赖Beta APIs实验。`SetTitlePacket(88)`在BDS协议2193的`Actionbar`类型为4。新仅源代码的`games/minecraft-ai/bds-stable-witness-pack`依赖`@minecraft/server`**唯一稳定版模块**，服务端每40 tick对**仅由部署者指定的Alice用户名**读取`p.location`和`p.id`、BDS采样时间，专用`setActionBar`送到Alice私有通道，无Minecraft命令/RCON/网络出站或世界方块修改。默认placeholder阻止未经配置的pack发包，不暴露任何密码。
+- 新`stable_actionbar_witness.cjs`仅在Mint owner-only private config`~/.alice-bedrock-control/bds-stable-actionbar-enabled.json`经另行部署且身份/UUID与权限匹配后，接受真正来自BDS的`set_title` Actionbar包（拒绝聊天、过期、未来时间、无效坐标、重复/错误玩家ID）。接入原`movement_evidence`、`scoutStartProof`同一双样本4秒/0.75格入场门禁及死亡新生命隔离，不放松安全阈值；仅读BDS入站数据、不会触发控制台查询。
+- 旧实验版HTTP另修`force_tls`旧配置字段→官方`force_https:false`，并引入真实服务端`observedAtUnixMs`，接收器拒绝旧于4秒、未来或同一时间重复的服务器位置，不能拿HTTP收到时刻为旧坐标“续命”。代码`ad9958ea16f6fa69e59665db52f34f6a0cfeecfb`Mac Python273通过（3跳过）；旧系统不启用HTTP Beta包。
+- 新稳定方案Mint源码验收`alice_stable_witness_regression_fixed_20261101_d01` PASS Node24 **726/726** + Mac Python **273**；模拟协议单元测试，不代表BDS已经发出真实Actionbar包。源码同步不重启Alice/BDS，不改世界。
+- 实际正式17879只读`alice_stable_preflight_prod_20261101_f01`：`original17879=true`、`sourceStableOnly=true`、`worldAttached=false`、`installedPackPresent=false`、`operatorOptInConfigured=false`、`worldPackList=absent`、`betaExperiment=not_declared_in_level_dat`、`safeToModifyProduction=false`。当前Alice在线/自主/IDLE，health20 food16，独立样本0、运动输入0，旧登录位置文件`prior_login_witness`。
+- **下阶段唯一需授权的生产修改**：先完成真实一致的原世界备份/可恢复验收；经用户明确同意后，安排短暂BDS停服，将owner生成的专属姓名稳定版行为包加入原世界并注册pack UUID，服务器启动后在原Alice客户端验证真正BDS发来的2个`SetTitlePacket Actionbar`，再做单格物理移动+BDS后验。**不得**自行开启Beta实验、重启正式BDS、把当前源码单测当成实服证明，或绕过之前受限的querytarget工具。不新建实验世界。官方docs：https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server/screendisplay 和 https://mojang.github.io/bedrock-protocol-docs/1.26.51/packets/set-title-packet/ 。
+
 ## 2026-11-01 — 用户要求「一个目标坐标、Alice真实走过去并核对BDS」执行回执
 
 - 已严格在**原正式BDS 17879 / Bedrock level** 做一次动作，而非实验服务器；未创建/重启其他世界。基于现有`selectProbeRoute`加载的两格安全平地通道，新增控制台`安全试走`在等待BDS证据前显示并钉住**第一格**（不能在等待期间悄悄换坐标，重新确认路发生变化则拒绝）。代码`aaca3326608aa19bcdbbae7d53e104ab0db02570`，新增2条Node测试。

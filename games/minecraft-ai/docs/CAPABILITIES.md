@@ -1,3 +1,8 @@
+## 2026-11-01 — 稳定BDS原生Actionbar独立坐标源（仅源代码预备）
+
+- `bds-stable-witness-pack`仅用稳定版`@minecraft/server`、对部署者指定的唯一Alice账号发送服务器亲自采样坐标到专用Actionbar，完全避免`server-net`/Beta APIs实验依赖。配套`stable_actionbar_witness.cjs`以私有owner-only配置为唯一激活入口，过滤非Actionbar/无效/重放/过期，并经原双4秒见证、安全阈值、respawn epoch验证。
+- 代码/模拟回归 Node24 **726/726**、MacPython **273** PASS；**没有**BDS真实部署或实际移动证据。当前世界未注册pack、无private opt-in，前置检查明确`safeToModifyProduction=false`。
+- 实验HTTP包同时修官方`force_https`字段和源端采样时间；无生产实验包启用。
 ## 2026-11-01 — 固定坐标的生产单步试走（失败有真实回执）
 
 - 目标`(-6,58,1)`是`selectProbeRoute`从原17879当前加载的两格平地通道选择的第一格，非硬编码地图坐标。原点客户端`(-6.62,58,1.52)`。

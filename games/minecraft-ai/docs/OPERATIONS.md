@@ -1,3 +1,8 @@
+## 2026-11-01 — 稳定BDS见证部署前只读检查，禁止自动上线
+
+- GitHub/Mac/Mint代码已安全同步新模块，op `alice_stable_witness_regression_fixed_20261101_d01` Node24 726/726、Mac Python273 PASS，原BDS/Alice客户端均未在本任务重启。
+- 仅metadata核查任务`.openclaw/tasks/alice_stable_witness_preflight_20261101.json`、op `alice_stable_preflight_prod_20261101_f01` PASS：生产世界17879正确，stable源唯一依赖`@minecraft/server`，但**正式世界未安装/注册包**，owner-only opt-in不存在，Beta实验未声明，世界pack list尚不存在。不得把仓库源代码在场当作运行时已经加载。
+- 另行经明确授权前不得修改正式世界行为包清单、附加配置、BDS进程或实验标记。若后续上线，必须先具备验证可恢复的原世界备份、协调BDS短停、私有Alice目标名替换及正式服新包载入日志证明、真实新鲜两个Actionbar样本，再单格试走与后验；安全门禁/旧querytarget受限保持原样。
 ## 2026-11-01 — 真实一次性目标坐标动作回执
 
 - `alice_target_probe_actual_17879_20261101_e01` 已完成一次原17879封闭指令`安全试走`：目标`(-6,58,1)`，客户端起/终`(-6.62,58,1.52)`，`commandQueued=true`、最终`failed/probe_arm_expired`，独立BDS前/后各0样本，移动输入0，BDS真实位移**未验证**。只读路径选择不是行走；不许宣称成功。
