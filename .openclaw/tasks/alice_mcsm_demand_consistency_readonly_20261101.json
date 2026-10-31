@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Read actual bounded MCSManager demand timer events and Alice private ACK freshness consistency",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mcsm-demand-consistency-readonly.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "audit_live_consistency",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mcsm-demand-consistency-readonly.py",
+      "args": [
+        "--read",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 60
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "consistency",
+      "file": "alice_demand_consistency.json",
+      "format": "json"
+    }
+  ]
+}
