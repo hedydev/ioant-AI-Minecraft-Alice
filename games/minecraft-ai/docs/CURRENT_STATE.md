@@ -1,3 +1,9 @@
+## 2026-11-01 — BDS离线备份进程识别已完成Mac+Mint回归（未做正式服备份）
+
+- 修复提交 `3036f405469b09e200550b9dda425b9e3f75dfb9` 已通过实际OpenClaw `alice_backup_proc_guard_mac_regression_20261101_a01`：定向9/9、Mac全量Python 277 (skip 3, fail 0)，安全fast-forward同一源码。
+- `alice_backup_proc_guard_mint_sync_20261101_b01` 实际报告 `ALICE_MINT_NONRESTART_SYNC` PASS：Mint Node24 **726/726**、Mac Python277，`aliceRestarted=false`、`bdsRestarted=false`、`worldModifiedByTask=false`、`consoleCommandSent=false`。这是备份逻辑测试与源码同步通过，**并非真实世界停服、离线备份、隔离恢复、稳定行为包安装或Alice真实走动通过**。
+- 在正式17879短停/行为包上线明确授权前，仍只允许非破坏性代码/只读检查。未来离线备份前必须独立证明服务停机且能读到其他疑似游戏进程的cwd，否则fail-closed；不能拿原来的只读PID列表为空当停服凭据。
+
 ## 2026-11-01 — 正式17879离线备份进程证明 fail-closed（源代码待回归）
 
 - 对照现有 `backup-world.py` 发现：旧版直接读取 `/proc/<pid>/cwd`，但该字段在 root 启动的 BDS 上可能不可读；原实现遇 `PermissionError` 直接 continue，随后错误把“无可见 BDS 进程”当作“已停止”，可能对运行中的 LevelDB 打包。改为先读取 Linux `/proc/<pid>/comm` 识别 `bedrock_server` / `java`，再核对其 cwd；游戏进程 cwd 无法确认时直接阻止离线备份。只有被确认属于其它目录的进程才可略过。保留对真实进程退出竞态的处理。新增目标/异实例/权限拒绝/缺失 cwd 回归用例。
