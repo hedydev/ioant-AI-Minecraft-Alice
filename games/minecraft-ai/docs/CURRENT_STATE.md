@@ -1,3 +1,10 @@
+## 2026-11-01 — 另建隔离稳定版BDS测试服：Mac代码修复与Mint资源只读验收
+
+- 用户拒绝生产17879 BDS短停和原世界行为包修改，改为**优先独立BDS测试**，已确认现有17878/17879/17880、历史v2/v3等实验目录须保持原状。隔离方案：Mint新目录 `~/minecraft-bedrock-alice-stable-lab`（尚未创建）、新生成独立世界，候选IPv4 UDP 17882、IPv6 UDP 27882；行为包仅安装到新世界；不允许复制正在运行的生产LevelDB，不允许同时登录第二个Alice Xbox进程。
+- 新只读脚本和任务在提交 `6733b64`，首次Mac全量回归因新增源码多行条件语法错误失败，修复提交 `6bd7e045dda2ce91022cd9501f0f4f8ef46a9110`。实际OpenClaw `alice_isolated_bds_capacity_mac_fixed_20261101_c01` PASS Mac Python **280 tests (3 skipped, 0 failed)**；先前失败回执 `alice_isolated_bds_capacity_mac_20261101_b01` 保留，不重放。
+- 只读Mint检查 `alice_isolated_bds_capacity_mint_20261101_d01` PASS：`MemTotal=15901 MiB`、`MemAvailable=10461 MiB`、`SwapFree=0`、`load1=1.23`、`cpuLogical=4`、`diskFree=106.54 GiB`；仅观察到候选 `17882/27882` 内核UDP表`not_observed`（非保证可绑定），v2/v3实验目录已存在、v4/新stable实验目录不存在。原先v2主机能力只读 `alice_other_server_host_readonly_20261101_a01` 证明 `userNetnsAvailable=true`。
+- **没有启动任何新BDS，没有创建世界、绑定端口、修改生产配置或重启服务**。下一步需按独立新目录/端口设计有界部署与真实启动前二次校验；首次用独立测试玩家验收BDS行为包加载和私人Actionbar→客户端`set_title`，真正Alice端到端物理移动需要另一测试Xbox账号或之后单独同意Alice客户端从正式服暂时断开（BDS本身永不停止），绝不使用原账号并发登录，保留两样本4秒/0.75格门禁。
+
 ## 2026-11-01 — 独立BDS服务器替代正式服测试：容量只读检查（待运行）
 
 - 用户明确拒绝短停/改动正式17879，要求尝试另一台/另一实例BDS测试。采用**独立新测试目录+独立生成的世界**作为候选方案；旧17878/17880/17879和已有v1/v2/v3/v4实验目录不触碰、不覆盖。新服务器拟专用UDP IPv4 17882、IPv6 27882，须实机先确认未被占用。
