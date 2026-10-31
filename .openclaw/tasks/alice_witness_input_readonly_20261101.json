@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Owner private BDS witness JSON age/epoch read-only, no game commands, no BDS actions",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-witness-input-readonly-20261101.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "inspect_private_witness",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-witness-input-readonly-20261101.py",
+      "args": [
+        "--inspect",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 60
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "witness_input",
+      "file": "witness_input_readonly.json",
+      "format": "json"
+    }
+  ]
+}
