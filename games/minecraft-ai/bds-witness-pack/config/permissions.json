@@ -9,7 +9,7 @@
       "allowed_uris": [
         "http://127.0.0.1:18781/v1/position"
       ],
-      "force_tls": false,
+      "force_https": false,
       "max_body_bytes": 512,
       "max_concurrent_requests": 1
     }

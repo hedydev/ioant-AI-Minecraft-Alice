@@ -54,7 +54,7 @@ class PreflightTests(unittest.TestCase):
                 "@minecraft/server", "@minecraft/server-net", "@minecraft/server-admin"],
             "module_permissions": {"@minecraft/server-net": {
                 "allowed_uris": ["http://127.0.0.1:18781/v1/position"],
-                "force_tls": False, "max_body_bytes": 512,
+                "force_https": False, "max_body_bytes": 512,
                 "max_concurrent_requests": 1
             }}
         }))

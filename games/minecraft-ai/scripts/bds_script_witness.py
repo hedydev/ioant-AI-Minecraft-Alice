@@ -63,6 +63,7 @@ class Receiver:
         self.player = None
         self.sequence = -1
         self.last_serial = 0
+        self.last_observed_at = -1
 
     def accept(self, header, content):
         if not isinstance(header, str) or not header.isascii() or not hmac.compare_digest(header, self.token):
@@ -73,7 +74,7 @@ class Receiver:
             raise ValueError("malformed_payload") from exc
         if not isinstance(entry, dict) or set(entry) != {
                 "version", "gamertag", "playerId", "boot", "sequence",
-                "dimension", "feet"}:
+                "dimension", "feet", "observedAtUnixMs"}:
             raise ValueError("invalid_payload_shape")
         feet = entry["feet"]
         if entry["version"] != 1 or entry["gamertag"] != self.gamertag or (
@@ -86,12 +87,19 @@ class Receiver:
             for k in ("x", "y", "z")
         ):
             raise ValueError("untrusted_server_observation")
+        observed_at = entry["observedAtUnixMs"]
+        receive_ns = self.clock()
+        receive_ms = receive_ns // 1_000_000
+        # Same-host BDS source time must be fresh, monotonic and not future.
+        if (type(observed_at) is not int or observed_at <= 0
+                or observed_at > receive_ms or receive_ms - observed_at > 4000
+                or observed_at <= self.last_observed_at):
+            raise ValueError("observation_stale_or_future")
         if self.boot is not None and (entry["boot"] != self.boot or entry["playerId"] != self.player):
             raise ValueError("session_identity_changed")
         if entry["sequence"] <= self.sequence:
             raise ValueError("stale_sequence")
-        stamp = self.clock()
-        serial = max(stamp, self.last_serial + 1)
+        serial = max(receive_ns, self.last_serial + 1)
         if not 10**15 <= serial < 10**20:
             raise ValueError("invalid_receive_clock")
         sample = {
@@ -99,7 +107,7 @@ class Receiver:
             "gamertag": self.gamertag,
             "serial": str(serial),
             "uniqueId": entry["playerId"],
-            "observedAt": int(serial // 1_000_000),
+            "observedAt": observed_at,
             "feet": {k: feet[k] for k in ("x", "y", "z")}
         }
         # Only commit sequence after securely writing the validated observation.
@@ -108,6 +116,7 @@ class Receiver:
         self.player = entry["playerId"]
         self.sequence = entry["sequence"]
         self.last_serial = serial
+        self.last_observed_at = observed_at
         return sample
 
 

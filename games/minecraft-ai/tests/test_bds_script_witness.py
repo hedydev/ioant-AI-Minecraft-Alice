@@ -24,6 +24,7 @@ class SilentWitnessTests(unittest.TestCase):
             "playerId": "player-script-uuid-1234",
             "boot": "bedrockboot-123456",
             "sequence": 1, "dimension": "minecraft:overworld",
+            "observedAtUnixMs": self.at // 1_000_000,
             "feet": {"x": -4.5, "y": 69, "z": 8.5}
         }
         self.writer = patch.object(bridge, "publish",
@@ -75,6 +76,7 @@ class SilentWitnessTests(unittest.TestCase):
             self.send()
         self.payload["boot"] = "bedrockboot-123456"
         self.at += 2_000_000_000
+        self.payload["observedAtUnixMs"] = self.at // 1_000_000
         row = self.send()
         self.assertGreater(int(row["serial"]), int(self.posted[0]["serial"]))
         self.assertEqual(len(self.posted), 2)
@@ -116,7 +118,8 @@ class SilentWitnessTests(unittest.TestCase):
         net = permissions["module_permissions"]["@minecraft/server-net"]
         url = "http://127.0.0.1:18781/v1/position"
         self.assertEqual(net["allowed_uris"], [url])
-        self.assertIs(net["force_tls"], False)
+        self.assertIs(net["force_https"], False)
+        self.assertNotIn("force_tls", net)
         self.assertEqual(net["max_body_bytes"], bridge.MAX_BODY)
         self.assertEqual(net["max_concurrent_requests"], 1)
         variables = json.loads((pack / "config" / "variables.example.json").read_text())
@@ -124,6 +127,37 @@ class SilentWitnessTests(unittest.TestCase):
         self.assertTrue(url.startswith("http://127.0.0.1:"))
 
 
+
+    def test_server_sample_time_not_replaced_by_delayed_receiver_time(self):
+        self.payload["observedAtUnixMs"] = self.at // 1_000_000 - 300
+        row = self.send()
+        self.assertEqual(row["observedAt"], self.payload["observedAtUnixMs"])
+        self.assertNotEqual(row["observedAt"], self.at // 1_000_000)
+        self.assertEqual(self.receiver.last_observed_at, row["observedAt"])
+
+    def test_reject_old_and_future_server_coordinates_without_publishing(self):
+        now = self.at // 1_000_000
+        for observed in (now - 4001, now + 1, 0, None, 1.2, "1234"):
+            self.payload["observedAtUnixMs"] = observed
+            with self.assertRaisesRegex(ValueError, "observation_stale_or_future"):
+                self.send()
+        self.assertFalse(self.posted)
+        self.assertEqual(self.receiver.sequence, -1)
+
+    def test_replayed_timestamp_denied_even_with_new_serial_sequence(self):
+        self.send()
+        self.payload["sequence"] = 2
+        with self.assertRaisesRegex(ValueError, "observation_stale_or_future"):
+            self.send()
+        self.assertEqual(len(self.posted), 1)
+
+    def test_failed_disk_write_does_not_advance_timestamp(self):
+        with patch.object(bridge, "publish", side_effect=OSError("denied")):
+            with self.assertRaises(OSError):
+                self.send()
+        self.assertEqual(self.receiver.last_observed_at, -1)
+        self.send()
+        self.assertEqual(self.receiver.last_observed_at, self.payload["observedAtUnixMs"])
 
 if __name__ == "__main__":
     unittest.main()

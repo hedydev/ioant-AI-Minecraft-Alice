@@ -31,8 +31,10 @@ if (valid) system.runInterval(() => {
       typeof id !== "string" || !/^[A-Za-z0-9-]{8,72}$/.test(id) ||
       ![location.x, location.y, location.z].every(Number.isFinite)) return;
   // Back-to-back samples from the Script API, not Mineflayer predictions.
+  // Sample the source time with the BDS player position, not at HTTP reception.
+  const observedAtUnixMs = Date.now();
   const body = JSON.stringify({ version: 1, gamertag: name, playerId: id,
-    boot, sequence: sequence++, dimension,
+    boot, sequence: sequence++, dimension, observedAtUnixMs,
     feet: {x: location.x, y: location.y, z: location.z} });
   pending = true;
   try {

@@ -183,7 +183,7 @@ def inspect(home):
                  and deps.get("@minecraft/server-admin") == "1.0.0-beta"
                  and isinstance(policy, dict)
                  and policy.get("allowed_uris") == ["http://127.0.0.1:18781/v1/position"]
-                 and policy.get("force_tls") is False
+                 and policy.get("force_https") is False
                  and policy.get("max_body_bytes") == 512
                  and policy.get("max_concurrent_requests") == 1)
     packs = active_packs if isinstance(active_packs, list) else []
