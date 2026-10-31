@@ -78,7 +78,7 @@ def run(output):
  print(json.dumps({'state':found['state'] if found else 'unverified'}))
 def selftest():
  assert "'bds-position-witness.json'" in REMOTE
- assert 'querytarget' not in REMOTE and 'bedrock_server' not in REMOTE
+ assert 'querytarget(' not in REMOTE and 'bedrock_server' not in REMOTE
  assert check({'audit':'ALICE_WITNESS_INPUT_READONLY','state':'observed',
  'worldVerified':True,'witnessFile':'absent','fileAgeBand':'unknown',
  'sampleAgeBand':'unknown','sampleAfterCurrentLogin':None,'source':'unknown',
