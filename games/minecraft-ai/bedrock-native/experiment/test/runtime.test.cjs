@@ -3123,3 +3123,81 @@ test('autonomous idle reads fresh candidate room as bed-approach intention witho
  assert.equal(e.homeBase.record,null)
  e.stop()
 })
+
+test('event-driven bed first step denies empty BDS proof even when loaded flat route exists',async()=>{
+ const f=fixture(),e=new AliceBedrockRuntime({...f,policies:await policies()})
+ e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+ f.bot.entity.position=vec(.5,65,.5);f.bot.entity.onGround=true
+ e.homeBase.last={status:'observed_indoor_home_candidate',
+   bed:{x:6,y:65,z:0},door:{x:3,y:65,z:1},at:99000}
+ e.observedBeds.nearby=()=>[vec(6,65,0)]
+ f.bot.parseBedMetadata=()=>({occupied:0})
+ f.bot.blockAt=p=>Math.floor(p.x)===6&&Math.floor(p.y)===65&&Math.floor(p.z)===0?
+  {name:'red_bed',position:vec(6,65,0)}:
+  Math.floor(p.y)===64&&Math.floor(p.z)===0&&p.x>=0&&p.x<=6?
+    {name:'oak_planks',boundingBox:'block'}:
+  Math.floor(p.z)===0&&p.x>=0&&p.x<=6?
+    {name:'air',boundingBox:'empty'}:{name:'stone_bricks',boundingBox:'block'}
+ assert.equal(e.resumeBedApproachOnWitness().reason,'fresh_independent_bds_pair_required')
+ assert.equal(e.lastBedApproachAction,null)
+ assert(!f.calls.some(v=>v[0]==='goto'))
+ e.stop()
+})
+test('fresh aligned pair may arm EXACTLY one flat bed step but never records unverified walking',async()=>{
+ const f=fixture(),e=new AliceBedrockRuntime({...f,policies:await policies()})
+ e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+ f.bot.entity.position=vec(.5,65,.5);f.bot.entity.onGround=true
+ e.homeBase.last={status:'observed_indoor_home_candidate',
+   bed:{x:6,y:65,z:0},door:{x:3,y:65,z:1},at:99000}
+ e.observedBeds.nearby=()=>[vec(6,65,0)]
+ f.bot.parseBedMetadata=()=>({occupied:0})
+ f.bot.blockAt=p=>Math.floor(p.x)===6&&Math.floor(p.y)===65&&Math.floor(p.z)===0?
+  {name:'red_bed',position:vec(6,65,0)}:
+  Math.floor(p.y)===64&&Math.floor(p.z)===0&&p.x>=0&&p.x<=6?
+    {name:'oak_planks',boundingBox:'block'}:
+  Math.floor(p.z)===0&&p.x>=0&&p.x<=6?
+    {name:'air',boundingBox:'empty'}:{name:'stone_bricks',boundingBox:'block'}
+ const fresh={independentSource:'bds_querytarget',independentSamples:2,
+  independentAt:99700,independentPreviousAt:99100,
+  independentLatestFeet:{x:.5,y:65,z:.5}}
+ e.movementEvidence={get:()=>fresh}
+ let started=0,task=null
+ e.startJob=(type,source,work,options)=>{
+  started++;task=work;assert.equal(type,'EXPLORE')
+  assert.equal(source,'自主生存');return true
+ }
+ const v=e.resumeBedApproachOnWitness()
+ assert.equal(v.state,'started',JSON.stringify(v))
+ assert.equal(started,1)
+ assert.equal(e.resumeBedApproachOnWitness().reason,'one_cell_step_cooldown')
+ assert.equal(started,1)
+ assert.equal(e.lastBedApproachAction.attempted,false)
+ const result=await task(new AbortController().signal)
+ assert.equal(result.ok,false)
+ assert.equal(result.serverMovementVerified,false)
+ assert(f.calls.some(v=>v[0]==='goto'))
+ assert(f.calls.some(v=>v[0]==='setGoal'&&v[1]===null))
+ assert.equal(e.lastBedApproachAction.serverMovementVerified,false)
+ e.stop()
+})
+test('BDS witness overrides old 20s bed observation cooldown only when proof is fresh',async()=>{
+ const f=fixture(),e=new AliceBedrockRuntime({...f,policies:await policies()})
+ e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+ f.bot.entity.position=vec(.5,65,.5);f.bot.entity.onGround=true
+ const bed=vec(1,65,0);e.observedBeds.nearby=()=>[bed]
+ f.bot.blockAt=()=>({name:'red_bed',position:bed})
+ f.bot.parseBedMetadata=()=>({occupied:0})
+ e.nextSpawnpointAt=120000
+ assert.equal(await e.spawnpointTick({freshBdsWitness:true}),false)
+ assert.equal(e.lastSpawnpointAttempt,null)
+ e.movementEvidence={get:()=>({
+   independentSource:'bds_querytarget',independentSamples:2,
+   independentAt:99700,independentPreviousAt:99500,
+   independentLatestFeet:{x:.5,y:65,z:.5}})}
+ let n=0;e.startJob=(type,source,fn)=>{n++;return true}
+ assert.equal(await e.spawnpointTick(),false)
+ assert.equal(n,0)
+ assert.equal(await e.spawnpointTick({freshBdsWitness:true}),true)
+ assert.equal(n,1)
+ e.stop()
+})

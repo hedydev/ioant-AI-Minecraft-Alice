@@ -131,6 +131,7 @@ class AliceBedrockRuntime {
     this.followGoalRadius=this.liveBehavior.settings.followDistance;this.lastFollowRadiusChange=0
     this.nextSleepAt=0;this.nextEquipAt=0;this.maintenanceBusy=false
     this.nextSpawnpointAt=0;this.lastSpawnpointAttempt=null;this.lastBedApproach=null
+    this.lastBedApproachAction=null;this.nextBedApproachStepAt=0
     this.lastEquipObservation=null
     this.lastSleepOpportunity=null;this.lastSleepOpportunityKey=null
     this.observedBeds=new ObservedBeds({clock,log,
@@ -1339,11 +1340,16 @@ class AliceBedrockRuntime {
     this.followProgress.reset(player,this.bot.entity.position,entity.position,this.clock())
     this.log.log('[Alice follow] active target',player,'(movement needs server position validation)')
   }
-  async spawnpointTick(){
+  async spawnpointTick({freshBdsWitness=false}={}){
+    // A 20s *observation* cooldown must never consume an independently
+    // admitted 4s BDS witness pair. Only the trusted witness-reader caller
+    // can ask to revisit immediately, and only after full scoutStartProof.
+    if(freshBdsWitness&&!scoutStartProof(this.bot,this.movementEvidence,this.clock).ok)
+      return false
     if(!this.ready()||this.bot.isSleeping||this.job||this.maintenanceBusy||
        this.safetyBusy||this.threat()||this.core.hasFollowIntent()||
        this.goalPlanner.stoppedByHuman||this.bot.health<16||
-       this.clock()<this.nextSpawnpointAt)return false
+       (!freshBdsWitness&&this.clock()<this.nextSpawnpointAt))return false
     // The existing personal spawn packet proves an already active point.
     if(this.currentRespawnStatus?.()==='observed_server_player_spawn_packet'||
        this.homeBed.summary().status!=='not_verified')return false
@@ -1383,6 +1389,144 @@ class AliceBedrockRuntime {
       return {ok:confirmed,reason:this.lastSpawnpointAttempt.reason}
     },{label:'设置床位重生点',announce:false})
     return !!this.job
+  }
+
+  // Called only on a newly accepted independent BDS witness-file event, not
+  // from IDLE timers, local physics or unsolicited packet corrections.
+  // The source provides coordinates, NOT movement permission. Revalidate
+  // two new samples, the current world, room, bed and one loaded flat cell.
+  resumeBedApproachOnWitness(){
+    const fail=reason=>({state:'held',reason,attempted:false,serverMovementVerified:false})
+    if(!scoutStartProof(this.bot,this.movementEvidence,this.clock).ok)
+      return fail('fresh_independent_bds_pair_required')
+    const now=this.clock(),settings=this.liveBehavior.settings
+    if(!settings.autonomyEnabled||settings.agentMode!=='autonomous'||
+       this.goalPlanner.stoppedByHuman||
+       now-this.lastHumanAt<this.p.autonomy_policy.AUTONOMY_GRACE_MS)
+      return fail('human_or_companion_priority')
+    if(!this.ready()||this.bot.isSleeping||this.maintenanceBusy||this.job||
+       this.safetyBusy||this.threat()||this.core.hasFollowIntent()||
+       this.core.state!=='IDLE'||this.verticalWatch.active()||
+       this.bot.health<16||this.bot.game?.dimension!=='overworld'||
+       this.bot.entity?.onGround!==true)
+      return fail('unsafe_bed_approach_context')
+    // No night fighting/monster pathing: a remote loaded hostile still blocks.
+    const here=this.bot.entity.position
+    if(Object.values(this.bot.entities||{}).some(e=>HOSTILES.has(e?.name)&&
+       e?.position&&[e.position.x,e.position.y,e.position.z].every(Number.isFinite)&&
+       Math.hypot(e.position.x-here.x,e.position.y-here.y,e.position.z-here.z)<12))
+      return fail('hostile_within_twelve_blocks')
+    if(this.homeBed.summary().status!=='not_verified')return fail('already_has_personal_bed')
+    if(now<this.nextBedApproachStepAt)return fail('one_cell_step_cooldown')
+    const home=this.homeBase.last
+    if(home?.status!=='observed_indoor_home_candidate'||!home.bed||
+       !Number.isSafeInteger(home.at)||now<home.at||now-home.at>45000)
+      return fail('fresh_indoor_bed_candidate_required')
+    const known=this.observedBeds.nearby(this.bot,{radius:12})
+    const adjacent=selectAdjacentBed(this.bot,known,{radius:12})
+    if(adjacent.bed)return fail('bed_already_in_interaction_range')
+    if(adjacent.reason!=='bed_needs_verified_approach')
+      return fail(adjacent.reason)
+    // Use exactly the currently observed candidate bed, not an unrelated
+    // occupied/shared bed elsewhere in the loaded chunk.
+    const selected=known.filter(p=>[p.x,p.y,p.z].every(Number.isFinite)&&
+      Math.hypot(p.x-home.bed.x,p.y-home.bed.y,p.z-home.bed.z)<=1.5)
+    if(!selected.length)return fail('home_bed_not_loaded')
+    const survey=surveyEscape(this.bot,{radius:7,maxNodes:100,bedPositions:selected})
+    const path=survey.bedApproach
+    this.lastBedApproach=path||null
+    if(path?.status!=='observed_route_candidate'||path.routeComplete!==true||
+       !Array.isArray(path.waypoints)||!path.waypoints.length||
+       path.serverVerified!==false||path.permitted!==false)
+      return fail('verified_flat_bed_corridor_unavailable')
+    const a=path.waypoints[0],first={x:a?.[0],y:a?.[1],z:a?.[2]}
+    const at={x:Math.floor(here.x),y:Math.floor(here.y),z:Math.floor(here.z)}
+    // First use the safest possible stair-free horizontal adjacent cell;
+    // never ask A* to traverse the remaining 4+ unverified cells in one go.
+    if(![first.x,first.y,first.z].every(Number.isSafeInteger)||
+       first.y!==at.y||Math.abs(first.x-at.x)+Math.abs(first.z-at.z)!==1||
+       !this.bot.pathfinder?.goto||!this.bot.pathfinder?.setMovements||
+       !this.api?.GoalNear||!this.api?.Movements)
+      return fail('first_cell_not_flat_or_navigation_unavailable')
+    this.nextBedApproachStepAt=now+75000
+    const initial=this.movementEvidence?.get?.()
+    const initialFeet=initial?.independentLatestFeet
+    const initialAt=initial?.independentAt
+    const initialCount=initial?.independentSamples
+    this.lastBedApproachAction={status:'starting',reason:'fresh_bds_one_cell_admitted',
+      attempted:false,serverMovementVerified:false,at:now}
+    const accepted=this.startJob('EXPLORE','自主生存',async signal=>{
+      let timer=null,abortHandler=null
+      let result={ok:false,reason:'bed_one_cell_bds_endpoint_unconfirmed',
+        attempted:false,serverMovementVerified:false}
+      try{
+        // Recheck the original no-shortcut position gate at the actual start,
+        // before Pathfinder receives any goal or movement input.
+        const proof=scoutStartProof(this.bot,this.movementEvidence,this.clock)
+        if(!proof.ok||signal.aborted||this.threat()||this.core.hasFollowIntent()||
+           this.bot.health<16||this.goalPlanner.stoppedByHuman||
+           !this.liveBehavior.settings.autonomyEnabled||
+           this.bot.entity?.onGround!==true)
+          return {...result,reason:proof.ok?'bed_one_cell_safety_preempted':proof.reason}
+        const fresh=surveyEscape(this.bot,{radius:7,maxNodes:100,bedPositions:selected})
+        if(fresh.bedApproach?.waypoints?.[0]?.join(',')!==a.join(','))
+          return {...result,reason:'bed_first_cell_changed'}
+        const movements=new this.api.Movements(this.bot)
+        this.p.terrain_policy.cautiousPathOptions(movements)
+        movements.canDig=false;movements.canOpenDoors=false
+        movements.allowParkour=false;movements.allow1by1towers=false
+        movements.openable?.clear?.()
+        this.bot.pathfinder.setMovements(movements)
+        const aborted=new Promise((_,reject)=>{
+          abortHandler=()=>reject(Error('bed_step_aborted'))
+          signal.addEventListener('abort',abortHandler,{once:true})
+          timer=setTimeout(()=>reject(Error('bed_step_deadline')),4500)
+          timer.unref?.()
+        })
+        result.attempted=true
+        await Promise.race([
+          Promise.resolve().then(()=>this.bot.pathfinder.goto(
+            new this.api.GoalNear(first.x,first.y,first.z,0))),
+          aborted
+        ]).catch(()=>{})
+        // Two NEW, post-start independent BDS samples and endpoint alignment
+        // are mandatory. Local path completion, generic correction packets,
+        // or queued inputs cannot prove server movement.
+        const post=this.movementEvidence?.get?.()
+        const end=post?.independentLatestFeet
+        const from=initialFeet
+        const travelled=from&&end?Math.hypot(end.x-from.x,end.y-from.y,end.z-from.z):0
+        const close=end?Math.hypot(end.x-(first.x+.5),end.y-first.y,end.z-(first.z+.5)):Infinity
+        const local=end?Math.hypot(this.bot.entity.position.x-end.x,
+          this.bot.entity.position.y-end.y,this.bot.entity.position.z-end.z):Infinity
+        const verified=!signal.aborted&&
+          Number.isSafeInteger(post?.independentSamples)&&
+          post.independentSamples>=initialCount+2&&
+          Number.isSafeInteger(post.independentPreviousAt)&&post.independentPreviousAt>initialAt&&
+          Number.isSafeInteger(post.independentAt)&&this.clock()>=post.independentAt&&
+          this.clock()-post.independentAt<=4000&&travelled>=.25&&travelled<=1.8&&
+          close<=1.25&&local<=.75
+        result={ok:verified,attempted:true,serverMovementVerified:verified,
+          reason:verified?'bed_first_cell_bds_verified':'bed_one_cell_bds_endpoint_unconfirmed',
+          serverMovedBlocks:verified?Math.round(travelled*100)/100:null}
+        return result
+      }finally{
+        if(timer)clearTimeout(timer)
+        if(abortHandler)signal.removeEventListener('abort',abortHandler)
+        try{this.bot.pathfinder.setGoal(null)}catch{}
+        this.lastBedApproachAction={status:result.ok?'verified':'unverified',
+          reason:result.reason,attempted:result.attempted,
+          serverMovementVerified:result.serverMovementVerified===true,
+          at:this.clock()}
+      }
+    },{label:'接近观察到的床：一格安全步行',announce:false})
+    if(!accepted){
+      this.lastBedApproachAction={status:'blocked',reason:'bed_step_start_denied',
+        attempted:false,serverMovementVerified:false,at:now}
+      return fail('bed_step_start_denied')
+    }
+    return {state:'started',reason:'bed_first_cell_started',
+      attempted:true,serverMovementVerified:false}
   }
   observeHomeTick(){
     if(!this.ready()||this.bot.isSleeping||this.safetyBusy||this.threat())return

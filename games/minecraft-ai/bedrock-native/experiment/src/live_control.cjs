@@ -108,6 +108,11 @@ function compactStatus(state){
       bedApproach:w.bedApproach&&{status:w.bedApproach.status,
         reason:w.bedApproach.reason,steps:w.bedApproach.steps,
         permitted:false,serverVerified:false},
+      bedApproachAction:w.bedApproachAction&&{
+        status:w.bedApproachAction.status,
+        reason:w.bedApproachAction.reason,
+        attempted:w.bedApproachAction.attempted===true,
+        serverMovementVerified:w.bedApproachAction.serverMovementVerified===true},
       homeBed:w.homeBed&&{status:w.homeBed.status,bed:w.homeBed.bed},
       lastSpawnpointAttempt:w.lastSpawnpointAttempt&&{
         reason:w.lastSpawnpointAttempt.reason,
@@ -147,6 +152,11 @@ function compactStatus(state){
       bedApproach:w.bedApproach&&{status:w.bedApproach.status,
         reason:w.bedApproach.reason,steps:w.bedApproach.steps,
         permitted:false,serverVerified:false},
+      bedApproachAction:w.bedApproachAction&&{
+        status:w.bedApproachAction.status,
+        reason:w.bedApproachAction.reason,
+        attempted:w.bedApproachAction.attempted===true,
+        serverMovementVerified:w.bedApproachAction.serverMovementVerified===true},
       homeBed:w.homeBed&&{status:w.homeBed.status,bed:w.homeBed.bed},
       lastSpawnpointAttempt:w.lastSpawnpointAttempt&&{
         reason:w.lastSpawnpointAttempt.reason,

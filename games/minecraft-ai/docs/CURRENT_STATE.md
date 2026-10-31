@@ -1,3 +1,9 @@
+## 2026-11-01 — 新鲜BDS见证到达时床位冷却漏洞和单格接近（待全量验收）
+
+- 真正缺陷：`spawnpointTick`在此前无独立见证时将`nextSpawnpointAt`推迟20秒；现有250ms读取器虽在每个独立证据事件调用spawnpointTick，但该20秒观察冷却常常吞掉全部4秒有效BDS对齐窗口。增加仅在`scoutStartProof`完整验证（两独立样本均<=4秒、客户端差<=0.75格）时可绕开冷却的`freshBdsWitness`事件参数；没有真实样本不能绕开。
+- 新`resumeBedApproachOnWitness`只允许autonomous、同一会话45秒新鲜HOME候选、原世界已加载空床/观测通道、角色落地且health>=16、无FOLLOW/STOP/临近12格怪物/活跃工作，在已经接受的新鲜双BDS样本事件中，启动**首个相邻同Y平坦格**的一次短程Pathfinder尝试，75秒冷却，最长4.5秒，禁止挖掘/开门/跑酷，任何安全变化中止。再次使用原Pathfinder BDS位置门禁。完成只有得到行动之后至少2条新鲜独立BDS见证、实际>=0.25格服务端位移、目的地和客户端位置均对齐时才能标记`serverMovementVerified:true`。当前没有见证生产器；仅为已有批准见证机制的消费者修复，不产生任何querytarget请求，不启动BDS。单步未验证不得自动继续下一格。
+- Web新增床位单格结果单独卡片，`bedApproachAction`进入现有4KiB compact状态。**源码提交尚需Mint Node24、Mac Python、当前17879真机客户端重载与只读验收；不得以测试用例冒充服务器走动。**
+
 ## 2026-11-01 — 原世界 BED近距路线5步候选：实机状态验收PASS（非实走）
 
 - 源码`11b4244` 初次Mint回归552/553，`runtime.cjs`重复导入`surveyEscape`触发SyntaxError；安全只读测试诊断`alice_bed_plan_fail_diag_20261101_v02`确认并经`90d208285e40b2c0f9bc95f0607ee5c225c8f998`修复。随后`alice_bed_plan_mint_nonrestart_20261101_v02` 确认 **710/710 Mint Node24、269 Mac Python** 全绿，未修改世界、未重启Alice/BDS。测试诊断仅检查回归，未操作Minecraft。

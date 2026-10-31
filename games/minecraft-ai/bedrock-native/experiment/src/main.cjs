@@ -291,6 +291,7 @@ async function main(args=process.argv.slice(2)){
         homeBed:runtime.homeBed.summary(),lastSpawnpointAttempt:runtime.lastSpawnpointAttempt,
         homeBase:runtime.homeBase.summary(),homeAgenda:runtime.lastHomeAgenda,
         bedApproach:runtime.lastBedApproach,
+        bedApproachAction:runtime.lastBedApproachAction,
         // Compact read-only escape survey; status heartbeat is capped at 4 KiB.
         escapeSurvey:runtime.lastEscapeSurvey,
         voxelNavigation:runtime.lastVoxelNavigation}
@@ -333,8 +334,13 @@ async function main(args=process.argv.slice(2)){
       runtimeLogger.log('[Alice probe] BDS-triggered operator probe:',JSON.stringify(probe))
     // Never query BDS continuously. An operator-approved, fresh, witnessed
     // position pair can immediately unlock an already-adjacent bed interaction.
-    runtime.spawnpointTick().catch(err=>
+    runtime.spawnpointTick({freshBdsWitness:true}).catch(err=>
       runtimeLogger.warn('[Alice home] bed check:',String(err?.message||err).slice(0,70)))
+    // Only a genuine newly ingested independent witness may initiate one
+    // short flat bed-approach step; the full two-sample 4s gate is rechecked.
+    const bedMove=runtime.resumeBedApproachOnWitness()
+    if(bedMove.state==='started')
+      runtimeLogger.log('[Alice home] witnessed short bed approach:',JSON.stringify(bedMove))
     const recovery=respawnRecovery.get()
     const r=reconcileRespawnMirror({bot,evidence:movementEvidence,
       phase:recovery.phase,cycle:recovery.cycles,mirroredCycle:mirroredRespawnCycle})
