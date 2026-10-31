@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Observe actual installed Alice demand-only MCSManager timer without issuing commands",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-bds-demand-timer-audit.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "read_mint_timer",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-bds-demand-timer-audit.py",
+      "args": [
+        "--inspect",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 65
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "timer_audit",
+      "file": "alice_timer_audit.json",
+      "format": "json"
+    }
+  ]
+}

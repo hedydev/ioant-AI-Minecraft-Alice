@@ -1,3 +1,10 @@
+## 2026-11-01 — 定时器真实安装回执及后验只读验收
+
+- `alice_mcsm_timer_install_mac_regression_20261101_ba01`：Mac Python289项（skip3）/0fail；`alice_mcsm_timer_install_mint_validation_20261101_bb01`：Mint Node24 **745/745**、Mac Python289 PASS；BDS、Alice均未重启，世界/console均未更改。
+- **实际安装** `alice_mcsm_timer_install_apply_20261101_bc01`：Mint 新`alice-bds-demand.timer` `timerActive=true,timerEnabled=true`、installer selftest true；安装期间`bdsRestartedByTask=false,worldModifiedByTask=false,commandSentByInstaller=false`，原旧轮询未重新启用。
+- 新`alice-bds-demand-timer-audit.py`+one-shot `.openclaw/tasks/alice_bds_demand_timer_audit_20261101.json`：只读取当前Alice身份与status、`systemctl --user` timer state、owner-only budget/opt-in和最近受限服务日志的固定枚举结果，无任何`querytarget`或重启；用以核查timer真的触发及真实新样本是否出现。**安装成功不等于自动自主移动已证实**。目前未修改BDS/世界。停止新timer命令`systemctl --user disable --now alice-bds-demand.timer`。
+- 定时器脚本每60s醒来检查一次：有`IDLE`且当前会话有自主导航位置需求、私有owner及实例验证通过、预算未耗尽才运行，限`40/hour`，每次最多2条，55秒冷却。原禁止`--loop`不变。
+
 ## 2026-11-01 — 新增有界自主导航MCSManager按需定时服务（上线前回归）
 
 - 真实`alice_mcsm_ack_pair_live_20261101_af01`：原BDS17879 `querytarget` **2/2 accepted**、Alice 250ms private ACK **2/2**、`gateSatisfiedAtAck=true`，证明4秒/0.75m门禁已在接收事件瞬间通过。同期`alice_mcsm_ack_post_movement_readonly_20261101_ag01`：当前Alice仍autonomous+IDLE，独立样本2，过4秒已expired，移动输入7，但BDS两次见证之间位移0，**不能声称本次物理移动成功**。
