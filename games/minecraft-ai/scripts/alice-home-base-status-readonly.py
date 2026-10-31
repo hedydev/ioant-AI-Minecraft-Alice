@@ -17,7 +17,8 @@ out={'state':'unverified','connected':False,'health':None,
  'personalBedStatus':'unknown','lastSpawnpointReason':'unknown',
  'homeCandidateFresh':False,'homeLastAgeSeconds':None,
  'lastBedReach':'unknown','lastPositionGate':'unknown',
- 'homeAgenda':'unknown','homeAgendaReason':'unknown'}
+ 'homeAgenda':'unknown','homeAgendaReason':'unknown',
+ 'bedApproachStatus':'unknown','bedApproachSteps':None}
 try:
  p=subprocess.run(['/usr/bin/python3',str(status_tool),'status'],capture_output=True,text=True,timeout=12,check=False)
  if p.returncode!=0 or len(p.stdout)>20000:raise ValueError('status')
@@ -54,6 +55,11 @@ try:
                     ((w.get('homeAgenda') or {}).get('objective'),'homeAgenda'),
                     ((w.get('homeAgenda') or {}).get('reason'),'homeAgendaReason')]:
   if isinstance(src,str) and re.fullmatch('[a-z0-9_]{2,75}',src):out[target]=src
+ a=w.get('bedApproach') or {}
+ if a.get('status') in ('observed_route_candidate','already_in_reach','blocked'):
+  out['bedApproachStatus']=a['status']
+ if type(a.get('steps')) is int and 0<=a['steps']<=160:
+  out['bedApproachSteps']=a['steps']
  a=w.get('homeBase') or {}
  at=a.get('lastObservedAt')
  if type(at) is int and at>0:
@@ -73,7 +79,8 @@ def validate(x):
     keys={'state','connected','health','phase','canSleep','rememberedBeds','sleepOpportunity','lastBedFailure','nightSurvival','idleGate','hasFollowTarget','jobActive','homeStatus','homeLastSurvey','homeLastReason',
           'doorKnown','exitVerified','returnVerified','personalBedStatus',
           'lastSpawnpointReason','homeAgenda','homeAgendaReason',
-          'homeCandidateFresh','homeLastAgeSeconds','lastBedReach','lastPositionGate'}
+          'homeCandidateFresh','homeLastAgeSeconds','lastBedReach','lastPositionGate',
+          'bedApproachStatus','bedApproachSteps'}
     if not isinstance(x,dict) or set(x)!=keys or x['state'] not in ('observed','unverified'):return None
     return x
 def run(out):
@@ -92,6 +99,7 @@ if __name__=='__main__':
     if sys.argv[1:]==['--self-test']:
         assert 'homeCandidateFresh' in REMOTE and 'lastBedReach' in REMOTE
         assert 'lastPositionGate' in REMOTE and 'querytarget(' not in REMOTE
+        assert 'bedApproachStatus' in REMOTE and 'bedApproachSteps' in REMOTE
         print('ALICE_HOME_READONLY_SELFTEST_PASS')
     elif len(sys.argv)==3 and sys.argv[1]=='--inspect':run(sys.argv[2])
     else:raise SystemExit('usage: --self-test | --inspect OUTPUT_DIR')

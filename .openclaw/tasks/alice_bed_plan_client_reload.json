@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Guarded single Alice-client-only reload of 710/710 Mint-bed-route phase3, never BDS or extra worlds",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-bed-plan-client-reload-20261101.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "once_only_client_reconnect",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-bed-plan-client-reload-20261101.py",
+      "args": [
+        "--restart",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 275
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "client_reconnect",
+      "file": "alice_17879_client_restart.json",
+      "format": "json"
+    }
+  ]
+}

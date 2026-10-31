@@ -1,3 +1,8 @@
+## 2026-11-01 — BED路径候选安全上线流程
+
+- 修复重复import后`alice_bed_plan_mint_nonrestart_20261101_v02` PASS 710 Node24 / 269 Mac Python，不重启BDS、不中断其他世界。后续唯一受控任务`.openclaw/tasks/alice_bed_plan_client_reload.json`只允许单次客户端进程替换；任何私有intent存在即停止，不能删锁、重试不明结果或使用已消耗旧任务。
+- `alice_home_base_status_readonly.json`现在输出`bedApproachStatus`、`bedApproachSteps`和`homeAgenda`，只读，不查询BDS、不生成Minecraft输入。客户端路线候选仍`permitted=false`、`serverVerified=false`。
+
 ## 2026-11-01 — 只读候选床路线与HOME agenda 部署测试
 
 - 利用已有安全`.openclaw/tasks/alice_mint_nonrestart_sync.json`完成 Mac/Mint 全量测试+源码无重启同步，随后若需新运行时字段，需独立新的一次性身份验证client-only重载任务，不得重放旧操作。无需启动任何额外BDS实例，不修改世界。实机`bedApproach`仅为可见加载方块候选，实际走动仍必须首先合法取得双份新鲜BDS独立样本。

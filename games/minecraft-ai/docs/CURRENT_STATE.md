@@ -1,3 +1,9 @@
+## 2026-11-01 — BED路径候选模型全量回归通过、单次Alice客户端重载准备
+
+- 初版 `11b4244` 通过Mac同步，但Mint失败：Node24 552 pass / 1 fail，原因是`runtime.cjs`重复声明`surveyEscape`触发`SyntaxError`，并非导航策略已验收。经只读Node24测试收据 `alice_bed_plan_fail_diag_20261101_v02`确认，`90d208285e40b2c0f9bc95f0607ee5c225c8f998`修复多余import。
+- 第二次`alice_bed_plan_mint_nonrestart_20261101_v02` 原始17879源代码同步与整套回归 **Mint Node24 710/710、Mac Python 269** PASS；未重启Alice或BDS、未发送BDS控制命令、未修改世界。新源码目前在Mint磁盘而未加载到Alice进程。
+- 此运维提交加入`.openclaw/tasks/alice_bed_plan_client_reload.json`与唯一 once-only marker `alice-bed-observed-route-phase3-20261101.intent`，严格检查Alice owner旧PID，只替换正式17879 Alice客户端及原有环境。执行后须取得真实`client_reconnected_17879`收据，再用`alice_home_base_status_readonly.json`读取新鲜的`bedApproachStatus`与`bedApproachSteps`。在拿到这些回执前，**不能声称实机路径规划已经生效**。
+
 ## 2026-11-01 — Bedrock床位可达路径候选与临时HOME规划（尚待测试与实机）
 
 - 当前正式17879 Alice已识别含床/屋顶/门候选房间，但之前`homeAgenda`仅使用已确认个人spawn后的持久`homeBase.record`，因此在设置重生点前永远返回`home_door_or_bed_unverified`。现在仅在本会话45秒内的新鲜候选房间观察下输出`inspect_candidate_bed`或`plan_candidate_bed_approach` **只读意图**，STOP/FOLLOW/危险优先；未确认个人床不会被视为HOME或允许返程。
