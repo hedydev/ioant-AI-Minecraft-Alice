@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Read-only current Alice 17879 chunk-cache door and bed voxels; never BDS query or movement",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-home-door-voxels-readonly.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "inspect_current_view",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-home-door-voxels-readonly.py",
+      "args": [
+        "--inspect",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 55
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "door_voxels",
+      "file": "home_door_voxels.json",
+      "format": "json"
+    }
+  ]
+}

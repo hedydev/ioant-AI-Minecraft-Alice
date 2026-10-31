@@ -1,3 +1,9 @@
+## 2026-11-01 — Real HOME frontier code live, local door candidate still absent (diagnostic staged)
+
+- `alice_home_frontier_client_reload_20261101_v01` completed with `client_reconnected_17879`, current-owner PID, fresh heartbeat and Bedrock session, BDS unchanged. This loaded the already tested `151d9e1` frontier recognition, after Mint 699/699 and Mac 267/267 tests.
+- Independent read-only `alice_home_frontier_postlive_readonly_20261101_v01` now reports more specific `homeLastReason=wooden_door_or_approach_unverified`. Alice is connected health20, 2 remembered beds, still has `personalBedStatus=not_verified`; `idleGate=position_witness_unverified` and `doorKnown=false`. There is NO evidence of server-verified door traversal, bed respawn or movement.
+- Added bounded read-only voxel diagnostic (`scripts/alice-home-door-voxels-readonly.py` and pinned task) to separate whether a door block is even present in the Alice client chunk cache from whether the BFS `surveyEscape` finds a safe approach. This consumes existing 3D snapshot and owner-verified status; no queries, commands, world or BDS mutation; coordinates/players are never exported. **Pending execution** at time of this source note.
+
 ## 2026-11-01 — Takeover: tested HOME frontier source and dedicated client-only activation (OPERATOR TASK STAGED)
 
 - Independent OpenClaw Mac `repository_fetch` / `repository_sync` completed on clean main, pinned b491257; original source checkout fast-forwarded from 151d9e1. `alice_takeover_home_readonly_20261031_v01` established Alice ONLINE health20, 2 remembered beds, daytime, HOME not established, personal bed spawn unverified; `idleGate=position_witness_unverified`, door/return not verified. No BDS query sent.
