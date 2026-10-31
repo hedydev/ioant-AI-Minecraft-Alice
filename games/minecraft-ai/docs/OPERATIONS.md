@@ -1,3 +1,11 @@
+## 2026-11-01 — MCSManager按需坐标见证阶段1实际验收（真实只读，未恢复自动供给）
+
+- 代码 `7374a47f29cce93efcc5b7f1bdaecdd72ce04c88` 在Mac源验收 `alice_mcsm_demand_mac_regression_20261101_a01` Python280项（skip3）、Mint非重启 `alice_mcsm_demand_mint_regression_20261101_c01` Node24 **734/734** PASS；增设`witness_demand.cjs`仅检测两份当前会话4秒新鲜BDS样本缺口/对齐，不执行命令；`BdsWitnessReader`原子文件重复读取状态改为`already_consumed`，不虚增样本。
+- 后续 `50aaef422d23920be0d883be38443d470ecbbfa0` `alice_mcsm_loop_retire_mac_20261101_d01` Mac Python **282（skip3）**，`alice_mcsm_loop_retire_mint_20261101_e01` Node24 **734/734** PASS：原`--loop`明确不可启用（读取凭证/API前拒绝）、旧服务安装器仅`--check`；`--once`显式单次接口保留，但**本轮没有调用**。
+- 另新增原MCSManager provider仅只读 `--check`/HTTP `--diagnose` 验收脚本，`d8d3cc975b32b8d39aa8265a3a41677f7572308e`；实际 `alice_mcsm_readiness_mac_20261101_f01` PASS Mac Python **285（skip3）**，`alice_mcsm_readiness_mint_20261101_g01` PASS 返回：`config=valid`、`outputlog=readable`、`legacyLoopService=not_active`、`bdsCommandSent=false`、`instanceIdentityProven=false`、`sourceActiveProven=false`。这证明MCSManager配置可读且日志接口正常，**不能单凭此证明身份绑定原17879或当期独立样本已产生**。
+- `alice_mcsm_readiness_sync_20261101_h01` 完整非重启同步结果：Mac Python **285**（3 skip），Mint Node24 **734/734**，`aliceRestarted=false`、`bdsRestarted=false`、`worldModifiedByTask=false`、`consoleCommandSent=false`。
+- 后续仍需合规获授权、明确target实例identity的MCSManager实际单次BDS坐标供给以及两份4秒样本/0.75格对齐和行动后独立后验。此前涉及真实`querytarget`的任务被工具安全评估阻止，不能改用别的接口或脚本绕过。**本轮未让Alice真实移动、未自动向MCSManager发送坐标查询、未重启运行中的Alice加载新Node模块**。仓库源码同步和全量单测不等于生产进程热加载。
+
 ## 2026-11-01 — 原MCSManager坐标服务只读核查，不调用querytarget
 
 - 新一次性任务 `.openclaw/tasks/alice_mcsm_readiness_readonly_20261101.json` 与 `scripts/alice-mcsm-readiness-readonly.py` 通过原固定SSH主机仅执行已存在的 `bds_position_witness.py --check`（私有配置合法性）、`--diagnose`（仅GET /api/protected_instance/outputlog）、`systemctl --user is-active`（旧服务是否误激活）。脚本只返回固定枚举，屏蔽原始凭证、实例UUID、输出日志及真实坐标，故无玩家位置外泄。绝不执行`--once`、`--loop`、`/command`、重启或世界操作。
