@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "One existing-world Alice physical two-cell walking test, max six independent BDS queries",
+  "steps": [
+    {
+      "name": "bounded_contract",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-two-cell-real-bds-walk-once-20261031.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "one_only_original_world_walk",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-two-cell-real-bds-walk-once-20261031.py",
+      "args": [
+        "--once",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 240
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "real_walk",
+      "file": "alice_real_walk_result.json",
+      "format": "json"
+    }
+  ]
+}
