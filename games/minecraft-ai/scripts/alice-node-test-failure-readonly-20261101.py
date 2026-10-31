@@ -29,6 +29,8 @@ try:
  result={'audit':'ALICE_READONLY_NODE24_TEST_FAILURE',
   'state':'observed','testFailureCount':len(failures),
   'failedTests':failures[:6],'errors':err,
+  'tail':[re.sub('[^A-Za-z0-9_ :.,()\\-/!?=✖]','',ln).strip()[:160]
+    for ln in out.splitlines()[-32:] if ln.strip()][:25],
   'exitCode':proc.returncode}
 except (OSError,ValueError,subprocess.TimeoutExpired):pass
 print(json.dumps(result,separators=(',',':')))
