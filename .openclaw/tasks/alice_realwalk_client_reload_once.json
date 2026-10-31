@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "One guarded reload of the existing Alice CLIENT on original 17879 for finite coordinate walk test",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-real-walk-client-reload-20261031.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "single_client_reload_only",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-real-walk-client-reload-20261031.py",
+      "args": [
+        "--restart",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 275
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "client_reconnect",
+      "file": "alice_17879_client_restart.json",
+      "format": "json"
+    }
+  ]
+}
