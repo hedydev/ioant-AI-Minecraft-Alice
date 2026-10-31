@@ -3187,6 +3187,7 @@ test('BDS witness overrides old 20s bed observation cooldown only when proof is 
  const bed=vec(1,65,0);e.observedBeds.nearby=()=>[bed]
  f.bot.blockAt=()=>({name:'red_bed',position:bed})
  f.bot.parseBedMetadata=()=>({occupied:0})
+ f.bot.activateBlock=()=>{}
  e.nextSpawnpointAt=120000
  assert.equal(await e.spawnpointTick({freshBdsWitness:true}),false)
  assert.equal(e.lastSpawnpointAttempt,null)
