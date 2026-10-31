@@ -14,7 +14,7 @@ const make=()=>{
  const file=path.join(dir,'bds-stable-actionbar-enabled.json')
  const config=()=>fs.writeFileSync(file,JSON.stringify({version:1,enabled:true,
   packUuid:PACK,gamertag:'AliceXbox'}),{mode:0o600})
- const msg=(seq=1,delta=0)=>'ALICE_BDS_STABLE_V1|bedrockboot-123456|'+seq+'|'+(now-100)+
+ const msg=(seq=1,delta=0)=>'ALICE_BDS_STABLE_V1|bedrockboot-1234567|'+seq+'|'+(now-100)+
   '|bedrock-player-unique-id|-6|58|'+(1+delta)
  return {dir,client,evidence,file,config,msg,move:(n)=>now+=n,now:()=>now,
   close:()=>{evidence.detach();fs.rmSync(dir,{recursive:true,force:true})}}
