@@ -26,15 +26,23 @@ def summarize(view):
             raise ValueError('invalid_block_name')
         label=label.removeprefix('minecraft:')
         horizontal=math.hypot(dx,dz)
-        entry={'dist':round(horizontal,1),'dy':dy}
+        entry={'dist':round(horizontal,1),'dy':dy,'dx':dx,'dz':dz,'type':label}
         if re.fullmatch(r'(?:oak|spruce|birch|jungle|acacia|dark_oak|mangrove|cherry|bamboo|crimson|warped|pale_oak|wooden)_door',label):
             doors.append(entry)
         if label=='bed' or label.endswith('_bed'):
             beds.append(entry)
+    columns=[]
+    for e in sorted(doors,key=lambda x:(x['dist'],x['dx'],x['dz'],x['dy'])):
+        if e['dist']>7.5:continue
+        if any(c['dx']==e['dx'] and c['dz']==e['dz'] for c in columns):continue
+        levels=sorted({x['dy'] for x in doors if x['dx']==e['dx'] and x['dz']==e['dz']})
+        columns.append({'dx':e['dx'],'dz':e['dz'],'dyLevels':levels,
+                        'type':e['type']})
+        if len(columns)>=4:break
     nearest=lambda a: min((e['dist'] for e in a),default=None)
     return {'state':'observed','source':'client_chunk_cache_not_bds',
         'doorVoxelCount':len(doors),'doorWithinSurvey7':sum(e['dist']<=7.5 and abs(e['dy'])<=2 for e in doors),
-        'nearestDoorHorizontal':nearest(doors),
+        'nearestDoorHorizontal':nearest(doors),'relativeDoorColumns':columns,
         'bedVoxelCount':len(beds),'bedWithin12':sum(e['dist']<=12.5 for e in beds),
         'nearestBedHorizontal':nearest(beds),
         'unknownCells':view.get('unknown') if type(view.get('unknown')) is int else None}
@@ -78,6 +86,7 @@ def selftest():
     x=summarize(v)
     assert x['doorVoxelCount']==1 and x['doorWithinSurvey7']==1
     assert x['bedVoxelCount']==1 and x['nearestDoorHorizontal']==3.0
+    assert x['relativeDoorColumns']==[{'dx':3,'dz':0,'dyLevels':[0],'type':'oak_door'}]
     assert 'def summarize(view):' in build_remote()
     assert 'import json,math,os,re,subprocess,sys,time' in build_remote()
     compile(build_remote(),'<reviewed-remote-readonly>','exec')
