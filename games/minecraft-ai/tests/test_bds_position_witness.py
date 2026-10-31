@@ -333,3 +333,16 @@ class BdsWitnessTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    def test_legacy_loop_is_refused_before_config_or_any_network_command(self):
+        from unittest.mock import patch
+        with patch.object(sys, "argv", ["bds_position_witness.py", "--loop"]), \
+             patch.object(m, "validated_config", side_effect=AssertionError("should not read secrets")), \
+             patch.object(m, "api", side_effect=AssertionError("should not contact MCSManager")):
+            self.assertEqual(m.main(), 2)
+
+    def test_legacy_service_installer_has_no_enable_path(self):
+        script = (TARGET.parent / "install-bds-witness-service.sh").read_text()
+        self.assertIn("--check only", script)
+        self.assertNotIn("systemctl --user enable --now", script)
+        self.assertNotIn("systemctl --user daemon-reload", script)

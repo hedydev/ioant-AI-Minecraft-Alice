@@ -345,6 +345,12 @@ def main():
     choice.add_argument("--once", action="store_true")
     choice.add_argument("--loop", action="store_true")
     args = parser.parse_args()
+    # The former 2-second querytarget service flooded MCSManager's console.
+    # Preserve the old flag only to fail explicitly, BEFORE reading keys or
+    # making any network call. A status/diagnose is never authorization.
+    if args.loop:
+        print("Continuous querytarget polling is disabled; no BDS command sent", file=sys.stderr)
+        return 2
     try:
         cfg, key = validated_config()
         if args.check:
@@ -362,18 +368,16 @@ def main():
                 print("MCSManager outputlog: " + safe_failure(exc) +
                       "; no BDS command sent", file=sys.stderr)
                 return 1
-        while True:
-            try:
-                publish(probe_once(cfg, key, local_log_factory=capture_local_log))
-                print("BDS querytarget witness: accepted new independent sample", flush=True)
-            except (OSError, ValueError, urllib.error.URLError) as exc:
-                # Never log URLs (apikey), raw console output, identifiers or credentials.
-                print("BDS querytarget witness: unavailable (" + safe_failure(exc) + ")", file=sys.stderr, flush=True)
-                if args.once:
-                    return 1
-            if not args.loop:
-                return 0
-            time.sleep(2)
+        # Explicit operator-only one-shot mode. NEVER retry a console command,
+        # restart a background service or turn a status read into a query.
+        try:
+            publish(probe_once(cfg, key, local_log_factory=capture_local_log))
+            print("BDS querytarget witness: accepted new independent sample", flush=True)
+            return 0
+        except (OSError, ValueError, urllib.error.URLError) as exc:
+            # Never log URLs (apikey), raw console output, identities or credentials.
+            print("BDS querytarget witness: unavailable (" + safe_failure(exc) + ")", file=sys.stderr, flush=True)
+            return 1
     except (OSError, ValueError, TypeError, KeyError) as exc:
         print("BDS witness configuration rejected: " + type(exc).__name__, file=sys.stderr)
         return 2

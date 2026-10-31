@@ -1,3 +1,9 @@
+## 2026-11-01 — 旧持续querytarget服务入口彻底拒绝（源码，未在原世界查询）
+
+- 旧`bds_position_witness.py --loop`本身每2秒不断发送BDS控制台`querytarget`，与用户明确要求的仅有业务需要才查询冲突。现将`--loop`保留为**显式禁用的兼容参数**，在读取operator机密配置及任意HTTP请求**之前**退出、固定安全提示、零命令；`--check`、`--diagnose`只读原有行为，`--once`仍保留为**需另行审批的operator单次查询**（不自动重试，不扩展授权）。
+- `install-bds-witness-service.sh`更改为仅接受明确`--check`，退出前不写unit、不daemon-reload、不systemctl enable；原系统里已停用的旧service没有被本轮脚本接触。测试覆盖`--loop`被拒时连配置也不读取、不会请求API，以及安装脚本无开机激活入口。
+- 如用户之后想要按需自动采样，还需建立经用户和实际工具权限允许的独立operator查询授权/限频方式，当前只提供状态诊断和历史`--once`明确指令；不借改名任务或另一个工具绕过已被拦截的MCSManager执行。Alice安全门禁和正式服不变。
+
 ## 2026-11-01 — MCSManager 已有位置见证链路：按需诊断与250ms重复采样修复（仅源码）
 
 - **路线纠正**：BDS 17879 的 `MCSManager /api/protected_instance/command` + `querytarget @a[name=...]` 已实机证明有效（10/23 BDS 3.02格、10/31 4.65格），无需先新增观察者、行为包或BDS实例。当前坐标阻塞是旧连续见证服务因刷屏主动停用，当前登录无新鲜独立样本、之前私有文件来自旧登录；不是已经证明客户端移动算法再次失效。

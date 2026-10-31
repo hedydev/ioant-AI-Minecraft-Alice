@@ -1,8 +1,8 @@
 #!/bin/sh
 # Mint user service for the existing read-only witness. No BDS/Alice restart.
-# --check validates prerequisites without installing; default installs/enables.
+# Disabled the old continuous querytarget auto-installer. Only read-only --check remains.
 set -eu
-case "${1:-}" in ''|--check) ;; *) echo 'usage: install-bds-witness-service.sh [--check]' >&2; exit 2;; esac
+case "${1:-}" in --check) ;; *) echo 'Continuous witness service retired: read-only --check only; no service installed or enabled.' >&2; exit 2;; esac
 test "$(uname -s)" = Linux
 command -v systemctl >/dev/null
 test -x /usr/bin/python3
@@ -33,12 +33,6 @@ if test -L "$unit_file" || { test -e "$unit_file" && ! cmp -s "$candidate" "$uni
   echo 'Existing witness unit differs; preserve it and inspect before replacing.' >&2
   exit 1
 fi
-if test "${1:-}" = --check; then
-  echo 'Witness configuration and user-service prerequisites verified; no service changed.'
-  exit 0
-fi
-mkdir -p "$unit_dir"
-test -e "$unit_file" || cp "$candidate" "$unit_file"
-systemctl --user daemon-reload
-systemctl --user enable --now alice-bds-position-witness.service
-systemctl --user is-active alice-bds-position-witness.service
+echo 'Legacy witness config and service prerequisites verified; no service changed.'
+echo 'Continuous querytarget service remains disabled. Explicit --once is separate.'
+exit 0
