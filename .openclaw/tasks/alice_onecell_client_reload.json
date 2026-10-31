@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "One guarded Alice-only client reload of original 17879 world for single-cell motion probe",
+  "steps": [
+    {
+      "name": "contract",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-onecell-client-reload-20261031.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "one_single_client_reload",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-onecell-client-reload-20261031.py",
+      "args": [
+        "--restart",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 275
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "client_reconnect",
+      "file": "alice_17879_client_restart.json",
+      "format": "json"
+    }
+  ]
+}
