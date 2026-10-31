@@ -1,3 +1,9 @@
+## 2026-11-01 — 用户明确允许原MCSManager最多4次实时坐标查询（待实机工具审查）
+
+- 本轮用户明确：“这个不需要授权，你解决问题，直接做吧”，针对已知原正式17879 的 `querytarget` 坐标验证，约束沿用最多4次、Alice账号、无BDS/世界修改、不开连续服务。新独立需求不重放此前任何已消费的one-shot intent。
+- 新 `.openclaw/tasks/alice_mcsm_demand_live_pair_20261101.json` 和 `scripts/alice-mcsm-demand-live-pair-20261101.py`：先只读核对已有私有MCSM配置、`InstanceConfig` cwd精确绑定`~/minecraft-bedrock`且`server.properties` UDP17879、当前Alice进程和`status.json`相同PID/目标世界、旧轮询服务未运行；唯一新的私有0700目录中0600不可重放intent；最多4个串行`bds_position_witness.py --once`，每次等新鲜真实采样由现有250ms读取器入库，满足两份4秒及坐标偏差<=0.75才标记成功，任一异常停止。报告只含固定状态、计数、布尔，无实际坐标、身份、key或日志。MCSManager调用须单独经过OpenClaw任务安全检查，若拒绝则不能改变执行渠道重试。
+- **尚未声称任务成功/恢复移动**。原世界不重启，不生成新实验世界，不安装行为包，不降低4秒/0.75m安全门禁。测试通过和工具执行结果应追加真实回执。
+
 ## 2026-11-01 — MCSManager按需见证状态字段最终回归
 
 - 语义审查发现`navigationAuthorized:true`会错误暗示全部安全与导航条件已获授权；最终源码commit `21ed6d307450226c58b3f9de4f65afb2c4336f11`将其更名为`positionGateSatisfied:true`，且该字段只在已有`scoutStartProof`通过时为true；全局导航仍由原FOLLOW/停止/危险/路径门禁单独控制，绝不能把只读状态视为操作授权。
