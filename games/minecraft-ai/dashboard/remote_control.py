@@ -130,7 +130,7 @@ def parse_command(payload):
         return {'status':'rejected','reason':'missing_target',
                 'message':'控制台没有游戏角色；请明确指定在线玩家，例如：跟随 MolarParsley191'}
     fixed = {'停止':'stop','停止任务':'stop','收集木头':'gather_wood',
-             '制作木剑':'craft_sword','吃东西':'eat','查看状态':'status'}
+             '制作木剑':'craft_sword','吃东西':'eat','查看状态':'status','安全试走':'probe_step'}
     if value in fixed:
         return {'action':fixed[value]}
     gather = re.fullmatch(r'收集\s*([1-9]|[12][0-9]|3[0-2])\s*个?(?:木头|原木)',value)

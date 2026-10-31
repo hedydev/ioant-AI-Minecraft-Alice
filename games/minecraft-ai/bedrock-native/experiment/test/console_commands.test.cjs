@@ -22,6 +22,12 @@ const makeRuntime=()=>{
  }
  return {runtime,calls}
 }
+test('safe operator probe rejects stale BDS proof; no path starts',()=>{
+ const {runtime,calls}=makeRuntime()
+ runtime.movementEvidence={get:()=>({independentSamples:0})}
+ assert.equal(runCommand(runtime,{action:'probe_step'},()=>{}).reason,'scout_bds_position_unavailable')
+ assert.equal(calls.some(x=>x[0]==='start'),false)
+})
 test('typed parser rejects all unknown, injected or out-of-range actions',()=>{
  assert.equal(cleanCommand({id,createdAt:100000,action:'shell'},100000),null)
  assert.equal(cleanCommand({id,createdAt:100000,action:'follow',target:'../../etc'},100000),null)

@@ -4,8 +4,10 @@
 // teleport, world edit or LLM fallback. All actions are typed/allowlisted.
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path')
 const rootDefault=()=>path.join(os.homedir(),'.alice-bedrock-control')
+const {selectProbeRoute}=require('./operator_step_probe.cjs')
+const {scoutStartProof}=require('./scout_start_proof.cjs')
 const ID=/^[a-f0-9]{32}$/,PLAYER=/^[A-Za-z0-9_]{3,16}$/
-const ACTIONS=new Set(['stop','follow','guard','gather_wood','craft_sword','eat','status'])
+const ACTIONS=new Set(['stop','follow','guard','gather_wood','craft_sword','eat','status','probe_step'])
 const STATUS=new Set(['received','started','completed','failed','rejected'])
 function cleanCommand(x,now=Date.now()){
   if(!x||typeof x!=='object'||Array.isArray(x)||
@@ -86,6 +88,28 @@ function runCommand(runtime,command,report){
   if(bot.isSleeping||runtime.threat()||runtime.safetyBusy||bot.health<14)
     return response('rejected','safety_preempted','当前睡眠或有危险；任务未启动')
   if(runtime.job)return response('rejected','job_in_progress','Alice 正在执行任务；请先停止')
+  if(action==='probe_step'){
+    if(core.hasFollowIntent?.())return response('rejected','follow_intent_active','当前存在跟随意图，禁止试走抢占控制权')
+    const proof=scoutStartProof(bot,runtime.movementEvidence,runtime.clock)
+    if(!proof.ok)return response('rejected',proof.reason,'未获得两次新鲜且对齐的 BDS 位置，不启动试走')
+    const route=selectProbeRoute(bot)
+    if(!route.candidate)return response('rejected',route.reason,'附近未验证出安全的两格平地试走路线')
+    const candidate=route.candidate
+    runtime.lastHumanAt=runtime.clock()
+    runtime.nextIdleAt=Math.max(runtime.nextIdleAt,
+      runtime.clock()+runtime.p.autonomy_policy.AUTONOMY_GRACE_MS)
+    const started=runtime.startJob('EXPLORE','控制台',async signal=>{
+      const result=await runtime.boundedScout(candidate,signal,{allowNightFallback:true})
+      const ok=result?.serverMovementVerified===true
+      report(ok?'completed':'failed',ok?'server_verified_scout_endpoint':
+        safeReason(result?.reason),'试走 '+(ok?'服务端移动已验证':'未获得实际移动确认'))
+      return result
+    },{label:'两格安全试走',announce:false})
+    if(!started||!runtime.job)return response('rejected','probe_start_denied','试走未能通过生存与导航检查')
+    const dest=candidate.target
+    return response('started','probe_route_started',
+      '已选择附近坐标 '+[dest.x,dest.y,dest.z].join(',')+'；2格安全步行，等待 BDS 见证')
+  }
   const label=action==='gather_wood'?'收集原木':action==='craft_sword'?
     '制作木剑':'安全进食'
   const count=command.count||1
