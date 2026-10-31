@@ -333,3 +333,27 @@ test('explicit escort gate and acknowledged sword are exposed without breaking 4
   assert.equal(result.equipment.heldItem,'stone_sword')
   assert(Buffer.byteLength(JSON.stringify(result))<=4096)
 }))
+
+test('compacted 4 KiB heartbeat keeps server-confirmed bed and candidate HOME diagnostics',()=>withDir(root=>{
+ const pub=new LiveStatus({root})
+ pub.publish({connected:true,revision:1,settings:{...DEFAULTS},state:'IDLE',
+  worldRoutine:{phase:'day',tick:9400,weather:'clear',
+   scouting:{huge:'x'.repeat(6400)},
+   homeBed:{status:'server_confirmed_current_session',bed:{x:7,y:64,z:9}},
+   lastSpawnpointAttempt:{reason:'bed_personal_spawn_packet_confirmed',attempted:true,at:10000},
+   homeBase:{status:'observed_candidate_not_route_verified',
+    bed:{x:7,y:64,z:9},door:{x:11,y:64,z:9},
+    lastSurvey:'observed_indoor_home_candidate',lastReason:'bed_roof_and_wooden_door_observed',
+    exitVerified:false,returnVerified:false},
+   homeAgenda:{phase:'day',objective:'return_home',
+    reason:'requires_observed_server_verified_return_segments',returnRouteVerified:false}}})
+ const data=JSON.parse(fs.readFileSync(path.join(root,'status.json'),'utf8'))
+ assert.equal(data.statusCompacted,true)
+ assert.equal(data.worldRoutine.homeBed.status,'server_confirmed_current_session')
+ assert.equal(data.worldRoutine.homeBase.status,'observed_candidate_not_route_verified')
+ assert.deepEqual(data.worldRoutine.homeBase.door,{x:11,y:64,z:9})
+ assert.equal(data.worldRoutine.homeBase.returnVerified,false)
+ assert.equal(data.worldRoutine.homeAgenda.objective,'return_home')
+ assert.equal(data.worldRoutine.homeAgenda.returnRouteVerified,false)
+ assert(Buffer.byteLength(JSON.stringify(data))<=4096)
+}))
