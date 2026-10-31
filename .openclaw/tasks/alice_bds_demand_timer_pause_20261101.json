@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Stop only new Alice MCSManager demand timer while stale status.json provenance is investigated",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-bds-demand-timer-pause.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "pause_mint_timer",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-bds-demand-timer-pause.py",
+      "args": [
+        "--pause",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 55
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "timer_paused",
+      "file": "alice_demand_timer_pause.json",
+      "format": "json"
+    }
+  ]
+}
