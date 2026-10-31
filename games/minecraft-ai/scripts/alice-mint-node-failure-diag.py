@@ -39,7 +39,9 @@ def extract_home_failures(text):
       'roof_or_room_height_unverified','bed_out_of_loaded_observation_range',
       'bed_block_not_loaded','observed_indoor_home_candidate',
       'unverified','not_established','observed_candidate_not_route_verified']
-    return [{'homeFixtureReasons':[token for token in tokens if token in text][:9]}]
+    observed=re.findall(r'ALICE_HOME_FIXTURE_FIRST_REASON=([a-z_]{3,64})',text)
+    return [{'homeFixtureReason':observed[-1] if observed else 'not_reported',
+             'homeFixtureReasons':[token for token in tokens if token in text][:9]}]
 
 def selftest():
     sample='✖ path-finder respects confirmed witness (2.0ms)\nℹ tests 3\nℹ pass 2\nℹ fail 1\nℹ skipped 0\n'
