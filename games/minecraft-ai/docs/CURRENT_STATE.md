@@ -1,3 +1,8 @@
+## 2026-11-01 — MCSManager真实短时见证3/3通过；4秒窗口触发自主决策改进（仅源码）
+
+- 真实用户明确授权后，`alice_mcsm_live_pair_verified_20261101_p01`在原正式BDS17879、经MCSManager原实例cwd=~/minecraft-bedrock和原服端口验证后执行`bds_position_witness.py --once` **3次/3次accepted**，实时当前Alice样本**0→3**，4秒内有效双样本`freshPairObserved=true`、客户端与BDS误差<=0.75格`positionAligned=true`，只针对原世界；`worldModifiedByTool=false`、`serviceRestarted=false`、`loopEnabled=false`。**这是BDS真实对齐实机验证**，未证明完整自主路径完成。
+- 后续只读`alice_mcsm_live_post_gate_diag_20261101_q01`：原Alice仍connected、autonomous、IDLE、HP20、food16，独立样本3；两次独立BDS样本间位移`independentPairTravelBlocks=0.96`、`movingQueued=14`，但4秒见证已经expired、`scout_bds_position_unavailable`再次阻塞。不能单凭两项计数证明物理路径全部成功。
+- 新`src/witness_idle_resume.cjs`对收到的**真实双独立BDS样本**，完成原床/重生优先检查后才请求一次原`runtime.idleTick()`。只有原`scoutStartProof`4秒/0.75格通过且Alice在线、autonomous、IDLE、无STOP/FOLLOW/睡眠/工作/忙碌等条件满足才入队；回调执行时再次核验，5秒最小间隔且不得并发、不会发querytarget、不能强制移动，不修改原始决策冷却或路径守卫。解决5秒定时decision可能错过4秒位置窗口的实测时序风险。**运行中Alice尚未重载此源码，未宣称 live 恢复持续自主导航。**
 ## 2026-11-01 — 用户明确允许原MCSManager最多4次实时坐标查询（待实机工具审查）
 
 - 本轮用户明确：“这个不需要授权，你解决问题，直接做吧”，针对已知原正式17879 的 `querytarget` 坐标验证，约束沿用最多4次、Alice账号、无BDS/世界修改、不开连续服务。新独立需求不重放此前任何已消费的one-shot intent。

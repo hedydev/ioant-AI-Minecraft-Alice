@@ -32,6 +32,7 @@ const {applyInstalled:applyProtocol2193InputCompat}=require('./input_flag_compat
 const {ENABLE:ANALOG_2193_MODE}=require('./analog_move_compat.cjs')
 const {BdsWitnessReader}=require('./bds_witness.cjs')
 const {witnessDemand}=require('./witness_demand.cjs')
+const {createWitnessIdleResume}=require('./witness_idle_resume.cjs')
 const {attachStableActionbarWitness}=require('./stable_actionbar_witness.cjs')
 const aliceClientInputSync=require('./bedrock_client_input_sync.cjs')
 const {installNavigationPositionGuard}=require('./navigation_position_guard.cjs')
@@ -332,6 +333,9 @@ async function main(args=process.argv.slice(2)){
   // This is file read ONLY: it never sends MCSManager commands or runs --loop.
   // Passive reader only. Actual MCSManager querytarget is separately
   // authorized and strictly bounded, never a polling loop.
+  const witnessIdleResume=createWitnessIdleResume({
+    runtime,bot,evidence:movementEvidence,log:runtimeLogger
+  })
   let mirroredRespawnCycle=0
   function onFreshIndependentBdsWitness(){
     // Called ONLY after a new independent position was accepted.
@@ -343,8 +347,14 @@ async function main(args=process.argv.slice(2)){
       runtimeLogger.log('[Alice probe] BDS-triggered operator probe:',JSON.stringify(probe))
     // Never query BDS continuously. An operator-approved, fresh, witnessed
     // position pair can immediately unlock an already-adjacent bed interaction.
-    runtime.spawnpointTick({freshBdsWitness:true}).catch(err=>
+    const bedCheck=runtime.spawnpointTick({freshBdsWitness:true}).catch(err=>
       runtimeLogger.warn('[Alice home] bed check:',String(err?.message||err).slice(0,70)))
+    // A verified pair lasts just four seconds. The original autonomous
+    // decision timer runs every five seconds, so it may miss that window.
+    // After giving the higher-priority bed/respawn check its turn, re-run
+    // the ORIGINAL fail-closed idleTick once. No direct input or goal override.
+    Promise.resolve(bedCheck).then(()=>witnessIdleResume.request()).catch(err=>
+      runtimeLogger.warn('[Alice autonomy] witness idle check:',String(err?.message||err).slice(0,70)))
     // Only a genuine newly ingested independent witness may initiate one
     // short flat bed-approach step; the full two-sample 4s gate is rechecked.
     const bedMove=runtime.resumeBedApproachOnWitness()
