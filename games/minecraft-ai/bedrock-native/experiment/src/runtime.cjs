@@ -13,6 +13,7 @@ const {ContinuousGoal}=require('./continuous_goal.cjs')
 const {evaluateShelter,placeShelterBlock}=require('./night_shelter.cjs')
 const {ObservedBeds}=require('./observed_beds.cjs')
 const {HomeBedMemory,selectAdjacentBed,useBedForSpawn}=require('./bed_spawnpoint.cjs')
+const {surveyEscape}=require('./escape_survey.cjs')
 const {HomeBaseMemory,homeAgenda}=require('./home_base.cjs')
 const {planNightReposition,nightConditions}=require('./night_survival.cjs')
 const {configureDoors,createResponsiveFollowGoal,observedLineOfSight}=require('./follow_navigation.cjs')
@@ -130,7 +131,7 @@ class AliceBedrockRuntime {
     this.lastFollowFaceAt=Number.NEGATIVE_INFINITY
     this.followGoalRadius=this.liveBehavior.settings.followDistance;this.lastFollowRadiusChange=0
     this.nextSleepAt=0;this.nextEquipAt=0;this.maintenanceBusy=false
-    this.nextSpawnpointAt=0;this.lastSpawnpointAttempt=null
+    this.nextSpawnpointAt=0;this.lastSpawnpointAttempt=null;this.lastBedApproach=null
     this.lastEquipObservation=null
     this.lastSleepOpportunity=null;this.lastSleepOpportunityKey=null
     this.observedBeds=new ObservedBeds({clock,log,
@@ -1351,6 +1352,10 @@ class AliceBedrockRuntime {
     // authorizes an interaction or bypasses the existing movement safety gate.
     const positions=this.observedBeds.nearby(this.bot,{radius:12})
     const pick=selectAdjacentBed(this.bot,positions,{radius:12})
+    // A local-only route is a diagnostic, never a replacement for BDS proof.
+    const survey=pick.reason==='bed_needs_verified_approach'?
+      surveyEscape(this.bot,{radius:7,maxNodes:100,bedPositions:positions}):null
+    this.lastBedApproach=survey?.bedApproach||null
     const proof=scoutStartProof(this.bot,this.movementEvidence,this.clock)
     if(!pick.bed||!proof.ok){
       this.lastSpawnpointAttempt={ok:false,
@@ -2054,7 +2059,8 @@ class AliceBedrockRuntime {
       stopped:this.goalPlanner.stoppedByHuman,
       following:this.core.hasFollowIntent(),
       threat:!!this.threat(),
-      serverProof:scoutStartProof(this.bot,this.movementEvidence,this.clock).ok})
+      serverProof:scoutStartProof(this.bot,this.movementEvidence,this.clock).ok,
+      candidateHome:this.homeBase.last,now:this.clock()})
     const agendaKey=[this.lastHomeAgenda.objective,this.lastHomeAgenda.reason].join('|')
     if(this.lastHomeAgendaKey!==agendaKey){
       this.lastHomeAgendaKey=agendaKey

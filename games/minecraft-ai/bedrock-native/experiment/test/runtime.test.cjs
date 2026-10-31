@@ -3108,3 +3108,18 @@ test('reachable loaded bed without independent BDS proof is not activated',async
  assert.equal(e.lastSpawnpointAttempt.attempted,false)
  e.stop()
 })
+
+test('autonomous idle reads fresh candidate room as bed-approach intention without moving',async()=>{
+ const f=fixture(),e=new AliceBedrockRuntime({...f,policies:await policies()})
+ e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+ f.bot.time={timeOfDay:13500}
+ e.homeBase.last={status:'observed_indoor_home_candidate',
+  bed:{x:6,y:64,z:0},door:{x:4,y:64,z:0},at:100000}
+ e.nextIdleAt=0
+ await e.idleTick()
+ assert.equal(e.lastHomeAgenda.objective,'plan_candidate_bed_approach')
+ assert.equal(e.lastHomeAgenda.reason,'independent_bds_gate_not_ready')
+ assert.equal(e.lastHomeAgenda.returnRouteVerified,false)
+ assert.equal(e.homeBase.record,null)
+ e.stop()
+})

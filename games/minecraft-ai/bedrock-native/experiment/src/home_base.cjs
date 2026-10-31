@@ -62,14 +62,29 @@ function observeHome(bot,confirmedBed,{maxDistance=12,escape=null}={}){
    returnVerified:false,doorPassageVerified:false,hostilesNear:!!knownHostiles(bot).near}
 }
 function homeAgenda(bot,base,{mode='companion',stopped=false,following=false,
-  threat=false,serverProof=false}={}){
+  threat=false,serverProof=false,candidateHome=null,now=Date.now}={}){
+ // Transient loaded geometry may motivate a BED inspection, but never a
+ // persistent HOME, safe route, or verified world return.
+ const t=typeof now==='function'?now():now
+ const freshCandidate=candidateHome?.status==='observed_indoor_home_candidate'&&
+   finite(candidateHome.bed)&&finite(candidateHome.door)&&
+   Number.isSafeInteger(candidateHome.at)&&Number.isSafeInteger(t)&&
+   t>=candidateHome.at&&t-candidateHome.at<=45000
  const env=environment(bot),pos=bot?.entity?.position
  const fail=reason=>({phase:env.phase,objective:'none',reason,returnRouteVerified:false})
  if(mode!=='autonomous')return fail('companion_mode_does_not_override_owner')
  if(stopped||following||threat)return fail('higher_priority_human_or_safety_order')
- if(!base?.bed||!base?.door)return fail('home_door_or_bed_unverified')
  if(bot?.game?.dimension!=='overworld'||!finite(pos))
   return fail('home_dimension_or_position_unknown')
+ if(!base?.bed||!base?.door){
+  if(!freshCandidate)return fail('home_door_or_bed_unverified')
+  const near=dist(pos,candidateHome.bed)<=5
+  return {phase:env.phase,objective:near?'inspect_candidate_bed':'plan_candidate_bed_approach',
+   reason:near?'personal_spawn_unverified':
+     serverProof?'requires_segmented_server_verified_bed_approach':
+       'independent_bds_gate_not_ready',
+   persistedHome:false,returnRouteVerified:false}
+ }
  const near=dist(pos,base.bed)<=5
  if(env.phase==='night'||env.phase==='dusk'){
   return near?{phase:env.phase,objective:'stay_near_home',

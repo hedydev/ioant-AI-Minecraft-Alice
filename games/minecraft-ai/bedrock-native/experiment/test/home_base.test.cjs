@@ -115,3 +115,23 @@ test('raised spruce double-height door may identify HOME geometry without claimi
  assert.equal(r.enclosureVerified,false)
  assert.equal(actions(),0)
 })
+
+test('a fresh room motivates unconfirmed BED planning without claiming HOME or route',()=>{
+ const {bot,actions}=room()
+ let now=100000
+ const candidate={status:'observed_indoor_home_candidate',
+  bed:{x:6,y:65,z:0},door:{x:2,y:65,z:0},at:99000}
+ const base={status:'not_established',bed:null,door:null}
+ const plan=homeAgenda(bot,base,{mode:'autonomous',now,candidateHome:candidate})
+ assert.equal(plan.objective,'plan_candidate_bed_approach')
+ assert.equal(plan.reason,'independent_bds_gate_not_ready')
+ assert.equal(plan.persistedHome,false)
+ assert.equal(plan.returnRouteVerified,false)
+ bot.entity.position=pos(6,65,1)
+ assert.equal(homeAgenda(bot,base,{mode:'autonomous',now,candidateHome:candidate}).objective,'inspect_candidate_bed')
+ assert.equal(homeAgenda(bot,base,{mode:'autonomous',now:145001,candidateHome:candidate}).objective,'none')
+ assert.equal(homeAgenda(bot,base,{mode:'autonomous',now,candidateHome:candidate,following:true}).objective,'none')
+ assert.equal(homeAgenda(bot,base,{mode:'autonomous',now,candidateHome:candidate,threat:true}).objective,'none')
+ assert.equal(homeAgenda(bot,base,{mode:'companion',now,candidateHome:candidate}).objective,'none')
+ assert.equal(actions(),0)
+})

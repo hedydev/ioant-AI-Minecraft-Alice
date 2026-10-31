@@ -21,12 +21,12 @@ function fullSupport(block){
   }
   return true
 }
-function surveyEscape(bot,{radius=6,maxNodes=MAX_NODES}={}){
+function surveyEscape(bot,{radius=6,maxNodes=MAX_NODES,bedPositions=[]}={}){
   const self=bot?.entity?.position
   const baseResult={version:1,mode:'read_only',status:'unknown',center:null,
     observedCells:0,reachableCells:0,unknownCells:0,blockedCells:0,
     doorCandidates:[],verticalObstacles:[],breakCandidates:[],
-    openFrontier:null,canModifyWorld:false,reason:null}
+    openFrontier:null,bedApproach:null,canModifyWorld:false,reason:null}
   if(!finite(self)||typeof self.offset!=='function'||typeof bot?.blockAt!=='function'||
       bot.entity?.onGround!==true)return {...baseResult,reason:'position_ground_or_cache_unverified'}
   const r=Math.max(2,Math.min(MAX_RADIUS,Number.isSafeInteger(radius)?radius:6))
@@ -61,10 +61,39 @@ function surveyEscape(bot,{radius=6,maxNodes=MAX_NODES}={}){
     data.status='current_tile_unverified';data.reason='known_full_support_and_two_block_headroom_required'
     return data
   }
+  // Only loaded, non-occupied beds can become targets. Both the BED and a
+  // candidate standing cell must remain known. No action is ever authorized.
+  const bedTargets=[]
+  const seenBeds=new Set()
+  for(const pos of (Array.isArray(bedPositions)?bedPositions:[]).slice(0,32)){
+    if(!finite(pos))continue
+    const b={x:Math.floor(pos.x),y:Math.floor(pos.y),z:Math.floor(pos.z)}
+    if(Math.abs(b.x-root.x)>r||Math.abs(b.z-root.z)>r||Math.abs(b.y-root.y)>3)continue
+    const k=key(...vec(b));if(seenBeds.has(k))continue
+    seenBeds.add(k)
+    const found=block(b.x,b.y,b.z),type=name(found)
+    if(!(type==='bed'||type.endsWith('_bed')))continue
+    let meta=null
+    try{meta=bot.parseBedMetadata?.(found)}catch{}
+    if(meta?.occupied!==0)continue
+    bedTargets.push(b)
+  }
   const queue=[{p:root,route:[],heightChanges:0}],visited=new Set([key(...vec(root))]);let open=null
   const dirs=[[1,0],[-1,0],[0,1],[0,-1]]
   for(let i=0;i<queue.length&&i<cap;i++){
     const cur=queue[i],p=cur.p
+    if(!data.bedApproach&&bedTargets.length){
+      const target=bedTargets.find(b=>Math.hypot(p.x+.5-b.x,p.y-b.y,p.z+.5-b.z)<=1.95)
+      if(target){
+        data.bedApproach={status:cur.route.length?'observed_route_candidate':'already_in_reach',
+          reason:cur.route.length?'bed_route_needs_server_verification':
+            'loaded_bed_within_interaction_range',
+          bed:vec(target),steps:cur.route.length,
+          waypoints:cur.route.length<=12?cur.route:[],
+          routeComplete:cur.route.length<=12,
+          permitted:false,serverVerified:false}
+      }
+    }
     // An observed frontier is not proof of a physical exit to another room.
     if((Math.abs(p.x-root.x)===r||Math.abs(p.z-root.z)===r)&&!open){
       open={target:vec(p),steps:cur.route.length,elevationChanges:cur.heightChanges,

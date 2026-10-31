@@ -1,3 +1,8 @@
+## 2026-11-01 — 只读候选床路线与HOME agenda 部署测试
+
+- 利用已有安全`.openclaw/tasks/alice_mint_nonrestart_sync.json`完成 Mac/Mint 全量测试+源码无重启同步，随后若需新运行时字段，需独立新的一次性身份验证client-only重载任务，不得重放旧操作。无需启动任何额外BDS实例，不修改世界。实机`bedApproach`仅为可见加载方块候选，实际走动仍必须首先合法取得双份新鲜BDS独立样本。
+- 不允许改变 Bedrock位置安全门禁、自动轮询MCSManager或者改用其他途径绕开之前工具阻止的querytarget任务；目标是先做好合法位置证据到来前的规划层，不报告虚假“已移动”。
+
 ## 2026-11-01 — HOME phase2 生产只读验收回执及不可重放记录
 
 - 已完成正式17879源代码安全同步（`035445c`, 268 Mac tests, 705 Mint Node24 tests）、`30caf3c` 新运维代码Mac268回归、专用Alice client-only reload `alice_home_phase2_client_only_reload_20261101_c01` PASS。私有once-only marker已使用，**禁止重放**，无需用户手动操作。

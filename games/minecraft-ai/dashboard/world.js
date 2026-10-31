@@ -145,6 +145,16 @@ async function refreshCommandState(){
     setText('world-home-route',!run?'路线状态未知':
       home.exitVerified===true&&home.returnVerified===true?'出门和返程已有独立验证记录':
       '出门及返程尚未通过独立 BDS 位移验证');
+    const bedPlan=routine.bedApproach||{};
+    setText('world-bed-approach',!run?'状态未知':
+      bedPlan.status==='observed_route_candidate'?
+      '发现'+bedPlan.steps+'步只读路线候选（尚不可执行）':
+      bedPlan.status==='already_in_reach'?'已在床互动范围':
+      '未找到已加载的安全候选路线');
+    setText('world-bed-approach-detail',!run?'等待在线':
+      bedPlan.status==='observed_route_candidate'?
+      '仍需每段独立BDS位置验证；不会据此自行行走':
+      '只读观察；不表示床已使用或重生点已设置');
     const attempt=routine.lastSpawnpointAttempt||{};
     const reachLabels={bed_needs_verified_approach:'已发现床，尚不在可触及范围',
       loaded_free_bed_in_reach:'已加载空床且在触及范围',
@@ -209,7 +219,7 @@ async function refreshCommandState(){
     setText('world-idle-reason','⚠️ 控制服务不可用，无法确定 IDLE 原因');
     setText('world-death-learning','控制服务不可用，死亡原因未知');
     setText('world-deaths','未知');setText('world-respawn-status','未验证');
-    for(const id of ['world-home-observed','world-home-observed-detail','world-home-established','world-home-route','world-bed-reach','world-bed-gate'])setText(id,'状态未知');
+    for(const id of ['world-home-observed','world-home-observed-detail','world-home-established','world-home-route','world-bed-reach','world-bed-gate','world-bed-approach','world-bed-approach-detail'])setText(id,'状态未知');
     setText('world-command-readonly','控制服务不可用');
     if(!lastCommandId)showCommandResult('无法读取 Mint 控制状态：'+String(err.message||err),'error');
   }finally{commandReadBusy=false;disableCommandControls()}

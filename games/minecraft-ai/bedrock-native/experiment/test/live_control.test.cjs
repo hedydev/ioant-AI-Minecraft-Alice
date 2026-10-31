@@ -378,3 +378,20 @@ test('4KiB compact heartbeat retains transient HOME observation and bed safety r
  assert.equal(d.worldRoutine.lastSpawnpointAttempt.positionGate,'scout_bds_position_unavailable')
  assert(Buffer.byteLength(JSON.stringify(d))<=4096)
 }))
+
+test('compacted heartbeat retains bed approach as a non-verified route',()=>withDir(root=>{
+ const pub=new LiveStatus({root})
+ pub.publish({connected:true,state:'IDLE',worldRoutine:{
+  scouting:{huge:'a'.repeat(6500)},phase:'night',
+  bedApproach:{status:'observed_route_candidate',reason:'bed_route_needs_server_verification',
+   steps:4,waypoints:[[1,65,0]],permitted:false,serverVerified:false},
+  homeAgenda:{objective:'plan_candidate_bed_approach',
+   reason:'independent_bds_gate_not_ready',returnRouteVerified:false}}})
+ const d=JSON.parse(fs.readFileSync(path.join(root,'status.json'),'utf8'))
+ assert.equal(d.statusCompacted,true)
+ assert.equal(d.worldRoutine.bedApproach.status,'observed_route_candidate')
+ assert.equal(d.worldRoutine.bedApproach.permitted,false)
+ assert.equal(d.worldRoutine.bedApproach.serverVerified,false)
+ assert.equal(d.worldRoutine.homeAgenda.objective,'plan_candidate_bed_approach')
+ assert(Buffer.byteLength(JSON.stringify(d))<=4096)
+}))

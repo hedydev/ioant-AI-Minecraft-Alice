@@ -147,3 +147,33 @@ test('raised door with unknown or nonfull underlying landing is NOT trusted',()=
   assert.equal(r.actions(),0)
  }
 })
+
+test('read-only raised door room can propose loaded safe approach to free bed, never execute',()=>{
+ const r=room({openHall:true,radius:6})
+ r.bot.parseBedMetadata=()=>({occupied:0})
+ const original=r.bot.blockAt
+ r.bot.blockAt=p=>Math.floor(p.x)===5&&Math.floor(p.z)===0&&Math.floor(p.y)===65?
+  {name:'red_bed',boundingBox:'block'}:original(p)
+ const s=surveyEscape(r.bot,{radius:6,bedPositions:[pos(5,65,0)]})
+ assert.equal(s.bedApproach.status,'observed_route_candidate',JSON.stringify(s))
+ assert(s.bedApproach.steps>=3&&s.bedApproach.steps<=6)
+ assert.equal(s.bedApproach.routeComplete,true)
+ assert.equal(s.bedApproach.permitted,false)
+ assert.equal(s.bedApproach.serverVerified,false)
+ assert.equal(r.actions(),0)
+})
+test('unknown, occupied and blocked bed approaches are never suggested as paths',()=>{
+ for(const opt of [{unknown:true},{door:true}]){
+  const r=room(opt)
+  r.bot.parseBedMetadata=()=>({occupied:0})
+  assert.equal(surveyEscape(r.bot,{radius:5,bedPositions:[pos(5,65,0)]}).bedApproach,null)
+  assert.equal(r.actions(),0)
+ }
+ const r=room({openHall:true,radius:6})
+ const original=r.bot.blockAt
+ r.bot.blockAt=p=>Math.floor(p.x)===5&&Math.floor(p.z)===0&&Math.floor(p.y)===65?
+  {name:'red_bed',boundingBox:'block'}:original(p)
+ r.bot.parseBedMetadata=()=>({occupied:1})
+ assert.equal(surveyEscape(r.bot,{radius:6,bedPositions:[pos(5,65,0)]}).bedApproach,null)
+ assert.equal(r.actions(),0)
+})

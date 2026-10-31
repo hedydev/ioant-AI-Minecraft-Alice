@@ -568,3 +568,12 @@ class HomeObservationDashboardTests(unittest.TestCase):
         self.assertIn('home.exitVerified===true&&home.returnVerified===true',js)
         self.assertIn('attempt.positionGate',js)
         self.assertIn('attempt.bedReach',js)
+
+class BedApproachReadOnlyDashboardTests(unittest.TestCase):
+    def test_never_promote_observed_route_to_verified_movement(self):
+        html=(ROOT/'dashboard'/'index.html').read_text()
+        js=(ROOT/'dashboard'/'world.js').read_text()
+        self.assertIn('id="world-bed-approach"',html)
+        self.assertIn('id="world-bed-approach-detail"',html)
+        self.assertIn("bedPlan.status==='observed_route_candidate'",js)
+        self.assertIn('仍需每段独立BDS位置验证',js)

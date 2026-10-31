@@ -1,3 +1,9 @@
+## 2026-11-01 — Bedrock床位可达路径候选与临时HOME规划（尚待测试与实机）
+
+- 当前正式17879 Alice已识别含床/屋顶/门候选房间，但之前`homeAgenda`仅使用已确认个人spawn后的持久`homeBase.record`，因此在设置重生点前永远返回`home_door_or_bed_unverified`。现在仅在本会话45秒内的新鲜候选房间观察下输出`inspect_candidate_bed`或`plan_candidate_bed_approach` **只读意图**，STOP/FOLLOW/危险优先；未确认个人床不会被视为HOME或允许返程。
+- `escape_survey.surveyEscape`新增可选`bedPositions`，限定已加载空床、BFS路径最短且脚下完整支持、脚/头有已知空间、整格高度差限制；记录`bedApproach`（含<=12步候选、`permitted:false`、`serverVerified:false`），绝不产生Pathfinder输入、点击床或BDS查询。使用现有最大半径7/节点160/区块读取1600预算；若床在12格观察范围外或无可走廊则报告无路线，不假装可达。
+- 原`spawnpointTick`只在已知床不在互动距离时读取路径候选，原双BDS4秒0.75格、1.95格床互动和个人重生包门禁全部不变；新3D控制台仅呈现规划结果而非移动证明。**本次提交尚待全量测试/实际运行验收**。
+
 ## 2026-11-01 — HOME phase2 正式17879实机验收：候选庇护所+床前置门禁独立呈现（PASS）
 
 - OpenClaw `alice_home_phase2_mint_nonrestart_20261101_a01` PASS：源码 `035445c220295ee6f48046a032035a74a406e5da` 经 Mac Python **268项**、Mint Node24 **705/705** 回归，安全同步原Mint；没有重启Alice/BDS、没有世界操作。运维脚本/单次reload提交 `30caf3c664c9cafa3b6340866aa72946324f6a7d` 经 `alice_home_phase2_mac_regression_20261101_b01` Python268和9项定向回归通过。

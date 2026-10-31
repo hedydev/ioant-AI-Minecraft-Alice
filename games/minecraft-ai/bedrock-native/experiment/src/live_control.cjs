@@ -105,6 +105,9 @@ function compactStatus(state){
       idleHold:w.idleHold,nightSurvival:w.nightSurvival,
       sleepOpportunity:w.sleepOpportunity,
       rememberedBeds:w.rememberedBeds,
+      bedApproach:w.bedApproach&&{status:w.bedApproach.status,
+        reason:w.bedApproach.reason,steps:w.bedApproach.steps,
+        permitted:false,serverVerified:false},
       homeBed:w.homeBed&&{status:w.homeBed.status,bed:w.homeBed.bed},
       lastSpawnpointAttempt:w.lastSpawnpointAttempt&&{
         reason:w.lastSpawnpointAttempt.reason,
@@ -141,6 +144,9 @@ function compactStatus(state){
       idleGate:w.idleGate,decision:w.decision,idleHold:w.idleHold,nightSurvival:w.nightSurvival,
       sleepOpportunity:w.sleepOpportunity,
       rememberedBeds:w.rememberedBeds,
+      bedApproach:w.bedApproach&&{status:w.bedApproach.status,
+        reason:w.bedApproach.reason,steps:w.bedApproach.steps,
+        permitted:false,serverVerified:false},
       homeBed:w.homeBed&&{status:w.homeBed.status,bed:w.homeBed.bed},
       lastSpawnpointAttempt:w.lastSpawnpointAttempt&&{
         reason:w.lastSpawnpointAttempt.reason,
