@@ -1,3 +1,9 @@
+## 2026-11-01 — status.json连续8秒真实时间戳验收通过
+
+- `alice_mcsm_heartbeat_continuity_actual_20261101_bs01`只读真实原17879：`state=continuous`、`ownerSame=true`、`initialFresh=true`、`finalFresh=true`、`mtimeAdvanced=true`、`updatedAtAdvanced=true`、`statusBelow4KiB=true`、`clientOnline=true`，两次相隔8秒；`minimalFallbackUsed=false`表示当前负载下普通压缩尚可满足4KiB，新增极端minimal用于以后数据膨胀后不中断心跳。BDS未重启、无BDS命令。
+- 新`alice-bds-demand-timer-resume.py`任务仅允许在该连续性验收后、当前`alice-mint.py status` heartbeatFresh且<=5s、原InstanceConfig cwd及server port验证、旧loop inactive、已有用户timer/optin安全时，重新`systemctl --user enable --now alice-bds-demand.timer`；**不会再安装、改世界或发送MCSManager querytarget**。需实际读取真实resume回执，再后验自动消费，不可仅凭调度成功声称移动。
+- 当前新timer先前已暂停，恢复前需这项脚本经工具审查。
+
 ## 2026-11-01 — 发现长期状态发布停滞，已暂停定时器并修复心跳降级
 
 - 仅只读`alice_mcsm_timer_consistency_readonly_20261101_bl01`：原Alice仍在线，`status.json`的mtime **older_than_5_min**、旧文件中`independentSamples=6`，而同一进程/登录的private 250ms ACK已为`independentSamples=12`、年龄<90s、`ackGateAtWrite=true`；timer预算记录`used=10`，日志近5min三次`position_pair_verified`。真实根因是**状态文件没有随BDS ACK更新**，不能继续用旧heartbeat驱动自动查询；ACK只证明位置采样在某瞬间通过门禁，不证明已执行成功导航。

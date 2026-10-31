@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Reenable only user-scoped original 17879 MCSManager demand timer after fresh status proof",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-bds-demand-timer-resume.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "resume_existing_user_timer",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-bds-demand-timer-resume.py",
+      "args": [
+        "--resume",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 75
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "timer_resume",
+      "file": "alice_bds_timer_resume.json",
+      "format": "json"
+    }
+  ]
+}
