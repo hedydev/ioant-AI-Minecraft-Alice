@@ -13,6 +13,7 @@ const {ContinuousGoal}=require('./continuous_goal.cjs')
 const {evaluateShelter,placeShelterBlock}=require('./night_shelter.cjs')
 const {ObservedBeds}=require('./observed_beds.cjs')
 const {HomeBedMemory,selectAdjacentBed,useBedForSpawn}=require('./bed_spawnpoint.cjs')
+const {HomeBaseMemory,homeAgenda}=require('./home_base.cjs')
 const {planNightReposition,nightConditions}=require('./night_survival.cjs')
 const {configureDoors,createResponsiveFollowGoal,observedLineOfSight}=require('./follow_navigation.cjs')
 const {followProximity}=require('./follow_proximity.cjs')
@@ -138,6 +139,10 @@ class AliceBedrockRuntime {
     this.homeBed=new HomeBedMemory({clock,
       file:experienceFile?require('node:path').join(
         require('node:path').dirname(experienceFile),'home-bed.json'):null})
+    this.homeBase=new HomeBaseMemory({clock,
+      file:experienceFile?require('node:path').join(
+        require('node:path').dirname(experienceFile),'home-base.json'):null})
+    this.lastHomeAgenda=null;this.lastHomeAgendaKey=null
     this.currentRespawnStatus=()=>null
     this.nextNightSafetyReviewAt=Number.NEGATIVE_INFINITY
     this.nextAutonomousCraftAt=0
@@ -1371,12 +1376,37 @@ class AliceBedrockRuntime {
     },{label:'设置床位重生点',announce:false})
     return !!this.job
   }
+  observeHomeTick(){
+    if(!this.ready()||this.bot.isSleeping||this.safetyBusy||this.threat())return
+    const known=this.observedBeds.nearby(this.bot,{radius:12})
+    const home=this.homeBed.summary()
+    const confirmed=home.status!=='not_verified'&&!!home.bed
+    // Prefer the actually server-confirmed bed, not whichever loose bed
+    // happens to be first in the local cache.
+    const candidate=confirmed?known.find(p=>Math.hypot(
+      p.x-home.bed.x,p.y-home.bed.y,p.z-home.bed.z)<=1.5):known[0]
+    if(!candidate)return
+    const result=this.homeBase.observe(this.bot,candidate,{
+      spawnConfirmed:confirmed&&Math.hypot(
+        candidate.x-home.bed.x,candidate.y-home.bed.y,
+        candidate.z-home.bed.z)<=1.5})
+    const key=[result.status,result.reason,this.homeBase.summary().status].join('|')
+    if(this.lastHomeSurveyKey!==key){
+      this.lastHomeSurveyKey=key
+      this.log.log('[Alice home] observed structure:',JSON.stringify({
+        status:result.status,reason:result.reason,
+        bedKnown:true,spawnConfirmed:confirmed,
+        persistedHome:this.homeBase.summary().status!=='not_established',
+        doorPassageVerified:false,returnRouteVerified:false}))
+    }
+  }
   async maintenanceTick(){
     // Read-only bed observations can happen while Alice is exploring, not
     // just when idle at home. They are paced to once per 60 seconds and must
     // never interrupt active safety/combat or force a new navigation task.
     if(this.ready()&&!this.bot.isSleeping&&!this.safetyBusy)
       this.observedBeds.observe(this.bot)
+    this.observeHomeTick()
     if(!this.ready()||this.bot.isSleeping||this.job||this.safetyBusy||
        this.maintenanceBusy)return
     // Passive equipment maintenance is inventory-only. It is allowed in the
@@ -2014,6 +2044,32 @@ class AliceBedrockRuntime {
     // durable objective after the ordinary safety/health/human grace gates.
     this.continuousGoal.resume()
     this.lastWorldRoutine=environment(this.bot)
+    const homeSummary=this.homeBase.summary()
+    this.lastHomeAgenda=homeAgenda(this.bot,homeSummary,{
+      mode:this.liveBehavior.settings.agentMode,
+      stopped:this.goalPlanner.stoppedByHuman,
+      following:this.core.hasFollowIntent(),
+      threat:!!this.threat(),
+      serverProof:scoutStartProof(this.bot,this.movementEvidence,this.clock).ok})
+    const agendaKey=[this.lastHomeAgenda.objective,this.lastHomeAgenda.reason].join('|')
+    if(this.lastHomeAgendaKey!==agendaKey){
+      this.lastHomeAgendaKey=agendaKey
+      this.log.log('[Alice home] autonomous agenda:',JSON.stringify({
+        objective:this.lastHomeAgenda.objective,
+        reason:this.lastHomeAgenda.reason,phase:this.lastHomeAgenda.phase,
+        actualReturnRouteVerified:false}))
+    }
+    // Never begin a NEW resource excursion on the approach to dusk when
+    // the HOME return route remains unverified. Existing survival fallback
+    // stays enabled at night, and sleep remains the maintenance priority.
+    if(this.lastHomeAgenda.objective==='return_home'&&
+       this.lastWorldRoutine.phase==='day'&&this.lastWorldRoutine.tick>=8500){
+      this.nextIdleAt=this.clock()+5000
+      this.lastIdleHold={goal:'RETURN_HOME',reason:
+        'return_path_requires_live_independent_bds_and_segment_verification',
+        at:this.clock(),nextReviewAt:this.clock()+5000}
+      return
+    }
     // A durable objective is independent of Core's transient IDLE state
     // and of the 120-second action eligibility timer. Observe trusted
     // inventory every 5-second idle cycle, but never issue an action here.
