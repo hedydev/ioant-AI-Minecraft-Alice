@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Read existing original 17879 Alice bed/door/home status, strictly no game commands",
+  "steps": [
+    {
+      "name": "readonly_contract",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-home-base-status-readonly.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "read_existing_world_home",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-home-base-status-readonly.py",
+      "args": [
+        "--inspect",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 45
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "home_now",
+      "file": "alice_home_current.json",
+      "format": "json"
+    }
+  ]
+}
