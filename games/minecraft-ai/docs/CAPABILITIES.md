@@ -1,3 +1,7 @@
+## 2026-11-01 — Staged elevated wooden-door observation (not traversal)
+
+When a Bedrock wooden door's bottom half is one block above a BFS-reachable standing floor, `surveyEscape` now records a non-permitted raised door approach only if both door halves are loaded and the lower support is a known full-cube block. It does not assume walkable steps, permission, server motion or safe return. HOME may classify observed geometry without claiming enclosure, personal spawn, exit or return. Source regression and original-world observation required; BDS query/movement gate unchanged.
+
 ## 2026-10-31 — HOME candidate recognition and pre-dusk agenda (read-only first; server return NOT accepted)
 
 - User requests that Alice recognize the existing room with bed and wooden door as a potential shelter, know the entrance, leave by door in daytime, and return before dark when in autonomous survival mode. Existing `escape_survey`, `escape_door_action`, `escape_crossing` and `night_shelter` already contain individually bounded door, passage and natural-ground one-block construction primitives, but never proved a safe round-trip route.

@@ -111,3 +111,39 @@ test('slab cannot count as known full support',()=>{
  assert.equal(s.status,'current_tile_unverified')
  assert.equal(r.actions(),0)
 })
+
+test('door on one-block raised landing is observed from a proven adjacent floor, not traversed',()=>{
+ const r=room()
+ const original=r.bot.blockAt
+ r.bot.blockAt=p=>{
+   const x=Math.floor(p.x),y=Math.floor(p.y),z=Math.floor(p.z)
+   if(x===2&&z===0&&y===65)return solid('oak_planks')
+   if(x===2&&z===0&&(y===66||y===67))return solid('spruce_door')
+   return original(p)
+ }
+ const s=surveyEscape(r.bot,{radius:4})
+ assert.equal(s.status,'door_interaction_candidate',JSON.stringify(s))
+ const d=s.doorCandidates.find(d=>d.position.join(',')==='2,66,0')
+ assert(d,JSON.stringify(s))
+ assert.deepEqual(d.approach.position,[1,65,0])
+ assert.equal(d.doorLevelAboveApproach,1)
+ assert.equal(d.approach.routeComplete,true)
+ assert.equal(d.approach.serverVerified,false)
+ assert.equal(d.permitted,false)
+ assert.equal(r.actions(),0)
+})
+test('raised door with unknown or nonfull underlying landing is NOT trusted',()=>{
+ for(const floor of [null,{name:'oak_slab',boundingBox:'block',shapes:[[0,0,0,1,.5,1]]}]){
+  const r=room()
+  const original=r.bot.blockAt
+  r.bot.blockAt=p=>{
+   const x=Math.floor(p.x),y=Math.floor(p.y),z=Math.floor(p.z)
+   if(x===2&&z===0&&y===65)return floor
+   if(x===2&&z===0&&(y===66||y===67))return solid('spruce_door')
+   return original(p)
+  }
+  const s=surveyEscape(r.bot,{radius:4})
+  assert.equal(s.doorCandidates.length,0,JSON.stringify(s))
+  assert.equal(r.actions(),0)
+ }
+})

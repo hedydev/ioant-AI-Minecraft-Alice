@@ -93,3 +93,22 @@ test('day and night return planning is only an intent; companion, follow and dan
  assert.equal(homeAgenda(bot,home,{mode:'autonomous',following:true}).objective,'none')
  assert.equal(homeAgenda(bot,home,{mode:'autonomous',threat:true}).objective,'none')
 })
+
+test('raised spruce double-height door may identify HOME geometry without claiming exit',()=>{
+ const {bot,bed,actions}=room()
+ const original=bot.blockAt
+ bot.blockAt=p=>{
+  const x=Math.floor(p.x),y=Math.floor(p.y),z=Math.floor(p.z)
+  if(x===2&&z===0&&y===65)return solid('oak_planks')
+  if(x===2&&z===0&&(y===66||y===67))return solid('spruce_door')
+  return original(p)
+ }
+ const r=observeHome(bot,bed)
+ assert.equal(r.status,'observed_indoor_home_candidate',JSON.stringify(r))
+ assert.deepEqual(r.door,{x:2,y:66,z:0})
+ assert.deepEqual(r.doorApproach,{x:1,y:65,z:0})
+ assert.equal(r.doorPassageVerified,false)
+ assert.equal(r.returnVerified,false)
+ assert.equal(r.enclosureVerified,false)
+ assert.equal(actions(),0)
+})

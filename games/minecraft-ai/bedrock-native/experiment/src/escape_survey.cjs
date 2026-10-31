@@ -90,15 +90,24 @@ function surveyEscape(bot,{radius=6,maxNodes=MAX_NODES}={}){
       const head=block(x,p.y,z),above=block(x,p.y+1,z),floor=block(x,p.y-1,z)
       if(!head||!above||!floor)continue
       const type=name(head),floorType=name(floor)
-      if(DOOR.test(type)){
+      // A two-block wooden door may start one full block above the adjacent
+      // observed standing cell. The original same-height-only check missed
+      // such raised doorway landings. Recognize the *door*, not a walkable
+      // step: full-height support and both loaded door halves are required.
+      const higherName=name(above)
+      const raisedDoor=DOOR.test(higherName)&&fullSupport(head)&&
+        name(block(x,p.y+2,z))===higherName
+      const doorY=DOOR.test(type)?p.y:raisedDoor?p.y+1:null
+      if(doorY!==null){
         // An observed door is not automatically reachable. Preserve the BFS
         // path to its adjacent standing cell for a later, separately guarded
         // movement executor; this survey NEVER drives the player or opens it.
         // BFS discovers shortest paths first. The same door can border several
         // reachable cells; do not overwrite a nearer approach with a longer one.
-        const doorKey=key(x,p.y,z),previous=doors.get(doorKey)
+        const doorKey=key(x,doorY,z),previous=doors.get(doorKey)
         if(!previous||previous.approach.steps>cur.route.length){
-          doors.set(doorKey,{position:[x,p.y,z],kind:'wooden_door',
+          doors.set(doorKey,{position:[x,doorY,z],kind:'wooden_door',
+            doorLevelAboveApproach:doorY-p.y,
             action:'interact_then_reprobe',permitted:false,
             approach:{position:vec(p),steps:cur.route.length,
               elevationChanges:cur.heightChanges,

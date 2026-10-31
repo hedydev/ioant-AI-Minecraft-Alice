@@ -1,3 +1,9 @@
+## 2026-11-01 — Elevated two-block spruce doorway, source repair (STAGED until regression and live observation)
+
+- Current 17879 client world-view read-only `alice_home_door_columns_readonly_20261101_v02` confirms two loaded spruce-door columns, each bottom and top at relative dy=+1/+2; horizontal distance ~2.2 blocks; 2 visible bed voxels, nearest ~6 blocks, unknown cells 0. These are CLIENT chunk-cache facts, NOT BDS route evidence. `alice_home_frontier_postlive_readonly_20261101_v01` found `wooden_door_or_approach_unverified` after guarded client reload.
+- Causal defect: `escape_survey.cjs` looks for neighbor wooden doors ONLY at same standing-foot y, ignoring a real door whose lower half sits at y+1 over known full-support landing. The fix recognizes that raised door only when loaded lower+upper halves match and support has proven full block collision; it preserves BFS verified adjacent standing approach while explicitly recording `doorLevelAboveApproach=1`, `permitted=false`, `serverVerified=false`. No inference that Alice can traverse that 1-block rise; no movement, door activation, digging or BDS admission changes.
+- New regression tests cover a raised two-block spruce door, unknown/partial support denied, and HOME geometry candidate while exit/return/enclosure remain unverified. Unique tracked guarded client-only reload task staged, requiring Mint Node24 + Mac Python tests and non-restart sync BEFORE any separate activation. Do not use blocked BDS query route; never replay consumed one-shot markers.
+
 ## 2026-11-01 — Real HOME frontier code live, local door candidate still absent (diagnostic staged)
 
 - `alice_home_frontier_client_reload_20261101_v01` completed with `client_reconnected_17879`, current-owner PID, fresh heartbeat and Bedrock session, BDS unchanged. This loaded the already tested `151d9e1` frontier recognition, after Mint 699/699 and Mac 267/267 tests.
