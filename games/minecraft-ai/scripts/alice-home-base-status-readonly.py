@@ -18,7 +18,9 @@ out={'state':'unverified','connected':False,'health':None,
  'homeCandidateFresh':False,'homeLastAgeSeconds':None,
  'lastBedReach':'unknown','lastPositionGate':'unknown',
  'homeAgenda':'unknown','homeAgendaReason':'unknown',
- 'bedApproachStatus':'unknown','bedApproachSteps':None}
+ 'bedApproachStatus':'unknown','bedApproachSteps':None,
+ 'bedStepStatus':'unknown','bedStepReason':'unknown',
+ 'bedStepAttempted':False,'bedStepBdsVerified':False}
 try:
  p=subprocess.run(['/usr/bin/python3',str(status_tool),'status'],capture_output=True,text=True,timeout=12,check=False)
  if p.returncode!=0 or len(p.stdout)>20000:raise ValueError('status')
@@ -60,6 +62,13 @@ try:
   out['bedApproachStatus']=a['status']
  if type(a.get('steps')) is int and 0<=a['steps']<=160:
   out['bedApproachSteps']=a['steps']
+ action=w.get('bedApproachAction') or {}
+ if action.get('status') in ('starting','blocked','unverified','verified'):
+  out['bedStepStatus']=action['status']
+ if isinstance(action.get('reason'),str) and re.fullmatch('[a-z0-9_]{2,75}',action['reason']):
+  out['bedStepReason']=action['reason']
+ out['bedStepAttempted']=action.get('attempted') is True
+ out['bedStepBdsVerified']=action.get('serverMovementVerified') is True
  a=w.get('homeBase') or {}
  at=a.get('lastObservedAt')
  if type(at) is int and at>0:
@@ -80,7 +89,7 @@ def validate(x):
           'doorKnown','exitVerified','returnVerified','personalBedStatus',
           'lastSpawnpointReason','homeAgenda','homeAgendaReason',
           'homeCandidateFresh','homeLastAgeSeconds','lastBedReach','lastPositionGate',
-          'bedApproachStatus','bedApproachSteps'}
+          'bedApproachStatus','bedApproachSteps','bedStepStatus','bedStepReason','bedStepAttempted','bedStepBdsVerified'}
     if not isinstance(x,dict) or set(x)!=keys or x['state'] not in ('observed','unverified'):return None
     return x
 def run(out):
@@ -100,6 +109,7 @@ if __name__=='__main__':
         assert 'homeCandidateFresh' in REMOTE and 'lastBedReach' in REMOTE
         assert 'lastPositionGate' in REMOTE and 'querytarget(' not in REMOTE
         assert 'bedApproachStatus' in REMOTE and 'bedApproachSteps' in REMOTE
+        assert 'bedStepBdsVerified' in REMOTE and 'bedStepStatus' in REMOTE
         print('ALICE_HOME_READONLY_SELFTEST_PASS')
     elif len(sys.argv)==3 and sys.argv[1]=='--inspect':run(sys.argv[2])
     else:raise SystemExit('usage: --self-test | --inspect OUTPUT_DIR')

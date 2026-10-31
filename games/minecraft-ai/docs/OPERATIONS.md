@@ -1,3 +1,9 @@
+## 2026-11-01 — BED fresh witness 4秒事件 + 1格安全首步上线
+
+- 完成`alice_bed_witness_mint_final_20261101_d01` Mint Node24 713/713及Mac269，全量测试无生产重启。
+- 使用新的`.openclaw/tasks/alice_bed_witness_step_client_reload.json`一次性客户端only任务（旧intent不能重放），先验证owner oldPid再替换Alice，只有真实`client_reconnected_17879`才能验收。
+- 之后用原`alice_home_base_status_readonly.json`读取`bedStepStatus`/`bedStepBdsVerified`；当前没有当期BDS样本时`lastPositionGate=scout_bds_position_unavailable`正确阻止行动。新路径执行器从不产生BDS查询，不可用其他工具绕过被拒的单次querytarget任务。
+
 ## 2026-11-01 — BED只读路径 phase3 生产回执及后续验收条件
 
 - `alice_bed_plan_mint_nonrestart_20261101_v02`: 确认`90d2082` Mint Node24 710/710 + Mac Python269，运行时未重启。

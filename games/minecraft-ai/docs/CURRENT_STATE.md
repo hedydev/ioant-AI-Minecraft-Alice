@@ -1,3 +1,11 @@
+## 2026-11-01 — BDS witness 4s vs bed20s冷却修复；单格床位接近候选回归PASS
+
+- 源码提交`56b1412` + 两次测试夹具修复`b200a32`、`60dab76`。首次713用例1失败因模拟`startJob`回调未创建真实job，二次因测试bot没有`activateBlock`方法；经只读定向Node24诊断确认并只修测试夹具，生产准入不变。
+- 完整`alice_bed_witness_mint_final_20261101_d01` PASS：Mint Node24 **713/713**，Mac Python269，正式17879 Mint源码非重启安全同步，`aliceRestarted=false`，`bdsRestarted=false`、`worldModifiedByTask=false`。
+- 代码修复20秒`spawnpointTick`观察冷却吞掉4秒有效BDS配对证据的竞态：只有合法已入库的新鲜独立服务端见证触发`freshBdsWitness:true`才跳过观察冷却，仍用原2样本/4秒/0.75m对齐，近床才能互动。
+- 床距离过远时，`resumeBedApproachOnWitness`仅在已加载/房屋新鲜/角色安全/自主且无FOLLOW、STOP、敌人12格等条件成立时尝试首个水平相邻一格，禁挖掘、开门、跑酷，最长4.5秒，75秒尝试冷却。后续无两份独立新鲜BDS验收证据，结果`serverMovementVerified=false`；**绝不能宣称已走完5步**。不发送/轮询querytarget，且之前工具禁用任务不绕行。生产当前可能仍无新鲜见证，正式世界未完成真实位移。
+- 另新增一次性客户端-only安全reload任务`.openclaw/tasks/alice_bed_witness_step_client_reload.json`（独立私有intent `alice-bed-witness-first-step-phase4-20261101.intent`）及读现有owner状态的`bedStepStatus/bedStepBdsVerified`字段，待执行完才可说运行时新代码已加载。先不要重启BDS、变更世界或放宽导航门禁。
+
 ## 2026-11-01 — 新鲜BDS见证到达时床位冷却漏洞和单格接近（待全量验收）
 
 - 真正缺陷：`spawnpointTick`在此前无独立见证时将`nextSpawnpointAt`推迟20秒；现有250ms读取器虽在每个独立证据事件调用spawnpointTick，但该20秒观察冷却常常吞掉全部4秒有效BDS对齐窗口。增加仅在`scoutStartProof`完整验证（两独立样本均<=4秒、客户端差<=0.75格）时可绕开冷却的`freshBdsWitness`事件参数；没有真实样本不能绕开。
