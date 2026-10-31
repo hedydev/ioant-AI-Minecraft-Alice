@@ -35,7 +35,11 @@ def extract_home_failures(text):
         reasons=re.findall(r'reason["\']?\\s*[:=]\\s*["\']([a-z_]{3,65})',block)
         words=re.findall(r'(?m)^\\s*(?:actual|expected):\\s*[\'\"]?([a-z_]{3,65})',block)
         found.append({'test':name,'reasonTokens':reasons[:4],'assertionTokens':words[:4]})
-    return found[:4]
+    tokens=['enclosure_or_loaded_blocks_unverified','wooden_door_or_approach_unverified',
+      'roof_or_room_height_unverified','bed_out_of_loaded_observation_range',
+      'bed_block_not_loaded','observed_indoor_home_candidate',
+      'unverified','not_established','observed_candidate_not_route_verified']
+    return [{'observedSafeTokens':[token for token in tokens if token in text][:9]}]
 
 def selftest():
     sample='✖ path-finder respects confirmed witness (2.0ms)\nℹ tests 3\nℹ pass 2\nℹ fail 1\nℹ skipped 0\n'
