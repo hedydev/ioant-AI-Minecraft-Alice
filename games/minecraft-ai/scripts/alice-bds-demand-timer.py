@@ -177,8 +177,10 @@ def run():
         if not demand_now(d): return "no_navigation_demand"
         binding_ok()
         now = time.time()
-        try: b=budget_value(now,private_read(BUDGET,256))
-        except FileNotFoundError: b=budget_value(now)
+        # First activation has no budget file yet. Missing is valid; a
+        # symlink or unreadable existing ledger must still fail closed.
+        b=budget_value(now,private_read(BUDGET,256)) if (
+            BUDGET.exists() or BUDGET.is_symlink()) else budget_value(now)
         if now-b["lastBatch"] < MIN_BATCH_SECONDS or b["used"]+2 > MAX_HOURLY:
             return "cooldown_or_budget"
         b["lastBatch"]=now
