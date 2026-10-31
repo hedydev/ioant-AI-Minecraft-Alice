@@ -16,7 +16,7 @@ test('new login needs two genuinely fresh independent positions',()=>{
   assert.equal(res.samplesNeeded,2)
   assert.equal(res.querySent,false)
   assert.equal(res.permissionGranted,false)
-  assert.equal(res.navigationAuthorized,false)
+  assert.equal(res.positionGateSatisfied,false)
 })
 test('a single current-login sample requests only a second one (advisory)',()=>{
   const f=setup();Object.assign(f.s,{independentSamples:1,
@@ -25,7 +25,7 @@ test('a single current-login sample requests only a second one (advisory)',()=>{
   const res=witnessDemand(f)
   assert.equal(res.state,'needs_second_fresh_sample')
   assert.equal(res.samplesNeeded,1)
-  assert.equal(res.navigationAuthorized,false)
+  assert.equal(res.positionGateSatisfied,false)
 })
 test('two current fresh samples aligned pass original scoutStartProof gate',()=>{
   const f=setup();Object.assign(f.s,{independentSamples:2,
@@ -34,7 +34,7 @@ test('two current fresh samples aligned pass original scoutStartProof gate',()=>
   const res=witnessDemand(f)
   assert.equal(res.state,'fresh_pair_aligned')
   assert.equal(res.samplesNeeded,0)
-  assert.equal(res.navigationAuthorized,true)
+  assert.equal(res.positionGateSatisfied,true)
 })
 test('stale previous sample cannot turn one fresh observation into two',()=>{
   const f=setup();Object.assign(f.s,{independentSamples:90,
@@ -65,7 +65,7 @@ test('diverged current pair never triggers query or movement permission',()=>{
   assert.equal(res.state,'client_server_diverged')
   assert.equal(res.samplesNeeded,0)
   assert.equal(res.querySent,false)
-  assert.equal(res.navigationAuthorized,false)
+  assert.equal(res.positionGateSatisfied,false)
 })
 test('diagnostic integration is passive; main invokes no console command',()=>{
   const main=fs.readFileSync(path.join(__dirname,'../src/main.cjs'),'utf8')

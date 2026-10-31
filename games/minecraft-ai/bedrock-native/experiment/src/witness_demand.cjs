@@ -8,14 +8,14 @@ const validAt=(v,now)=>Number.isSafeInteger(v)&&v>0&&now>=v&&now-v<=4000
 function witnessDemand({connected=false,sessionEstablished=false,bot,evidence,clock=Date.now}={}){
   const result=(state,samplesNeeded=0)=>({
     mode:'operator_on_demand_only',state,samplesNeeded,querySent:false,
-    permissionGranted:false,navigationAuthorized:false})
+    permissionGranted:false,positionGateSatisfied:false})
   if(!connected||!sessionEstablished)return result('session_not_connected')
   const s=evidence?.get?.()
   if(!s||!Number.isSafeInteger(s.loginAt))return result('login_not_verified')
   if(s.awaitingVerifiedRespawn)return result('respawn_not_verified')
   if(!finite(bot?.entity?.position))return result('client_position_unavailable')
   const verdict=scoutStartProof(bot,evidence,clock)
-  if(verdict.ok)return {...result('fresh_pair_aligned'),navigationAuthorized:true}
+  if(verdict.ok)return {...result('fresh_pair_aligned'),positionGateSatisfied:true}
   if(verdict.reason==='scout_client_server_position_diverged')
     return result('client_server_diverged')
   // Only timestamps observed after this login/life may count. A lifetime
