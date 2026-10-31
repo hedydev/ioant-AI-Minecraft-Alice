@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Exactly one 17879-safe adjacent target command and independent BDS receipt only; never query BDS",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-one-target-gated-original-20261101.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "one_target_existing_world",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-one-target-gated-original-20261101.py",
+      "args": [
+        "--once",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 90
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "target_probe",
+      "file": "alice_one_target_live.json",
+      "format": "json"
+    }
+  ]
+}
