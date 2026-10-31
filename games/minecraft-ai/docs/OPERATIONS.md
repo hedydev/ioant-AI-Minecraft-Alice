@@ -1,3 +1,9 @@
+## 2026-11-01 — 真实一次性目标坐标动作回执
+
+- `alice_target_probe_actual_17879_20261101_e01` 已完成一次原17879封闭指令`安全试走`：目标`(-6,58,1)`，客户端起/终`(-6.62,58,1.52)`，`commandQueued=true`、最终`failed/probe_arm_expired`，独立BDS前/后各0样本，移动输入0，BDS真实位移**未验证**。只读路径选择不是行走；不许宣称成功。
+- 测试`alice_target_probe_mint_regression_20261101_c01` Mint720/720、Mac269 PASS，受控Alice客户端重载`alice_target_probe_client_reload_20261101_d01` PASS 17879 online，BDS未重启、世界未改。试走和重载两个owner-only intents均已消费，任何新真实动作都须重新计划并验证环境，不可重放旧任务。
+- 最新代码`aaca332`的probe_armed只在有实际安全路径时报告第一格目标并固定；没有独立BDS双样本时不发移动输入，12秒自动失效。此安全门禁不应放宽。原世界Script API包未装；禁止绕过旧安全阻止的querytarget命令。
+
 ## 2026-11-01 — phase5单次Alice客户端reload及原世界BDS见证只读preflight
 
 - 编译/回归`alice_witness_life_mint_regression_20261101_b01`：MintNode24 718/718、Mac269 PASS；运维`alice_witness_life_ops_regression_20261101_c01`Mac269/9定向通过。

@@ -1,3 +1,11 @@
+## 2026-11-01 — 用户要求「一个目标坐标、Alice真实走过去并核对BDS」执行回执
+
+- 已严格在**原正式BDS 17879 / Bedrock level** 做一次动作，而非实验服务器；未创建/重启其他世界。基于现有`selectProbeRoute`加载的两格安全平地通道，新增控制台`安全试走`在等待BDS证据前显示并钉住**第一格**（不能在等待期间悄悄换坐标，重新确认路发生变化则拒绝）。代码`aaca3326608aa19bcdbbae7d53e104ab0db02570`，新增2条Node测试。
+- 新一次性观测程序`games/minecraft-ai/scripts/alice-one-target-gated-original-20261101.py`与任务`.openclaw/tasks/alice_one_target_gated_original_20261101.json`只允许发送一次现有封闭词汇的**安全试走**，读取Alice当前客户端/独立BDS状态及12秒完整命令回执；**不调用MCSManager，不发querytarget、不改原世界、不传送、不回退坐标安全门禁**。试走intent `alice-target-coordinate-17879-20261101.intent`已被消费，不可重复同一动作。
+- `alice_target_probe_mint_regression_20261101_c01` PASS：Mint Node24 **720/720**、Mac Python **269**，未重启Alice/BDS；`alice_target_probe_client_reload_20261101_d01`真实客户端only恢复`client_reconnected_17879`，BDS及其他世界不变；对应intent`alice-one-target-gated-phase6-20261101.intent`已使用不可重放。
+- **真实动作回执** `alice_target_probe_actual_17879_20261101_e01`：`commandQueued=true`，目标从实际加载方块预选 **(-6,58,1)**；Alice客户端脚底从 **(-6.62,58,1.52)** 到 **(-6.62,58,1.52)**，无移动；12秒后`receiptStatus=failed`、`receiptReason=probe_arm_expired`；`independentSamplesBefore=0`，`independentSamplesAfter=0`，`movingQueuedBefore=0`/After=0，`bdsBefore=null`、`bdsAfter=null`，`clientMoved=false`、`independentBdsMovementVerified=false`。
+- **结论**：本次已实际尝试过，Alice因**当前登录没有两份新鲜独立BDS坐标见证**而在服务端安全门禁处超时，没有走到目标，既不能断言BDS坐标匹配，也不能断言不匹配。历史10/31曾通过独立BDS对齐验收，不等于当前会话。正式世界Script API包未装；先前独立MCSManager querytarget工具被安全评估阻止，不可通过SSH/其他工具绕开。需要获批的独立服务端坐标来源后才可真正物理试走；不修改0.75格/4秒安全阈值。**不要把试走动作执行任务PASS误读成Alice已移动。**
+
 ## 2026-11-01 — phase5 post-death 独立见证隔离正式17879验收 + BDS原世界Script API只读前置核查
 
 - 代码`38f001b622fb108622641512c237ec417a8057f1`防止旧生命证据跨重生被再次接纳：死亡`beginRespawnEpoch`清零且置`awaitingVerifiedRespawn=true`；只有挂载的`respawnRecovery`先收到有效有正生命值的`spawn`后`completeRespawnEpoch`，才能接纳`lifeEpochAt`以后的独立BDS样本。保留真实2份4秒/客户端偏差0.75格门禁；不传送、不重设BDS位置、不执行BDS控制台命令。读者区分`prior_login_witness`、`prior_life_witness`、`expired_witness`、`duplicate_or_rejected`以及原`stale_or_invalid_witness`格式错误；Web/3D可见证状态及样本计数，不误报旧服务端坐标。
