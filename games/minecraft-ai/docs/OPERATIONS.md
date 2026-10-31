@@ -1,3 +1,11 @@
+## 2026-11-01 — phase5单次Alice客户端reload及原世界BDS见证只读preflight
+
+- 编译/回归`alice_witness_life_mint_regression_20261101_b01`：MintNode24 718/718、Mac269 PASS；运维`alice_witness_life_ops_regression_20261101_c01`Mac269/9定向通过。
+- 客户端only唯一受控重载`alice_witness_life_client_reload_20261101_d01` PASS owner/current Bedrock session `client_reconnected_17879`；私有intent`alice-witness-life-epoch-phase5-20261101.intent`已消耗**不得重放**，BDS和其它世界未动。
+- 只读现态`alice_witness_life_postlive_gate_20261101_e01`：prior_login_witness/independentSamples=0/IDLE/no movingQueued；新Reader诊断实机已生效。
+- 官方见证部署条件严格由`.openclaw/tasks/alice_bds_script_metadata_readonly_20261101.json`已验证 `alice_script_preflight_prod_readonly_20261101_f01` 输出：原世界未有`world_behavior_packs.json`、未装行为包、Beta API实验未声明、专属权限未就绪、离线world备份恢复未证明。**禁止就地添加实验/行为包/重启生产BDS、默认授予全局网络权限。** 接收器配置存在不代表脚本产生位置证据；normal-user无BDS PID不是进程确实已停。
+- 后续只能合法批准服务端独立见证来源时测试4秒双样本/0.75格对齐、已部署的单格床接近、行动后的独立BDS位移及personal spawn；不改安全阈值、不旁路被安全评估阻止的querytarget。
+
 ## 2026-11-01 — 一次性Alice重载阶段5：死亡见证epoch
 
 - `alice_witness_life_mint_regression_20261101_b01`通过Mint718/718及Mac269，不涉及服务器重启、世界修改和控制台命令。新`.openclaw/tasks/alice_witness_life_epoch_client_reload.json`用于独立的一次性Alice客户端only安全替换，intent `alice-witness-life-epoch-phase5-20261101.intent`，先检查运行中唯一owner和老PID，重载后必须出具`client_reconnected_17879`回执。标记使用后不可重试或删除，原有任务均已使用。

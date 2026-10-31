@@ -1,7 +1,7 @@
 {
   "version": "Bedrock native 1.26.51 / control-center 0.4",
   "asOf": "2026-11-01",
-  "notice": "2026-11-01：BDS历史坐标同步与4.65格真实位移曾实机验收。新客户端713/713 Mint回归，实机床5步已加载路线、BDS见证4秒事件床位单步执行已部署。但当前独立样本0，安全拒绝：私有见证文件来自当前Alice登录以前，文件有效但不新鲜；真实单步未尝试、个人spawn未确认。旧querytarget任务被工具阻止，未绕行；未动BDS和世界。",
+  "notice": "2026-11-01 phase5：Mint Node24 718/718 Mac Python269，原17879客户端only安全重连PASS，新证据生命周期拒绝死亡前/旧登录样本。真实BDS见证状态 prior_login_witness，independentSamples0 movingQueued0；正式世界无Script API行为包、Beta实验、专属网络权限；源码/接收器就绪≠服务端独立坐标供源。未动BDS/世界；床5步仍只是只读路线。",
   "statusNames": {
     "observed": "已有实机证据",
     "staged": "代码已接入·待验收",

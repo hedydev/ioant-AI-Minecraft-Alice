@@ -1,3 +1,9 @@
+## 2026-11-01 — 独立BDS见证生命周期间隔与正式世界供源边界
+
+- 通过Mint Node24 **718/718**及Mac269/9定向回归，死亡与已确认respawn跨生命4秒文件回放严格拒绝；更新后正式17879 Alice CLIENT-only重载通过。
+- 原世界实际私有BDS文件`prior_login_witness`，当前0新样本，客户端在线自主但IDLE是安全门禁而不是坐标算法回退。Web区分旧登录/旧生命/过期/重复。
+- 生产BDS只读前置核查`alice_script_preflight_prod_readonly_20261101_f01`确认**没有安装见证行为包、没有宣告Beta APIs实验、没有专属模块权限**；目前BDS Script API HTTP版无已验证运行供源，不能单凭源码或接收器存在证明它在工作。世界变更需要另外明确授权及可验证备份/恢复。
+
 ## 2026-11-01 — post-death life-epoch 独立BDS见证隔离（Mint Node24 718/718）
 
 - Bedrock同一会话的死亡不会重发`start_game`，旧实现仅清零样本但4秒内的死亡前文件仍可能重获信任。现`beginRespawnEpoch`置于等待新生命，直到`respawnRecovery.phase=respawn_verified`且有正生命值才`completeRespawnEpoch`，所有旧生命证据严格拒绝。
