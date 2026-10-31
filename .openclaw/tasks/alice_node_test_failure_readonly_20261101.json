@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Bounded read-only failing Node24 test names on existing Mint checkout, never game actions",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-node-test-failure-readonly-20261101.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "diagnose_test_only",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-node-test-failure-readonly-20261101.py",
+      "args": [
+        "--inspect",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 128
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "test_diagnostic",
+      "file": "node_diagnosis.json",
+      "format": "json"
+    }
+  ]
+}
