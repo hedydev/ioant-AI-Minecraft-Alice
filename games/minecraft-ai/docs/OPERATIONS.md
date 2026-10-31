@@ -1,3 +1,10 @@
+## 2026-11-01 — 原世界床位单步BDS见证：已上线/证据与风险
+
+- `alice_bed_witness_mint_final_20261101_d01` MAC269/Mint Node24 713/713 PASS，源同步无BDS/世界操作；`alice_bed_witness_mac_ops_tests_20261101_e01` Mac269通过。
+- `alice_bed_witness_client_reload_20261101_f01` 通过单次owner/PID、进程心跳、Bedrock会话验证；只替换Alice client，原世界和其它BDS不停；私有`alice-bed-witness-first-step-phase4-20261101.intent`已使用不得重放。
+- `alice_bed_witness_postlive_20261101_g01`：床路线5步只读、单步未执行、重生点未确认；后续`alice_bed_witness_provider_readonly_20261101_h01`与`alice_bed_witness_age_readonly_20261101_j01`固定root/producerPid/17879所有者，只读确认`stale_or_invalid_witness`来自**旧登录**，非文件丢失/权限/JSON结构坏。当前独立样本0/移动0。
+- 后续只能在独立合法获批的服务端见证源产生**当前登录后**的两份4秒新鲜样本时自动触发安全单步，随后必须有至少2份真实后验BDS证据才能标记成功。先完成权限/实现审查，不能复用已经被工具安全评估拒绝的querytarget任务、更不能借其它执行接口绕行。无需用户反复运行脚本；禁止清锁、重复重载、强制Git重置。
+
 ## 2026-11-01 — BED fresh witness 4秒事件 + 1格安全首步上线
 
 - 完成`alice_bed_witness_mint_final_20261101_d01` Mint Node24 713/713及Mac269，全量测试无生产重启。

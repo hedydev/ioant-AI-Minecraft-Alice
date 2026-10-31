@@ -1,3 +1,8 @@
+## 2026-11-01 — BDS 4秒事件接入床位单格执行：原世界代码已加载
+
+- 当前客户端代码确实已由一次性owner校验替换加载；Mac269/Mint713回归通过。`freshBdsWitness`入口使有效服务端配对不会被床位20秒观察冷却吞掉；可在原HOME已加载5步路线中，只针对首个平坦相邻站立格发起安全Pathfinder单步尝试，并强制后验独立BDS服务端位移验证。实际`bedStepAttempted=false`，暂未行走。
+- 在当前登录的 private `bds-position-witness.json`存在、权限/JSON有效，但`sampleAfterCurrentLogin=false`与`fresh4Seconds=false`。自主IDLE原因是**旧登录见证失效**，不是历史修复未成功。不得关闭2×/4s/0.75格门禁，也不得重启刷屏查询器规避权限限制。
+
 ## 2026-11-01 — 床位只读短程路线规划：正式世界观测通过
 
 - 新`escape_survey` 可从当前已加载的完整安全站立格BFS到已加载空床附近，且不触碰世界，最多暴露12步路径建议（全局半径7、最多160节点、1600次读取）；所有候选`permitted:false`、`serverVerified:false`。实际原世界明确观察到向床 5 步候选。

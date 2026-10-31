@@ -1,3 +1,13 @@
+## 2026-11-01 — 新会话 BDS 见证已查清：文件有效但来自旧登录；4秒床位门禁衔接修复上线
+
+- 复查此前`CURRENT_STATE.md`和提交：2026-10-31 原世界确有独立 BDS 累计移动4.65格及后续2/2新鲜客户端对齐<=0.75格证据，另死亡后镜像恢复也曾通过两样本对齐和0.0格的历史读数，**之前坐标同步确实修好并实机验收过**。本次不回滚/重做已有算法。
+- 找到20秒`spawnpointTick`观察冷却与4秒可信BDS配对证据窗口冲突。源码`56b1412b15a3777413a9855125ab4bc4ee84c574`改为`freshBdsWitness:true`只可在`BdsWitnessReader`真实接受新独立样本且原`scoutStartProof`满足两份同登录<=4秒/<=0.75格时越过**观察冷却**；仍不能无证据激活床。新增`resumeBedApproachOnWitness`仅在自主、HP>=16、落地、无STOP/FOLLOW/邻近12格危险、45秒内新鲜HOME候选、加载安全床/第一格、合法BDS双见证后尝试**一格平坦接近床**；一次4.5秒上限、75秒重试限速、禁止挖门/挖掘/跑酷，行动结果只有之后≥2份新的独立BDS位移和终点对齐才为`serverMovementVerified=true`。
+- 第一轮Node24 712/713未通过，是新单测伪造job返回值预期错误；第二轮仍1失败因测试bot缺`activateBlock`，定向只读报告证明并仅修测试夹具，**生产安全逻辑不变**。最终`alice_bed_witness_mint_final_20261101_d01` PASS **713/713 Mint Node24、269 Mac Python**，Mint源码同步无重启/世界操作。新单次安全任务`alice_bed_witness_client_reload_20261101_f01` PASS `client_reconnected_17879` + owner/PID/heartbeat/游戏会话，BDS/其他服务器无变化。唯一标记`alice-bed-witness-first-step-phase4-20261101.intent`已消耗，严禁重放。
+- 正式17879只读`alice_bed_witness_postlive_20261101_g01`：Alice在线健康20、2床、室内候选新鲜、`homeAgenda=plan_candidate_bed_approach`、`bedApproachSteps=5`，但`bedStepAttempted=false`、`bedStepBdsVerified=false`，个人spawn未确认，HOME未持久确认。
+- 决定性新证据`alice_bed_witness_provider_readonly_20261101_h01`：自主模式true，IDLE健康20/food16，无当前任务，`independentSamples=0`、`movingQueued=0`、`bdsWitnessStatus=stale_or_invalid_witness`。
+- 更细的仅私有元数据只读`alice_bed_witness_age_readonly_20261101_j01`：owner-pinned原世界17879，`witnessFile=owner_private_file`、`schemaValid=true`、`source=mcsm_querytarget`、`sampleAfterCurrentLogin=false`、`fresh4Seconds=false`，文件年龄与样本年龄均小于1天。**由此可具体说明现有文件是旧登录留下的有效旧样本，不是当前Alice的新鲜独立见证；不是已证实的坐标再次错位。**
+- 仍不能自动生成新BDS证据：此前独立两querytarget工具安全审查阻止，不通过其他工具路线绕行，也不启用持久刷屏轮询、不更改BDS生产世界/Beta、不重启BDS。后续先取得合法可用的当期服务端见证生产入口，再实时两样本验证并观测单格行动+BDS后验；严禁声称已经走到床或设spawn。
+
 ## 2026-11-01 — BDS witness 4s vs bed20s冷却修复；单格床位接近候选回归PASS
 
 - 源码提交`56b1412` + 两次测试夹具修复`b200a32`、`60dab76`。首次713用例1失败因模拟`startJob`回调未创建真实job，二次因测试bot没有`activateBlock`方法；经只读定向Node24诊断确认并只修测试夹具，生产准入不变。
