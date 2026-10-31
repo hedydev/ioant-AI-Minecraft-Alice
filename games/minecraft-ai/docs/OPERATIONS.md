@@ -1,3 +1,9 @@
+## 2026-11-01 — Alice低频自动MCSManager导航见证安装任务
+
+- 用户已明确授权直接修复。新`.openclaw/tasks/alice_bds_demand_timer_install_20261101.json`通过原Mac→Mint固定SSH，仅在`alice-bds-demand-timer.py --self-test`真实通过后调用Mint`--install`，安装并启用**新**用户systemd timer，不启动或重启任何BDS服务、世界、Alice客户端、不运行`--once`；仅用户级`alice-bds-demand.timer`每分钟检查是否有原自主导航缺BDS见证需求，单次最多2个查询，总额40/h、单批次55秒间隔，原旧`alice-bds-position-witness.service`保持disabled。
+- 如需停用新机制：`systemctl --user disable --now alice-bds-demand.timer`；旧querytarget --loop仍显式被禁止。任何自动查询只有系统定时器在后续真实需求触发时才执行，安装完成回执**不能**冒充已经观察到自动查询或持续物理移动。
+- 新installer在源回归及Mint同步后才允许提交实际工具任务；若用户级systemd不可用/单位冲突则安全阻止，不越权清理旧服务。
+
 ## 2026-11-01 — MCSManager private ACK与按需双样本上线准备
 
 - `witness_ack.cjs` 在原Alice真实接收某一独立BDS样本时同步原子写入private 0600 ACK，提供`writerPid`、`producerStartToken`、`independentSamples/At`、`loginAt`、`positionGateSatisfied`，无实际坐标/用户名/API key；只读外部消费者可0.1秒检查此回执，避免等待2秒心跳。配置不修改旧4秒/0.75格门禁，也不生成游戏命令。

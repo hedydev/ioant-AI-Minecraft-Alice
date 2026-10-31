@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "User-approved bounded Alice MCSManager demand-only systemd user timer install, no BDS restart",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-bds-demand-timer-install-mac.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "install_existing_mint_user_timer",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-bds-demand-timer-install-mac.py",
+      "args": [
+        "--install",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 95
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "timer_install",
+      "file": "alice_mcsm_timer_install.json",
+      "format": "json"
+    }
+  ]
+}
