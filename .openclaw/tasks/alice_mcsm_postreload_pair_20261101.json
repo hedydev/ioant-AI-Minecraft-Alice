@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Bounded two-or-fewer current-session coordinate queries after guarded Alice-only restart",
+  "steps": [
+    {
+      "name": "contract",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mcsm-postreload-pair-20261101.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "postreload_two_real_samples",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mcsm-postreload-pair-20261101.py",
+      "args": [
+        "--run",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 120
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "postreload_pair",
+      "file": "alice_mcsm_demand_live.json",
+      "format": "json"
+    }
+  ]
+}
