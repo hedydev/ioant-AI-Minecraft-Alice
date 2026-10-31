@@ -98,14 +98,23 @@ function runCommand(runtime,command,report){
       return response('rejected',proof.reason,'客户端与服务器坐标未对齐，试走拒绝')
     // A short-lived, explicit one-shot authorization; not permission for
     // future witness files or arbitrary background walking.
-    const arm={expiresAt:runtime.clock()+12000,report,timer:null}
+    const preselected=selectProbeRoute(bot)
+    const target=preselected?.candidate?.target
+    // This coordinate is a real loaded, 2-cell validated route's FIRST cell.
+    // It is NOT proof that Alice can actually walk there without a fresh BDS pair.
+    const pinnedTarget=target&&[target.x,target.y,target.z].every(Number.isSafeInteger)?
+      {x:target.x,y:target.y,z:target.z}:null
+    const arm={expiresAt:runtime.clock()+12000,report,timer:null,target:pinnedTarget}
     arm.timer=setTimeout(()=>{
       if(runtime.pendingOperatorProbe===arm)
         cancelArmedProbe(runtime,'probe_arm_expired')
     },12000)
     arm.timer.unref?.()
     runtime.pendingOperatorProbe=arm
-    return response('started','probe_armed','已等待本次两次独立BDS坐标，12秒后自动失效')
+    return response('started','probe_armed',pinnedTarget?
+      '目标坐标 '+[pinnedTarget.x,pinnedTarget.y,pinnedTarget.z].join(',')+
+      ' 已从附近已加载方块选定；等待两份独立BDS样本，12秒后失效（尚未移动）':
+      '附近安全目标暂未验证；等待两份独立BDS样本，12秒后失效（尚未移动）')
   }
   const label=action==='gather_wood'?'收集原木':action==='craft_sword'?
     '制作木剑':'安全进食'
@@ -139,7 +148,7 @@ function runCommand(runtime,command,report){
   return response('started','job_started',label+'已经启动，等待完成回执')
 }
 
-function startOperatorProbe(runtime,report){
+function startOperatorProbe(runtime,report,pinnedTarget=null){
   const bot=runtime.bot,core=runtime.core
   const resp=(status,reason,message)=>({status,reason,message,action:'probe_step'})
   if(runtime.closed||!runtime.seenSpawn||!runtime.ready()||runtime.job||
@@ -151,6 +160,10 @@ function startOperatorProbe(runtime,report){
   const route=selectProbeRoute(bot)
   if(!route.candidate)return resp('rejected',route.reason,'附近没有经过碰撞和支撑验证的安全两格步行路线')
   const candidate=route.candidate
+  if(pinnedTarget&&(![pinnedTarget.x,pinnedTarget.y,pinnedTarget.z].every(Number.isSafeInteger)||
+      ['x','y','z'].some(axis=>candidate.target?.[axis]!==pinnedTarget[axis])))
+    return resp('rejected','probe_target_changed',
+      '附近通道已改变，原目标不再可信；本次不走动')
   runtime.lastHumanAt=runtime.clock()
   runtime.nextIdleAt=Math.max(runtime.nextIdleAt,
     runtime.clock()+runtime.p.autonomy_policy.AUTONOMY_GRACE_MS)
@@ -193,7 +206,7 @@ function resumeArmedProbe(runtime){
    arm.report('rejected',proof.reason,'BDS双样本未与客户端对齐')
    return {state:'rejected',reason:proof.reason}
  }
- const result=startOperatorProbe(runtime,arm.report)
+ const result=startOperatorProbe(runtime,arm.report,arm.target)
  arm.report(result.status,result.reason,result.message)
  return {state:result.reason==='probe_route_started'?'started':'rejected',reason:result.reason}
 }

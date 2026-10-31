@@ -140,3 +140,21 @@ test('explicit online FOLLOW is accepted during danger and low health without st
  assert.equal(calls.some(c=>c[0]==='cancel'),false,'emergency controller not cancelled')
  assert.equal(runCommand(runtime,{action:'gather_wood'},()=>{}).reason,'safety_preempted')
 })
+
+test('probe arm never invents destination when current chunks are unavailable',()=>{
+ const {runtime,calls}=makeRuntime()
+ runtime.movementEvidence={get:()=>({independentSamples:0})}
+ const r=runCommand(runtime,{action:'probe_step'},()=>{})
+ assert.equal(r.reason,'probe_armed')
+ assert.match(r.message,/目标暂未验证/)
+ assert.equal(runtime.pendingOperatorProbe.target,null)
+ assert.equal(calls.some(x=>x[0]==='start'),false)
+ cancelArmedProbe(runtime,'probe_cancelled_by_stop')
+})
+test('probe rechecks pinned adjacent destination instead of changing destination',()=>{
+ const src=fs.readFileSync(path.join(__dirname,'../src/console_commands.cjs'),'utf8')
+ assert.match(src,/const preselected=selectProbeRoute\(bot\)/)
+ assert.match(src,/pinnedTarget=target&&\[target.x,target.y,target.z\].every\(Number.isSafeInteger\)/)
+ assert.match(src,/probe_target_changed/)
+ assert.match(src,/startOperatorProbe\(runtime,arm.report,arm.target\)/)
+})
