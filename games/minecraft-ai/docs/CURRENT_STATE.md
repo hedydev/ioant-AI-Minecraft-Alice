@@ -1,3 +1,8 @@
+## 2026-11-01 — 原MCSManager坐标服务只读核查，不调用querytarget
+
+- 新一次性任务 `.openclaw/tasks/alice_mcsm_readiness_readonly_20261101.json` 与 `scripts/alice-mcsm-readiness-readonly.py` 通过原固定SSH主机仅执行已存在的 `bds_position_witness.py --check`（私有配置合法性）、`--diagnose`（仅GET /api/protected_instance/outputlog）、`systemctl --user is-active`（旧服务是否误激活）。脚本只返回固定枚举，屏蔽原始凭证、实例UUID、输出日志及真实坐标，故无玩家位置外泄。绝不执行`--once`、`--loop`、`/command`、重启或世界操作。
+- 即使`--diagnose`可读，也只能证明 **MCSManager日志读取接口有效**；不等于指定实例映射17879已二次核实，或BDS能接收`querytarget`、Alice当前登录获得两份4秒独立样本。结果字段`instanceIdentityProven=false`、`sourceActiveProven=false`严格保留。任何命令执行仍需合法授权，不能绕过旧安全拦截。
+
 ## 2026-11-01 — 旧持续querytarget服务入口彻底拒绝（源码，未在原世界查询）
 
 - 旧`bds_position_witness.py --loop`本身每2秒不断发送BDS控制台`querytarget`，与用户明确要求的仅有业务需要才查询冲突。现将`--loop`保留为**显式禁用的兼容参数**，在读取operator机密配置及任意HTTP请求**之前**退出、固定安全提示、零命令；`--check`、`--diagnose`只读原有行为，`--once`仍保留为**需另行审批的operator单次查询**（不自动重试，不扩展授权）。

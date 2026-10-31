@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Alice existing MCSManager position provider read-only config/log availability",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mcsm-readiness-readonly.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "mint_mcsm_status_readonly",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mcsm-readiness-readonly.py",
+      "args": [
+        "--check",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 55
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "mcsm_health",
+      "file": "mcsm_readiness.json",
+      "format": "json"
+    }
+  ]
+}
