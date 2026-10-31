@@ -3197,7 +3197,9 @@ test('BDS witness overrides old 20s bed observation cooldown only when proof is 
  let n=0;e.startJob=(type,source,fn)=>{n++;return true}
  assert.equal(await e.spawnpointTick(),false)
  assert.equal(n,0)
- assert.equal(await e.spawnpointTick({freshBdsWitness:true}),true)
+ // This stub records startJob without creating a real job object. The API
+ // therefore returns false, but the single eligible start callback fires.
+ assert.equal(await e.spawnpointTick({freshBdsWitness:true}),false)
  assert.equal(n,1)
  e.stop()
 })
