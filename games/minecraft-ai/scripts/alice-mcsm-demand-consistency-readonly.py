@@ -24,8 +24,10 @@ def valid(x):
  if x['ackGateAtWrite'] is not None and type(x['ackGateAtWrite']) is not bool:return None
  if not isinstance(x['serviceResultEvents'],list) or len(x['serviceResultEvents'])>5:return None
  for e in x['serviceResultEvents']:
-  if not isinstance(e,dict) or set(e)!=('result','ageBand') or e['ageBand'] not in AGE or
-     not isinstance(e['result'],str) or len(e['result'])>45:return None
+  if (not isinstance(e,dict) or set(e)!={'result','ageBand'} or
+      e['ageBand'] not in AGE or not isinstance(e['result'],str) or
+      len(e['result'])>45):
+   return None
  return x
 def read(out):
  if out.is_symlink() or not out.is_dir():raise ValueError('unsafe_output')
