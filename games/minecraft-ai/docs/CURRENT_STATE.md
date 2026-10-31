@@ -1,3 +1,10 @@
+## 2026-11-01 — Takeover: tested HOME frontier source and dedicated client-only activation (OPERATOR TASK STAGED)
+
+- Independent OpenClaw Mac `repository_fetch` / `repository_sync` completed on clean main, pinned b491257; original source checkout fast-forwarded from 151d9e1. `alice_takeover_home_readonly_20261031_v01` established Alice ONLINE health20, 2 remembered beds, daytime, HOME not established, personal bed spawn unverified; `idleGate=position_witness_unverified`, door/return not verified. No BDS query sent.
+- `alice_takeover_mint_nonrestart_sync_20261101_v01` passed: Mac Python 267 tests, Mint Node24 **699/699**, non-restart source sync. Original BDS 17879 and all other BDS worlds were NOT restarted; this does not activate changed Node code in the currently running Alice process.
+- This commit adds tracked `alice-home-frontier-client-reload-20261101.py` and its one-time task, with a fresh O_EXCL intent token. Execute only once after verifying the current original-world Alice operator check and identity; it calls existing guarded `alice-mint.py restart` on ALICE CLIENT ONLY, then waits for fresh owned PID+heartbeat+session. **At commit time: not run, no claimed game effect.** If denied/uncertain, inspect same receipt; do not replay or circumvent safety controls.
+- After independently verified reconnect, take a separate read-only HOME status. A positive local room candidate is not proven bed personal spawn, door traversal, shelter safety, or BDS movement. Previous BDS pair attempt was tool-blocked; never use this client-only reload as a substitute or to lower the movement gate.
+
 ## 2026-10-31 23:40+08:00 — HOME first field evidence and safe frontier recognition (checkpoint)
 
 - Existing production ONLY Bedrock BDS `17879`, Alice client independently reloaded using unique once-only task `alice_home_v2_client_reload_20261031_b01` after **698/698** Mint Node24 and 267 Mac Python passed at source `e9d4d97`. Receipt: `client_reconnected_17879`, fresh heartbeat, game session established, BDS did not restart, no other server touched.
