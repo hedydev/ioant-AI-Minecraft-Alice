@@ -1,7 +1,7 @@
 'use strict'
 const test=require('node:test'),assert=require('node:assert/strict')
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path')
-const {CommandMailbox,runCommand,cleanCommand}=require('../src/console_commands.cjs')
+const {CommandMailbox,runCommand,cleanCommand,resumeArmedProbe,cancelArmedProbe}=require('../src/console_commands.cjs')
 const root=async fn=>{const d=fs.mkdtempSync(path.join(os.tmpdir(),'alice-console-'))
   try{return await fn(d)}finally{fs.rmSync(d,{recursive:true,force:true})}}
 const id='a'.repeat(32)
@@ -22,10 +22,24 @@ const makeRuntime=()=>{
  }
  return {runtime,calls}
 }
+test('one operator probe arms on absent evidence, never moves before BDS pair, and STOP cancels',()=>{
+ const {runtime,calls}=makeRuntime()
+ runtime.movementEvidence={get:()=>({independentSamples:0})}
+ const receipt=[]
+ const report=(...x)=>receipt.push(x)
+ const r=runCommand(runtime,{action:'probe_step'},report)
+ assert.equal(r.reason,'probe_armed')
+ assert.equal(resumeArmedProbe(runtime).state,'awaiting_fresh_pair')
+ assert.equal(calls.some(x=>x[0]==='start'),false)
+ assert.equal(cancelArmedProbe(runtime,'probe_cancelled_by_stop'),true)
+ assert.equal(runtime.pendingOperatorProbe,null)
+ assert.equal(receipt.at(-1)[1],'probe_cancelled_by_stop')
+})
 test('safe operator probe rejects stale BDS proof; no path starts',()=>{
  const {runtime,calls}=makeRuntime()
  runtime.movementEvidence={get:()=>({independentSamples:0})}
- assert.equal(runCommand(runtime,{action:'probe_step'},()=>{}).reason,'scout_bds_position_unavailable')
+ assert.equal(runCommand(runtime,{action:'probe_step'},()=>{}).reason,'probe_armed')
+ cancelArmedProbe(runtime,'probe_cancelled_by_stop')
  assert.equal(calls.some(x=>x[0]==='start'),false)
 })
 test('typed parser rejects all unknown, injected or out-of-range actions',()=>{

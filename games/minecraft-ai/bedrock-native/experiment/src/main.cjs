@@ -21,7 +21,7 @@ const {attachBedrockPlayerCoordinates}=require('./bedrock_player_coordinates.cjs
 const {LiveSettings,LiveStatus}=require('./live_control.cjs')
 const {snapshot,ViewRecorder,ViewPublisher}=require('./world_view.cjs')
 const {AcceptanceJournal}=require('./acceptance_log.cjs')
-const {CommandMailbox}=require('./console_commands.cjs')
+const {CommandMailbox,resumeArmedProbe,cancelArmedProbe}=require('./console_commands.cjs')
 const {LifeObserver}=require('./life_observer.cjs')
 const {attachRespawnRecovery}=require('./respawn_recovery.cjs')
 const {attachConnectionAudit}=require('../../connection_audit.cjs')
@@ -322,6 +322,11 @@ async function main(args=process.argv.slice(2)){
   let mirroredRespawnCycle=0
   const witnessTimer=live&&bdsWitness?setInterval(()=>{
     if(!bdsWitness.poll(movementEvidence))return
+    // Complete a preauthorized short-lived probe on THIS SAME 250ms
+    // validated BDS witness event, before the 4s pair expires over SSH.
+    const probe=resumeArmedProbe(runtime)
+    if(probe.state==='started'||probe.state==='rejected')
+      runtimeLogger.log('[Alice probe] BDS-triggered operator probe:',JSON.stringify(probe))
     const recovery=respawnRecovery.get()
     const r=reconcileRespawnMirror({bot,evidence:movementEvidence,
       phase:recovery.phase,cycle:recovery.cycles,mirroredCycle:mirroredRespawnCycle})
@@ -362,6 +367,7 @@ async function main(args=process.argv.slice(2)){
   bot._client.on('inventory_content',pkt=>runtime.noteInventory(pkt))
   bot.on('health',()=>runtime.noteHealth())
   bot.on('death',()=>{
+    cancelArmedProbe(runtime,'probe_cancelled_by_death')
     movementEvidence.beginRespawnEpoch()
     runtime.noteDeath()
     if(life?.death())runtimeLogger.log('[Alice life] death observed:',

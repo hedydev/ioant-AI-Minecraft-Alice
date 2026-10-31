@@ -55,6 +55,7 @@ function runCommand(runtime,command,report){
   // STOP must be available even if inventory and health have not yet fully
   // synced. It also outranks a queued ordinary command in the Python mailbox.
   if(action==='stop'){
+    cancelArmedProbe(runtime,'probe_cancelled_by_stop')
     runtime.cancelActive('stop from console');runtime.goalPlanner.halt()
     core.stop('console stop');runtime.lastGuardedPlayer=null
     return response('completed','stopped','已停止可取消的任务与跟随；紧急安全行为仍受保护')
@@ -89,26 +90,22 @@ function runCommand(runtime,command,report){
     return response('rejected','safety_preempted','当前睡眠或有危险；任务未启动')
   if(runtime.job)return response('rejected','job_in_progress','Alice 正在执行任务；请先停止')
   if(action==='probe_step'){
-    if(core.hasFollowIntent?.())return response('rejected','follow_intent_active','当前存在跟随意图，禁止试走抢占控制权')
+    if(runtime.pendingOperatorProbe)return response('rejected','probe_already_armed','已有一次限时试走正在等待BDS见证')
+    if(core.hasFollowIntent?.())return response('rejected','follow_intent_active','存在跟随意图，不允许试走抢占')
     const proof=scoutStartProof(bot,runtime.movementEvidence,runtime.clock)
-    if(!proof.ok)return response('rejected',proof.reason,'未获得两次新鲜且对齐的 BDS 位置，不启动试走')
-    const route=selectProbeRoute(bot)
-    if(!route.candidate)return response('rejected',route.reason,'附近未验证出安全的两格平地试走路线')
-    const candidate=route.candidate
-    runtime.lastHumanAt=runtime.clock()
-    runtime.nextIdleAt=Math.max(runtime.nextIdleAt,
-      runtime.clock()+runtime.p.autonomy_policy.AUTONOMY_GRACE_MS)
-    runtime.startJob('EXPLORE','控制台',async signal=>{
-      const result=await runtime.boundedScout(candidate,signal,{allowNightFallback:true})
-      const ok=result?.serverMovementVerified===true
-      report(ok?'completed':'failed',ok?'server_verified_scout_endpoint':
-        safeReason(result?.reason),'试走 '+(ok?'服务端移动已验证':'未获得实际移动确认'))
-      return result
-    },{label:'两格安全试走',announce:false})
-    if(!runtime.job)return response('rejected','probe_start_denied','试走未能通过生存与导航检查')
-    const dest=candidate.target
-    return response('started','probe_route_started',
-      '已选择附近坐标 '+[dest.x,dest.y,dest.z].join(',')+'；2格安全步行，等待 BDS 见证')
+    if(proof.ok)return startOperatorProbe(runtime,report)
+    if(proof.reason!=='scout_bds_position_unavailable')
+      return response('rejected',proof.reason,'客户端与服务器坐标未对齐，试走拒绝')
+    // A short-lived, explicit one-shot authorization; not permission for
+    // future witness files or arbitrary background walking.
+    const arm={expiresAt:runtime.clock()+12000,report,timer:null}
+    arm.timer=setTimeout(()=>{
+      if(runtime.pendingOperatorProbe===arm)
+        cancelArmedProbe(runtime,'probe_arm_expired')
+    },12000)
+    arm.timer.unref?.()
+    runtime.pendingOperatorProbe=arm
+    return response('started','probe_armed','已等待本次两次独立BDS坐标，12秒后自动失效')
   }
   const label=action==='gather_wood'?'收集原木':action==='craft_sword'?
     '制作木剑':'安全进食'
@@ -140,6 +137,65 @@ function runCommand(runtime,command,report){
     '控制台',perform,{label,announce:false})
   if(!runtime.job)return response('rejected','job_start_denied','任务未能启动')
   return response('started','job_started',label+'已经启动，等待完成回执')
+}
+
+function startOperatorProbe(runtime,report){
+  const bot=runtime.bot,core=runtime.core
+  const resp=(status,reason,message)=>({status,reason,message,action:'probe_step'})
+  if(runtime.closed||!runtime.seenSpawn||!runtime.ready()||runtime.job||
+     core.hasFollowIntent?.()||bot.isSleeping||runtime.safetyBusy||
+     runtime.threat()||bot.health<16)
+    return resp('rejected','probe_safety_preempted','生存或操作状态不允许试走')
+  const proof=scoutStartProof(bot,runtime.movementEvidence,runtime.clock)
+  if(!proof.ok)return resp('rejected',proof.reason,'未获得同步的双BDS新鲜坐标')
+  const route=selectProbeRoute(bot)
+  if(!route.candidate)return resp('rejected',route.reason,'附近没有经过碰撞和支撑验证的安全两格步行路线')
+  const candidate=route.candidate
+  runtime.lastHumanAt=runtime.clock()
+  runtime.nextIdleAt=Math.max(runtime.nextIdleAt,
+    runtime.clock()+runtime.p.autonomy_policy.AUTONOMY_GRACE_MS)
+  runtime.startJob('EXPLORE','控制台',async signal=>{
+    const result=await runtime.boundedScout(candidate,signal,{allowNightFallback:true})
+    if(signal.aborted)return {ok:false,reason:'task_cancelled'}
+    const ok=result?.serverMovementVerified===true
+    report(ok?'completed':'failed',ok?'server_verified_scout_endpoint':
+      safeReason(result?.reason),'试走 '+(ok?'服务端移动已验证':'未获得实际移动确认'))
+    return result
+  },{label:'两格安全试走',announce:false})
+  if(!runtime.job)return resp('rejected','probe_start_denied','试走未通过生存与导航检查')
+  const dest=candidate.target
+  return resp('started','probe_route_started',
+    '已选择附近坐标 '+[dest.x,dest.y,dest.z].join(',')+'；2格安全步行，等待 BDS 见证')
+}
+function cancelArmedProbe(runtime,why='probe_cancelled'){
+ const arm=runtime?.pendingOperatorProbe
+ if(!arm)return false
+ runtime.pendingOperatorProbe=null
+ clearTimeout(arm.timer)
+ arm.report('failed',why,'安全试走等待已结束，没有开始移动')
+ return true
+}
+function resumeArmedProbe(runtime){
+ const arm=runtime?.pendingOperatorProbe
+ if(!arm)return {state:'not_armed'}
+ if(runtime.clock()>arm.expiresAt){
+   cancelArmedProbe(runtime,'probe_arm_expired')
+   return {state:'expired'}
+ }
+ // Called only after BdsWitnessReader itself ingests an operator-approved
+ // independent observation. Never run from a timer, local prediction, or
+ // raw network correction.
+ const proof=scoutStartProof(runtime.bot,runtime.movementEvidence,runtime.clock)
+ if(proof.reason==='scout_bds_position_unavailable')return {state:'awaiting_fresh_pair'}
+ runtime.pendingOperatorProbe=null
+ clearTimeout(arm.timer)
+ if(!proof.ok){
+   arm.report('rejected',proof.reason,'BDS双样本未与客户端对齐')
+   return {state:'rejected',reason:proof.reason}
+ }
+ const result=startOperatorProbe(runtime,arm.report)
+ arm.report(result.status,result.reason,result.message)
+ return {state:result.reason==='probe_route_started'?'started':'rejected',reason:result.reason}
 }
 class CommandMailbox{
   constructor({root=rootDefault(),runtime,clock=Date.now,log=console}={}){
@@ -186,4 +242,4 @@ class CommandMailbox{
     }finally{this.busy=false}
   }
 }
-module.exports={CommandMailbox,runCommand,cleanCommand,findPlayer}
+module.exports={CommandMailbox,runCommand,cleanCommand,findPlayer,resumeArmedProbe,cancelArmedProbe}
