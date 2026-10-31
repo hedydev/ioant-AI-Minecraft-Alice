@@ -87,6 +87,10 @@ class Receiver:
             for k in ("x", "y", "z")
         ):
             raise ValueError("untrusted_server_observation")
+        if self.boot is not None and (entry["boot"] != self.boot or entry["playerId"] != self.player):
+            raise ValueError("session_identity_changed")
+        if entry["sequence"] <= self.sequence:
+            raise ValueError("stale_sequence")
         observed_at = entry["observedAtUnixMs"]
         receive_ns = self.clock()
         receive_ms = receive_ns // 1_000_000
@@ -95,10 +99,6 @@ class Receiver:
                 or observed_at > receive_ms or receive_ms - observed_at > 4000
                 or observed_at <= self.last_observed_at):
             raise ValueError("observation_stale_or_future")
-        if self.boot is not None and (entry["boot"] != self.boot or entry["playerId"] != self.player):
-            raise ValueError("session_identity_changed")
-        if entry["sequence"] <= self.sequence:
-            raise ValueError("stale_sequence")
         serial = max(receive_ns, self.last_serial + 1)
         if not 10**15 <= serial < 10**20:
             raise ValueError("invalid_receive_clock")
