@@ -1,3 +1,11 @@
+## 2026-11-01 — 最终实机验收：新鲜MCSManager自动位置见证已恢复，自主路径仍待单独修复
+
+- `alice_mcsm_timer_resume_after_heartbeat_20261101_bt01` PASS 原17879 owner + 5s内心跳、MCSManager绑定、timer active/enabled、legacy loop inactive；没有重启BDS/世界或向控制台直接下命令。
+- **真实自动调度效果**：`alice_mcsm_timer_final_live_consistency_20261101_bv01` PASS：`clientConnected=true`、`statusAgeBand=within4s`、`statusSampleCount=2`与`ackSampleCount=2`一致，`ackSameSession=true`、`ackGateAtWrite=true`、`ackAgeBand=within90s`、`budgetUsedHour=14`、`budgetLastBatchAgeBand=within90s`，最近`journalctl --user -u alice-bds-demand.service` 结果`position_pair_verified`。在同一个实际新登录里，实时BDS独立采样与心跳已一致。
+- **导航后验** `alice_mcsm_timer_final_movement_readonly_20261101_bw01`：Alice仍连原服、autonomous、IDLE、HP20 food16、独立样本增至**4**，`movingQueued=6`，`independentPairTravelBlocks=0`、当前样本过4秒后`expired_witness`，`idleHoldReason=model_unavailable`、`worldRoutineIdleGate=work_cooldown`、`lastDecisionAction=WORK`、`lastDecisionReason=site_not_rejected`。**证明位置见证链路恢复，不证明自主路径、床设置或真正BDS位移完成**。继续应从实际`model_unavailable`、模型连接/任务队列与原导航冷却/实体保护分析，勿再重复建设新BDS/观察者。
+- 当前有效安全策略：用户级`alice-bds-demand.timer`启用，每约60秒**检查**是否存在安全的自主导航需求；每次<=2个`querytarget`、每小时<=40、批间隔>=55秒，只有本进程`status.json` mtime+updatedAt<=10秒且心跳新鲜、owner/世界/实例确认才可能查询，过期直接拒绝；原`--loop`永久禁用，不降低双样本4秒与0.75m对齐、不强制移动。关闭：`systemctl --user disable --now alice-bds-demand.timer`。本轮原BDS17879未停止/重启，其它服务器与世界未触碰。
+- 最终代码/文档以本提交为准，GitHub `hedydev/ioant-AI-Minecraft-Alice` main。OpenClaw上一条handoff revision32，后续保存新revision并在新会话resume；不要重放已完成的one-shot现场任务或Alice客户端重启。
+
 ## 2026-11-01 — 原17879 MCSManager自动位置见证恢复：真实验收回执
 
 - **根因已确证**：`status.json`久未更新（>5min，旧`independentSamples=6`），同一进程最新250ms private ACK 已`independentSamples=12`且有<90秒的独立BDS样本和`positionGateSatisfied=true`。原用户级按需timer以owner PID但陈旧status作为需求输入，预算曾计入10次，无法证明运动。已先实际**停用新timer**：`alice_mcsm_timer_pause_due_stale_status_20261101_bm01` `timerStopped=true,timerDisabled=true`，BDS/Alice未重启。
