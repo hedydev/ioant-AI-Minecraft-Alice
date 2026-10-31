@@ -21,15 +21,25 @@ class BdsWitnessReader{
         this.lastStatus='unsafe_witness_file';return false
       }
       const row=JSON.parse(fs.readFileSync(this.file,'utf8'))
-      const id=this.name(),now=this.clock(),loginAt=evidence.get()?.loginAt
+      const id=this.name(),now=this.clock(),s=evidence.get()
+      const loginAt=s?.loginAt,lifeAt=s?.lifeEpochAt
       if(row?.version!==1||!['mcsm_querytarget','bds_script_api'].includes(row.source)||
         !/^[A-Za-z0-9_ ]{3,16}$/.test(id||'')||row.gamertag!==id||
         typeof row.serial!=='string'||!/^[0-9]{16,20}$/.test(row.serial)||
         typeof row.uniqueId!=='string'||!/^[-A-Za-z0-9]{8,72}$/.test(row.uniqueId)||
         !validPosition(row.feet)||!Number.isSafeInteger(row.observedAt)||
-        !Number.isSafeInteger(loginAt)||row.observedAt<=loginAt||
-        row.observedAt>now||now-row.observedAt>4000){
+        !Number.isSafeInteger(loginAt)){
         this.lastStatus='stale_or_invalid_witness';return false
+      }
+      if(row.observedAt<=loginAt){
+        this.lastStatus='prior_login_witness';return false
+      }
+      if(s?.awaitingVerifiedRespawn===true||
+         Number.isSafeInteger(lifeAt)&&row.observedAt<=lifeAt){
+        this.lastStatus='prior_life_witness';return false
+      }
+      if(row.observedAt>now||now-row.observedAt>4000){
+        this.lastStatus='expired_witness';return false
       }
       const ok=evidence.ingestIndependentPosition({
         feet:row.feet,serial:row.serial,uniqueId:row.uniqueId,

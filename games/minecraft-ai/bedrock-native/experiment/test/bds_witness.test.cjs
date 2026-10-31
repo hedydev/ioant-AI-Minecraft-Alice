@@ -95,3 +95,43 @@ test('live main has separate passive fast witness reader and clears it on every 
  assert.equal((main.match(/clearInterval\(witnessTimer\)/g)||[]).length,3)
  assert.doesNotMatch(main,/bds_position_witness\.py.*--loop/)
 })
+
+test('reader refuses a fresh pre-death witness after a new life epoch',()=>{
+ const f=make()
+ try{
+  f.step(1000);f.write(1,'1792572000000000001')
+  assert.equal(f.reader.poll(f.e),true)
+  f.e.beginRespawnEpoch()
+  assert.equal(f.reader.poll(f.e),false)
+  assert.equal(f.reader.lastStatus,'prior_life_witness')
+  f.step(200);f.write(1,'1792572000000000002')
+  assert.equal(f.reader.poll(f.e),false)
+  assert.equal(f.reader.lastStatus,'prior_life_witness')
+  f.e.completeRespawnEpoch()
+  assert.equal(f.reader.poll(f.e),false)
+  assert.equal(f.reader.lastStatus,'prior_life_witness')
+  f.step(300);f.write(1,'1792572000000000003')
+  assert.equal(f.reader.poll(f.e),true)
+  assert.equal(f.e.get().independentSamples,1)
+ }finally{f.close()}
+})
+test('reader differentiates prior-login from expired current-session witness',()=>{
+ const f=make()
+ try{
+  f.step(1000);f.write(1,'1792572000000000001')
+  const old=JSON.parse(fs.readFileSync(f.file,'utf8'))
+  old.observedAt=9900
+  fs.writeFileSync(f.file,JSON.stringify(old))
+  assert.equal(f.reader.poll(f.e),false)
+  assert.equal(f.reader.lastStatus,'prior_login_witness')
+  f.write(1,'1792572000000000002')
+  f.step(5000)
+  assert.equal(f.reader.poll(f.e),false)
+  assert.equal(f.reader.lastStatus,'expired_witness')
+ }finally{f.close()}
+})
+test('main advances BDS witness floor only after verified positive-health Bedrock respawn',()=>{
+ const main=fs.readFileSync(path.join(__dirname,'../src/main.cjs'),'utf8')
+ assert.match(main,/if\(respawnRecovery\.get\(\)\.phase==='respawn_verified'&&\s*movementEvidence\.completeRespawnEpoch\(\)\)/)
+ assert.doesNotMatch(main,/movementEvidence\.completeRespawnEpoch\(\).*bot\.on\('death'/)
+})

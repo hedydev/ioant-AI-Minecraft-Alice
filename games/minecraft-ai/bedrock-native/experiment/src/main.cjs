@@ -395,6 +395,14 @@ async function main(args=process.argv.slice(2)){
   })
   bot.on('spawn',()=>{
     life?.spawn()
+    // RespawnRecovery installed its listener before this one. Only a real
+    // spawn WITH positive health advances its phase to respawn_verified.
+    // Never accept an old-life BDS witness during the death/ready handshake.
+    if(respawnRecovery.get().phase==='respawn_verified'&&
+       movementEvidence.completeRespawnEpoch())
+      runtimeLogger.log('[Alice movement] post-respawn witness epoch reset:',
+        JSON.stringify({phase:'respawn_verified',oldLifeWitnessRejected:true,
+          querySent:false,clientPositionChanged:false}))
     runtime.deathNoted=false
     // start_game is server-origin; record its initial player coordinate
     // without treating it as a post-login movement acknowledgement.

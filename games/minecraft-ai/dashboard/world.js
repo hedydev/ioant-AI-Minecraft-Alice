@@ -201,6 +201,25 @@ async function refreshCommandState(){
     const distance=self&&serverFeet&&[self.x,self.y,self.z,serverFeet.x,serverFeet.y,serverFeet.z]
       .every(Number.isFinite)?Math.hypot(self.x-serverFeet.x,self.y-serverFeet.y,self.z-serverFeet.z):null;
     const moveVerified=freshPair&&distance!==null&&distance<=.75;
+    const witnessText={
+      not_configured:'未配置独立BDS见证文件',
+      unsafe_witness_file:'见证文件权限不符合安全要求',
+      stale_or_invalid_witness:'见证文件身份或格式无法验证',
+      prior_login_witness:'见证属于以前的登录会话',
+      prior_life_witness:'见证属于死亡前或重生尚未确认的阶段',
+      expired_witness:'见证已经超过4秒有效期',
+      duplicate_or_rejected:'见证未更新或未通过去重校验',
+      accepted:'已接纳一条新的独立BDS见证',
+      unavailable:'当前无法读取独立见证文件',
+      disabled:'未启用独立见证读取器'
+    };
+    const witnessLabel=moveVerified?'两份新鲜独立BDS坐标已对齐（不代表实际行走）':
+      witnessText[witness.witnessStatus]||'独立位置见证状态待核对';
+    setText('world-bds-witness-status',!run?'状态未知':witnessLabel);
+    setText('world-bds-witness-detail',!run?'等待Alice连接':
+      '当前会话独立样本 '+(Number.isSafeInteger(witness.independentSamples)?
+        witness.independentSamples:'—')+
+      ' · 不会根据客户端预测位置解除移动限制');
     setText('world-current-follow',!run?'当前跟随：Alice 离线，状态未知':
       !activeFollow?'当前跟随：未设置':
       '当前跟随：'+activeFollow+
@@ -228,7 +247,7 @@ async function refreshCommandState(){
     setText('world-idle-reason','⚠️ 控制服务不可用，无法确定 IDLE 原因');
     setText('world-death-learning','控制服务不可用，死亡原因未知');
     setText('world-deaths','未知');setText('world-respawn-status','未验证');
-    for(const id of ['world-home-observed','world-home-observed-detail','world-home-established','world-home-route','world-bed-reach','world-bed-gate','world-bed-approach','world-bed-approach-detail','world-bed-step','world-bed-step-detail'])setText(id,'状态未知');
+    for(const id of ['world-home-observed','world-home-observed-detail','world-home-established','world-home-route','world-bed-reach','world-bed-gate','world-bed-approach','world-bed-approach-detail','world-bed-step','world-bed-step-detail','world-bds-witness-status','world-bds-witness-detail'])setText(id,'状态未知');
     setText('world-command-readonly','控制服务不可用');
     if(!lastCommandId)showCommandResult('无法读取 Mint 控制状态：'+String(err.message||err),'error');
   }finally{commandReadBusy=false;disableCommandControls()}

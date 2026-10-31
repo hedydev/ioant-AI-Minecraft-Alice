@@ -14,6 +14,10 @@ function attachMovementEvidence(client,{clock=Date.now,eyeHeight=()=>1.62}={}){
   let independentTravel=0,independentPreviousAt=null,independentPairTravel=null
   let serverTick=null,authority=null,rewindHistory=null,closed=false
   let loginFeet=null,loginAt=null
+  // start_game pins the transport login; Bedrock death does NOT emit another
+  // start_game. Separate life epochs prevent a recent pre-death witness file
+  // from being replayed as a new-life sample immediately after respawn.
+  let lifeEpochAt=null,awaitingVerifiedRespawn=false
   function record(pos,source,tick=null,observedAt=clock(),alreadyFeet=false){
     if(closed||!finitePos(pos))return
     const y=alreadyFeet?pos.y:pos.y-(Number.isFinite(eyeHeight())?eyeHeight():1.62)
@@ -29,6 +33,7 @@ function attachMovementEvidence(client,{clock=Date.now,eyeHeight=()=>1.62}={}){
     // A second login without a trusted position must not inherit the last
     // session's valid login timestamp or baseline.
     loginFeet=null;loginAt=null
+    lifeEpochAt=null;awaitingVerifiedRespawn=false
     // start_game.player_position is supplied by the SERVER for THIS login.
     // It establishes only the session's initial position. It is NOT proof
     // that subsequent client-predicted walking was accepted or persisted.
@@ -60,7 +65,9 @@ function attachMovementEvidence(client,{clock=Date.now,eyeHeight=()=>1.62}={}){
   // gamertag. Here additionally pin the BDS uniqueId for this login and
   // enforce monotonic samples; one replay cannot create false travel.
   function ingestIndependentPosition(sample){
-    if(closed||!loginAt||!['mcsm_querytarget','bds_script_api'].includes(sample?.source)||!finitePos(sample.feet)||
+    if(closed||!loginAt||awaitingVerifiedRespawn||
+       lifeEpochAt!==null&&sample?.observedAt<=lifeEpochAt||
+       !['mcsm_querytarget','bds_script_api'].includes(sample?.source)||!finitePos(sample.feet)||
        typeof sample.uniqueId!=='string'||!/^[-A-Za-z0-9]{8,72}$/.test(sample.uniqueId)||
        typeof sample.serial!=='string'||!/^[0-9]{16,20}$/.test(sample.serial)||
        !Number.isSafeInteger(sample.observedAt)||sample.observedAt<=loginAt||
@@ -89,10 +96,21 @@ function attachMovementEvidence(client,{clock=Date.now,eyeHeight=()=>1.62}={}){
   // Respawn does not emit start_game on the existing Bedrock transport.
   // Old-life BDS witness pairs cannot authorize post-death navigation.
   function beginRespawnEpoch(){
+    lifeEpochAt=clock();awaitingVerifiedRespawn=true
     independentSamples=0;lastIndependentSerial=null;independentUniqueId=null
     independentLatestFeet=null;independentAt=null;independentPreviousAt=null
     independentSource=null;independentPairTravel=null;independentTravel=0
     last=null;lastAt=0;lastSource=null;events=0;packets=0;distance=0
+  }
+  function completeRespawnEpoch(){
+    // Only the post-death Bedrock spawn event with positive health may call
+    // this. Mark the new life boundary HERE, not at death or the pre-spawn
+    // ReadyToSpawn/health packet; all earlier server samples stay forbidden.
+    if(closed||!awaitingVerifiedRespawn||!loginAt)return false
+    const now=clock()
+    if(now<lifeEpochAt)return false
+    lifeEpochAt=now;awaitingVerifiedRespawn=false
+    return true
   }
   const onClose=()=>{closed=true;detach()}
   function detach(){
@@ -120,6 +138,7 @@ function attachMovementEvidence(client,{clock=Date.now,eyeHeight=()=>1.62}={}){
       // Server's start_game spawn coordinate is deliberately separate from
       // corrective self-move packets and never increments received.
       loginFeet,loginAt,loginSource:loginFeet?'start_game_player_position':null,
+      lifeEpochAt,awaitingVerifiedRespawn,
       serverTick,authority,rewindHistory}),
     // A correction is authoritative evidence only if it was observed AFTER this checkpoint.
     checkpoint:()=>({events,position:last?copy(last):null}),
@@ -130,7 +149,7 @@ function attachMovementEvidence(client,{clock=Date.now,eyeHeight=()=>1.62}={}){
       return {confirmed:moved>=0.25,movedBlocks:round(moved),reason:moved>=0.25?'server_position_changed':'server_position_unchanged',packetCount:packets}
     },
     ingestIndependentPosition,
-    beginRespawnEpoch,
+    beginRespawnEpoch,completeRespawnEpoch,
     detach
   }
 }

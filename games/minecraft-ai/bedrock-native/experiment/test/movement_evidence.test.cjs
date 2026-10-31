@@ -195,3 +195,52 @@ test('independent BDS teleport-sized jumps are not counted as walking',()=>{
  assert.equal(e.get().independentPairTravelBlocks,null)
  e.detach()
 })
+
+test('death to verified spawn rejects old life and death-handshake BDS samples',()=>{
+ const client=new EventEmitter();let now=10000
+ const e=attachMovementEvidence(client,{clock:()=>now})
+ client.emit('start_game',{runtime_entity_id:11n,player_position:{x:1,y:65.62,z:1}})
+ const common={source:'mcsm_querytarget',uniqueId:'respawn-life-uid',
+   feet:{x:1,y:64,z:1}}
+ now=11000
+ const before={...common,observedAt:10900,serial:'1792572000000000001'}
+ assert.equal(e.ingestIndependentPosition(before),true)
+ e.beginRespawnEpoch()
+ assert.equal(e.get().awaitingVerifiedRespawn,true)
+ assert.equal(e.ingestIndependentPosition(before),false,
+   'the old file remains rejected even though it is only 100ms old')
+ now=11500
+ assert.equal(e.ingestIndependentPosition({...before,
+   observedAt:11400,serial:'1792572000000000002'}),false,
+   'samples obtained while the player is dead cannot certify new life')
+ assert.equal(e.completeRespawnEpoch(),true)
+ assert.equal(e.get().awaitingVerifiedRespawn,false)
+ assert.equal(e.get().lifeEpochAt,11500)
+ assert.equal(e.ingestIndependentPosition({...before,
+   observedAt:11400,serial:'1792572000000000002'}),false,
+   'pre-spawn samples remain denied after a verified spawn')
+ now=11650
+ assert.equal(e.ingestIndependentPosition({...before,
+   observedAt:11600,serial:'1792572000000000003'}),true)
+ now=12000
+ assert.equal(e.ingestIndependentPosition({...before,
+   observedAt:11950,serial:'1792572000000000004'}),true)
+ assert.equal(e.get().independentSamples,2)
+ assert.equal(e.get().independentPreviousAt,11600)
+ assert.equal(e.get().independentAt,11950)
+ assert.equal(e.completeRespawnEpoch(),false,'no duplicate epoch advancement')
+ e.detach()
+})
+test('new login resets prior-life epoch and cannot inherit a death-phase witness',()=>{
+ const c=new EventEmitter();let now=10000
+ const e=attachMovementEvidence(c,{clock:()=>now})
+ c.emit('start_game',{runtime_entity_id:10n,player_position:{x:0,y:65.62,z:0}})
+ now=11000;e.beginRespawnEpoch()
+ assert.equal(e.get().awaitingVerifiedRespawn,true)
+ now=12000;c.emit('start_game',{runtime_entity_id:11n,player_position:{x:0,y:65.62,z:0}})
+ assert.equal(e.get().awaitingVerifiedRespawn,false)
+ assert.equal(e.get().lifeEpochAt,null)
+ assert.equal(e.get().loginAt,12000)
+ assert.equal(e.completeRespawnEpoch(),false)
+ e.detach()
+})
