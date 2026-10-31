@@ -3,7 +3,7 @@
 import json,os,shlex,subprocess,sys
 from pathlib import Path
 REMOTE=r"""
-import json,os,re,subprocess
+import json,os,re,subprocess,time
 from pathlib import Path
 root=Path.home()/'.alice-bedrock-control'
 status_tool=Path.home()/'minecraft-ai/scripts/alice-mint.py'
@@ -15,6 +15,8 @@ out={'state':'unverified','connected':False,'health':None,
  'homeStatus':'unknown','homeLastSurvey':'unknown','homeLastReason':'unknown',
  'doorKnown':False,'exitVerified':False,'returnVerified':False,
  'personalBedStatus':'unknown','lastSpawnpointReason':'unknown',
+ 'homeCandidateFresh':False,'homeLastAgeSeconds':None,
+ 'lastBedReach':'unknown','lastPositionGate':'unknown',
  'homeAgenda':'unknown','homeAgendaReason':'unknown'}
 try:
  p=subprocess.run(['/usr/bin/python3',str(status_tool),'status'],capture_output=True,text=True,timeout=12,check=False)
@@ -47,10 +49,18 @@ try:
                     ((w.get('homeBase') or {}).get('lastReason'),'homeLastReason'),
                     ((w.get('homeBed') or {}).get('status'),'personalBedStatus'),
                     ((w.get('lastSpawnpointAttempt') or {}).get('reason'),'lastSpawnpointReason'),
+                    ((w.get('lastSpawnpointAttempt') or {}).get('bedReach'),'lastBedReach'),
+                    ((w.get('lastSpawnpointAttempt') or {}).get('positionGate'),'lastPositionGate'),
                     ((w.get('homeAgenda') or {}).get('objective'),'homeAgenda'),
                     ((w.get('homeAgenda') or {}).get('reason'),'homeAgendaReason')]:
   if isinstance(src,str) and re.fullmatch('[a-z0-9_]{2,75}',src):out[target]=src
  a=w.get('homeBase') or {}
+ at=a.get('lastObservedAt')
+ if type(at) is int and at>0:
+  elapsed=int(time.time()*1000)-at
+  if 0<=elapsed<=86400000:
+   out['homeLastAgeSeconds']=elapsed//1000
+   out['homeCandidateFresh']=elapsed<=45000 and a.get('lastSurvey')=='observed_indoor_home_candidate'
  out['doorKnown']=isinstance(a.get('door'),dict) and all(type(a['door'].get(k)) is int for k in ('x','y','z'))
  out['exitVerified']=a.get('exitVerified') is True
  out['returnVerified']=a.get('returnVerified') is True
@@ -62,7 +72,8 @@ print(json.dumps(out,separators=(',',':')))
 def validate(x):
     keys={'state','connected','health','phase','canSleep','rememberedBeds','sleepOpportunity','lastBedFailure','nightSurvival','idleGate','hasFollowTarget','jobActive','homeStatus','homeLastSurvey','homeLastReason',
           'doorKnown','exitVerified','returnVerified','personalBedStatus',
-          'lastSpawnpointReason','homeAgenda','homeAgendaReason'}
+          'lastSpawnpointReason','homeAgenda','homeAgendaReason',
+          'homeCandidateFresh','homeLastAgeSeconds','lastBedReach','lastPositionGate'}
     if not isinstance(x,dict) or set(x)!=keys or x['state'] not in ('observed','unverified'):return None
     return x
 def run(out):
@@ -78,6 +89,9 @@ def run(out):
     with os.fdopen(fd,'w') as f:json.dump(data,f,separators=(',',':'));f.write('\n')
     print(json.dumps({'state':obs['state'] if obs else 'unavailable'}))
 if __name__=='__main__':
-    if sys.argv[1:]==['--self-test']:print('ALICE_HOME_READONLY_SELFTEST_PASS')
+    if sys.argv[1:]==['--self-test']:
+        assert 'homeCandidateFresh' in REMOTE and 'lastBedReach' in REMOTE
+        assert 'lastPositionGate' in REMOTE and 'querytarget(' not in REMOTE
+        print('ALICE_HOME_READONLY_SELFTEST_PASS')
     elif len(sys.argv)==3 and sys.argv[1]=='--inspect':run(sys.argv[2])
     else:raise SystemExit('usage: --self-test | --inspect OUTPUT_DIR')

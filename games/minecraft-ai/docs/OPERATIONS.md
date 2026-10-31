@@ -1,3 +1,8 @@
+## 2026-11-01 — HOME/bedReach 705-pass runtime acceptance and single client reload
+
+- `alice_home_phase2_mint_nonrestart_20261101_a01` PASS: Mac Python **268**, Mint Node24 **705/705**, original Alice NOT restarted during sync and BDS/world unchanged. Tracked one-shot gated client-only task `.openclaw/tasks/alice_home_phase2_client_reload.json` and maintained `scripts/alice-home-phase2-client-reload-20261101.py` apply the tested source by verifying operator identity and replacing ONLY Alice client, never the BDS process. Execute only once; after receipt `client_reconnected_17879` read `alice_home_base_status_readonly.json` with fresh operation ID. The read-only report includes `homeCandidateFresh` (<=45 seconds), `homeLastAgeSeconds`, `lastBedReach`, `lastPositionGate` without coordinates or BDS command.
+- **At commit:** stage only; client activation and field verification not yet done. Do not replay any existing private restart marker or call a blocked BDS query by another tool.
+
 ## 2026-11-01 — HOME分层控制台与床诊断上线流程
 
 - 新只读`lastObservedAt`与`bedReach`/`positionGate`不提供新游戏操作；等待完整Mac/Mint测试后才能加载至当前Alice客户端。沿用有据的`.openclaw/tasks/alice_mint_nonrestart_sync.json`执行非重启同步和测试；网页静态更新可刷新（受具体Nginx文件映射影响）。Mint Alice客户端若要加载新runtime，必须建立新的一次性受控client-only任务；旧重载标记已消耗不可重用。

@@ -1,3 +1,9 @@
+## 2026-11-01 — HOME分级诊断完整回归通过；一次性Alice客户端激活准备
+
+- Source commit `035445c`: user-visible HOME临时候选、持久HOME、返程与床位可及性四级分离。OpenClaw `alice_home_phase2_mint_nonrestart_20261101_a01` 实际验证 **705/705 Mint Node24**、**268 Mac Python**，无BDS重启、未改地图；这是源测试，不是实机床互动。
+- 上线前只读 `alice_home_phase2_before_reload_status_20261101_a01`: Alice connected health20, 2床，night, `observed_indoor_home_candidate`, but HOME not established, personal spawn not verified, idleGate=position_witness_unverified, no current FOLLOW/job. 新维度字段仍未生效，等待唯一受控客户端重载。
+- 增加不发送BDS命令的只读运维观察 `homeCandidateFresh`、`homeLastAgeSeconds`、`lastBedReach`、`lastPositionGate` 和单次授权Alice客户端替换任务，后续需实际回执，旧重启标记不能重放。
+
 ## 2026-11-01 — HOME分层观察与床前置门禁（待测试/部署）
 
 - 17879实机已有bed+roof+spruce-door的`observed_indoor_home_candidate`证据，但`homeStatus=not_established`因为个人床spawn没有服务器确认，`doorKnown=false`只代表没有持久HOME，不能说Alice没看到门。
