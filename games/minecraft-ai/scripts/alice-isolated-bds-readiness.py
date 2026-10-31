@@ -25,9 +25,9 @@ def validate(v):
         return None
     if type(v['diskFreeGiB']) not in (int,float) or not 0<=v['diskFreeGiB']<=100000:
         return None
-    if not isinstance(v['candidateUdp'],dict) or set(v['candidateUdp'])!={
+    if (not isinstance(v['candidateUdp'],dict) or set(v['candidateUdp'])!={
             'testIPv4_17882','testIPv6_27882'} or
-            any(x not in STATES for x in v['candidateUdp'].values()):
+            any(x not in STATES for x in v['candidateUdp'].values())):
         return None
     if not isinstance(v['existingLabNames'],dict) or (
             set(v['existingLabNames'])!=set(LABS)) or any(
