@@ -31,6 +31,7 @@ const {OutboundInputStatus}=require('./outbound_input_status.cjs')
 const {applyInstalled:applyProtocol2193InputCompat}=require('./input_flag_compat.cjs')
 const {ENABLE:ANALOG_2193_MODE}=require('./analog_move_compat.cjs')
 const {BdsWitnessReader}=require('./bds_witness.cjs')
+const {attachStableActionbarWitness}=require('./stable_actionbar_witness.cjs')
 const aliceClientInputSync=require('./bedrock_client_input_sync.cjs')
 const {installNavigationPositionGuard}=require('./navigation_position_guard.cjs')
 const {reconcileRespawnMirror}=require('./respawn_position_mirror.cjs')
@@ -134,6 +135,7 @@ async function main(args=process.argv.slice(2)){
   if(analogCompat.enabled)console.log('[Alice Bedrock] official 2193 analog input compatibility enabled (opt-in)')
   const movementEvidence=attachMovementEvidence(bot._client,{eyeHeight:()=>bot.entity?.eyeHeight||1.62})
   const bdsWitness=live?new BdsWitnessReader({name:()=>bot.username}):null
+  let stableWitness=null // off unless owner-only config exists
   // Bedrock add_player reports Y with the player eye-height offset. The pinned
   // Mineflayer fork does not subtract this on spawn (it does on move_player),
   // so align the initial remote player entity to pathfinder feet coordinates.
@@ -271,7 +273,10 @@ async function main(args=process.argv.slice(2)){
         followPermitted:runtime.lastEscortDecision.allowFollow},
       equipment:runtime.equipmentEvidence(),
       agent:runtime.goalPlanner.snapshot(runtime.liveBehavior.settings.agentMode),
-      movementEvidence:{...movementEvidence.get(),witnessStatus:bdsWitness?.lastStatus||'disabled'},
+      movementEvidence:{...movementEvidence.get(),
+        witnessStatus:movementEvidence.get().independentSource==='bds_stable_actionbar'?
+          stableWitness?.get().status||'not_configured':bdsWitness?.lastStatus||'disabled',
+        stableWitnessStatus:stableWitness?.get().status||'not_configured'},
       ...(outboundSummary?{outboundInput:outboundSummary}:{}),
       worldRoutine:{...environment(bot),idleGate:runtime.idleGateReason(),
         verticalSafety:runtime.verticalWatch.summary(),
@@ -325,8 +330,9 @@ async function main(args=process.argv.slice(2)){
   // Passive reader only. Actual MCSManager querytarget is separately
   // authorized and strictly bounded, never a polling loop.
   let mirroredRespawnCycle=0
-  const witnessTimer=live&&bdsWitness?setInterval(()=>{
-    if(!bdsWitness.poll(movementEvidence))return
+  function onFreshIndependentBdsWitness(){
+    // Called ONLY after a new independent position was accepted.
+    // Neither server query nor an untrusted client physics frame is allowed.
     // Complete a preauthorized short-lived probe on THIS SAME 250ms
     // validated BDS witness event, before the 4s pair expires over SSH.
     const probe=resumeArmedProbe(runtime)
@@ -351,6 +357,13 @@ async function main(args=process.argv.slice(2)){
         cycle:r.cycle,correctionBlocks:r.distance,bdsTeleport:false,
         bdsQuerySentByAlice:false}))
     }
+  }
+  stableWitness=live?attachStableActionbarWitness(bot._client,{
+    evidence:movementEvidence,name:()=>bot.username,
+    onAccepted:onFreshIndependentBdsWitness
+  }):null
+  const witnessTimer=live&&bdsWitness?setInterval(()=>{
+    if(bdsWitness.poll(movementEvidence))onFreshIndependentBdsWitness()
   },250):null
   witnessTimer?.unref?.()
   const statusTimer=live?setInterval(()=>{
@@ -427,18 +440,18 @@ async function main(args=process.argv.slice(2)){
   bot._client.once('close',()=>{
     networkSessionEstablished=false
     if(!runtime.closed)runtime.stop('Bedrock transport closed')
-    clearInterval(witnessTimer);clearInterval(statusTimer);clearInterval(viewTimer);clearInterval(commandTimer)
+    clearInterval(witnessTimer);stableWitness?.detach();clearInterval(statusTimer);clearInterval(viewTimer);clearInterval(commandTimer)
     publishStatus(false);publishView(false)
   })
   bot.on('end',why=>{networkSessionEstablished=false
     if(sessionExit.kind==='none')noteExit('transport_ended')
     acceptance?.event('warn',['[Alice Bedrock] disconnected'])
-    runtime.stop('network ended');clearInterval(witnessTimer);clearInterval(statusTimer);clearInterval(viewTimer);clearInterval(commandTimer);
+    runtime.stop('network ended');clearInterval(witnessTimer);stableWitness?.detach();clearInterval(statusTimer);clearInterval(viewTimer);clearInterval(commandTimer);
     publishStatus(false);publishView(false);console.log(tag,'connection ended:',String(why||''))})
   installSignalShutdown({client:bot._client,stop:()=>{
     noteExit('operator_shutdown')
     respawnRecovery.stop()
-    runtime.stop('operator interrupted');clearInterval(witnessTimer);clearInterval(statusTimer);clearInterval(viewTimer);clearInterval(commandTimer)
+    runtime.stop('operator interrupted');clearInterval(witnessTimer);stableWitness?.detach();clearInterval(statusTimer);clearInterval(viewTimer);clearInterval(commandTimer)
     publishStatus(false);publishView(false)
   }})
 }

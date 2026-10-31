@@ -17,7 +17,7 @@ function scoutStartProof(bot,evidence,clock=Date.now){
   // session/window must not make one new sample look like a fresh pair.
   const previousAt=s?.independentPreviousAt
   const now=clock()
-  if(!s||!['bds_querytarget','bds_script_api'].includes(source)||
+  if(!s||!['bds_querytarget','bds_script_api','bds_stable_actionbar'].includes(source)||
      !Number.isInteger(s.independentSamples)||s.independentSamples<2||
      !finite(independent)||!Number.isSafeInteger(at)||
      !Number.isSafeInteger(previousAt)||previousAt>=at||

@@ -244,3 +244,20 @@ test('new login resets prior-life epoch and cannot inherit a death-phase witness
  assert.equal(e.completeRespawnEpoch(),false)
  e.detach()
 })
+
+test('stable server Actionbar position samples use the original independent gate',()=>{
+ const client=new EventEmitter();let now=10000
+ const e=attachMovementEvidence(client,{clock:()=>now})
+ client.emit('start_game',{runtime_entity_id:123n,player_position:{x:1,y:65.62,z:2}})
+ now=11000
+ const c={source:'bds_stable_actionbar',uniqueId:'bds-stable-actor-id',feet:{x:1,y:64,z:2}}
+ assert.equal(e.ingestIndependentPosition({...c,serial:'1793469904000000001',observedAt:10900}),true)
+ now=12000
+ assert.equal(e.ingestIndependentPosition({...c,serial:'1793469905000000002',observedAt:11900}),true)
+ assert.equal(e.get().independentSource,'bds_stable_actionbar')
+ assert.equal(e.get().source,'independent_bds_stable_actionbar')
+ assert.equal(e.get().received,0)
+ e.beginRespawnEpoch()
+ assert.equal(e.ingestIndependentPosition({...c,serial:'1793469905000000003',observedAt:11950}),false)
+ e.detach()
+})

@@ -25,7 +25,7 @@ function attachMovementEvidence(client,{clock=Date.now,eyeHeight=()=>1.62}={}){
     if(last){const step=Math.hypot(next.x-last.x,next.y-last.y,next.z-last.z)
       if(Number.isFinite(step)&&step<32)distance+=step}
     last=next;lastAt=observedAt;events++;lastSource=source
-    if(source==='bds_querytarget'||source==='bds_script_api')independentSamples++
+    if(['bds_querytarget','bds_script_api','bds_stable_actionbar'].includes(source))independentSamples++
     else packets++
     if(tick!=null){try{serverTick=String(tick).slice(0,32)}catch{}}
   }
@@ -67,7 +67,7 @@ function attachMovementEvidence(client,{clock=Date.now,eyeHeight=()=>1.62}={}){
   function ingestIndependentPosition(sample){
     if(closed||!loginAt||awaitingVerifiedRespawn||
        lifeEpochAt!==null&&sample?.observedAt<=lifeEpochAt||
-       !['mcsm_querytarget','bds_script_api'].includes(sample?.source)||!finitePos(sample.feet)||
+       !['mcsm_querytarget','bds_script_api','bds_stable_actionbar'].includes(sample?.source)||!finitePos(sample.feet)||
        typeof sample.uniqueId!=='string'||!/^[-A-Za-z0-9]{8,72}$/.test(sample.uniqueId)||
        typeof sample.serial!=='string'||!/^[0-9]{16,20}$/.test(sample.serial)||
        !Number.isSafeInteger(sample.observedAt)||sample.observedAt<=loginAt||
@@ -89,7 +89,8 @@ function attachMovementEvidence(client,{clock=Date.now,eyeHeight=()=>1.62}={}){
     }
     independentUniqueId=sample.uniqueId;lastIndependentSerial=sample.serial
     independentLatestFeet=copy(sample.feet);independentAt=sample.observedAt
-    independentSource=sample.source==='bds_script_api'?'bds_script_api':'bds_querytarget'
+    independentSource=sample.source==='bds_stable_actionbar'?'bds_stable_actionbar':
+      sample.source==='bds_script_api'?'bds_script_api':'bds_querytarget'
     record(sample.feet,independentSource,null,sample.observedAt,true)
     return true
   }
@@ -126,7 +127,8 @@ function attachMovementEvidence(client,{clock=Date.now,eyeHeight=()=>1.62}={}){
   return {
     get:()=>({source:independentAt!==null&&clock()-independentAt>=0&&
       clock()-independentAt<=4000?
-      (independentSource==='bds_script_api'?'independent_bds_script_api':
+      (independentSource==='bds_stable_actionbar'?'independent_bds_stable_actionbar':
+       independentSource==='bds_script_api'?'independent_bds_script_api':
        'independent_bds_querytarget'):'bedrock_server_packets_only',
       received:packets,authoritativeSamples:events,independentSamples,
       latestFeet:last?Object.fromEntries(Object.entries(last).map(([k,v])=>[k,round(v)])):null,
