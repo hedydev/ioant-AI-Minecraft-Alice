@@ -1,3 +1,8 @@
+## 2026-11-01 — 一次性Alice重载阶段5：死亡见证epoch
+
+- `alice_witness_life_mint_regression_20261101_b01`通过Mint718/718及Mac269，不涉及服务器重启、世界修改和控制台命令。新`.openclaw/tasks/alice_witness_life_epoch_client_reload.json`用于独立的一次性Alice客户端only安全替换，intent `alice-witness-life-epoch-phase5-20261101.intent`，先检查运行中唯一owner和老PID，重载后必须出具`client_reconnected_17879`回执。标记使用后不可重试或删除，原有任务均已使用。
+- 更新`alice_17879_runtime_gate_diag.json`只读报告本轮`lifeEpochAwaiting`及`bdsWitnessStatus`新枚举；不暴露坐标或凭据，也不查询BDS。如果只是旧会话文件，预期`prior_login_witness`，仍无独立双4秒样本、新床重生点及实际行走证据。
+
 ## 2026-11-01 — 原世界床位单步BDS见证：已上线/证据与风险
 
 - `alice_bed_witness_mint_final_20261101_d01` MAC269/Mint Node24 713/713 PASS，源同步无BDS/世界操作；`alice_bed_witness_mac_ops_tests_20261101_e01` Mac269通过。

@@ -12,7 +12,7 @@ out={'state':'unverified','aliceConnected':False,'sessionEstablished':False,
  'worldRoutineIdleGate':'unavailable','lastDecisionAction':'unavailable',
  'lastDecisionReason':'unavailable','nightSurvivalReason':'unavailable',
  'independentSamples':None,'independentFreshPair':False,
- 'bdsWitnessStatus':'unavailable',
+ 'bdsWitnessStatus':'unavailable','lifeEpochAwaiting':None,
  'independentPairTravelBlocks':None,'movingQueued':None}
 def safe(s):
  return s if isinstance(s,str) and re.fullmatch('[A-Za-z0-9_ -]{1,64}',s) else 'unavailable'
@@ -51,8 +51,11 @@ try:
  m=d.get('movementEvidence') or {}
  witness=m.get('witnessStatus')
  if witness in ('not_configured','unsafe_witness_file','stale_or_invalid_witness',
-                'accepted','duplicate_or_rejected','unavailable','disabled'):
+                'accepted','duplicate_or_rejected','unavailable','disabled',
+                'prior_login_witness','prior_life_witness','expired_witness'):
   out['bdsWitnessStatus']=witness
+ if type(m.get('awaitingVerifiedRespawn')) is bool:
+  out['lifeEpochAwaiting']=m['awaitingVerifiedRespawn']
  n=m.get('independentSamples')
  if type(n) is int and 0<=n<100000000:out['independentSamples']=n
  now=int(time.time()*1000)
@@ -77,7 +80,7 @@ def run(output):
           'tedz@192.168.0.104','/usr/bin/python3 -c '+shlex.quote(REMOTE)],capture_output=True,text=True,timeout=40,check=False)
         if p.returncode==0 and len(p.stdout)<1600:obs=json.loads(p.stdout)
     except (OSError,ValueError,subprocess.SubprocessError):pass
-    valid=obs if isinstance(obs,dict) and obs.get('state') in ('observed','unverified') and len(obs)==19 else None
+    valid=obs if isinstance(obs,dict) and obs.get('state') in ('observed','unverified') and len(obs)==20 else None
     result={'audit':'ALICE_17879_RUNTIME_GATE_DIAG','schemaVersion':1,'readOnly':True,
       'bdsCommandSent':False,'aliceRestarted':False,'observation':valid}
     fd=os.open(out/'alice_gate_diag.json',os.O_CREAT|os.O_EXCL|os.O_WRONLY|getattr(os,'O_NOFOLLOW',0),0o600)

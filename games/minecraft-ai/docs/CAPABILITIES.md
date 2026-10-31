@@ -1,3 +1,8 @@
+## 2026-11-01 — post-death life-epoch 独立BDS见证隔离（Mint Node24 718/718）
+
+- Bedrock同一会话的死亡不会重发`start_game`，旧实现仅清零样本但4秒内的死亡前文件仍可能重获信任。现`beginRespawnEpoch`置于等待新生命，直到`respawnRecovery.phase=respawn_verified`且有正生命值才`completeRespawnEpoch`，所有旧生命证据严格拒绝。
+- 额外诊断`prior_login_witness/prior_life_witness/expired_witness`与实时UI独立样本数，仍无法自行产生可信BDS样本。先前原世界4.65格真实移动和恢复对齐记录仍成立，本更新不将历史读数视为当期新会话验收。
+
 ## 2026-11-01 — BDS 4秒事件接入床位单格执行：原世界代码已加载
 
 - 当前客户端代码确实已由一次性owner校验替换加载；Mac269/Mint713回归通过。`freshBdsWitness`入口使有效服务端配对不会被床位20秒观察冷却吞掉；可在原HOME已加载5步路线中，只针对首个平坦相邻站立格发起安全Pathfinder单步尝试，并强制后验独立BDS服务端位移验证。实际`bedStepAttempted=false`，暂未行走。

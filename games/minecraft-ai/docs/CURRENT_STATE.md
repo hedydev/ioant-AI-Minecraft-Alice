@@ -1,3 +1,11 @@
+## 2026-11-01 — 跨死亡新生命BDS样本验证，独立见证诊断细分（phase5）
+
+- 代码commit `38f001b622fb108622641512c237ec417a8057f1`修复一个真实时序隐患：`movementEvidence.beginRespawnEpoch()`原本只清空旧数据，却依旧以`start_game`登录时间为唯一样本下限，所以同一个Bedrock连接内死亡后1-4秒内的**死亡前私有BDS样本文件**可能被重新接纳为新生命样本（仅1份通常不足新双样本，但可能错误混合）。改为`awaitingVerifiedRespawn`，死亡至有效spawn+health期间拒绝所有入库；仅由已注册`attachRespawnRecovery`先确认`respawn_verified`后，更新`lifeEpochAt`并仅接受该时间之后的新独立服务端样本。不假造server移动、不更改客户端坐标、不放宽原2x4秒0.75m门禁。
+- `BdsWitnessReader.lastStatus`更精确提供`prior_login_witness`、`prior_life_witness`、`expired_witness`，老的格式无效`stale_or_invalid_witness`及重复样本`duplicate_or_rejected`保留。Dashboard添加见证状态/独立样本数量，缺证据时绝不宣称位置已恢复。
+- `alice_witness_life_mint_regression_20261101_b01` 已 PASS：Mint Node24 **718/718**、Mac Python **269**，不重启Alice或BDS，无BDS命令或世界更改，证明源码回归和Mint同步通过；不等于实机死亡重生或BDS独立移动通过。
+- 当前BDS生产158? 不猜测BDS PID；之前正式17879只读已确认现有私有见证文件来自旧登录，`independentSamples=0`。`@minecraft/server-net`仍为BDS-only预发布模块，不能为了上线而更改原正式世界实验或默认全局脚本权限；官方BDS原生不支持RCON。之前被安全限制阻止的querytarget任务不可使用其他通道规避。
+- 新专用单次Alice-client-only运维任务`.openclaw/tasks/alice_witness_life_epoch_client_reload.json`及唯一`alice-witness-life-epoch-phase5-20261101.intent`只在owner前置验证通过后切换Alice客户端；它不产生任何BDS见证，运行后还必须只读核对`prior_login_witness`。旧一次性任务和标记不得重放。
+
 ## 2026-11-01 — 新会话 BDS 见证已查清：文件有效但来自旧登录；4秒床位门禁衔接修复上线
 
 - 复查此前`CURRENT_STATE.md`和提交：2026-10-31 原世界确有独立 BDS 累计移动4.65格及后续2/2新鲜客户端对齐<=0.75格证据，另死亡后镜像恢复也曾通过两样本对齐和0.0格的历史读数，**之前坐标同步确实修好并实机验收过**。本次不回滚/重做已有算法。
