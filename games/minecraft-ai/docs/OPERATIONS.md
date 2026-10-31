@@ -1,3 +1,12 @@
+## 2026-11-01 — 原17879 MCSManager自动位置见证恢复：真实验收回执
+
+- **根因已确证**：`status.json`久未更新（>5min，旧`independentSamples=6`），同一进程最新250ms private ACK 已`independentSamples=12`且有<90秒的独立BDS样本和`positionGateSatisfied=true`。原用户级按需timer以owner PID但陈旧status作为需求输入，预算曾计入10次，无法证明运动。已先实际**停用新timer**：`alice_mcsm_timer_pause_due_stale_status_20261101_bm01` `timerStopped=true,timerDisabled=true`，BDS/Alice未重启。
+- 修复commit `a0bf78d64b028eb4666f2f926a7ce219d64b3b32`：`LiveStatus.compactStatus`有界最终4KiB essential fallback，保留唯一进程身份、在线、HP、settings、真实独立样本、实时`witnessDemand`及idleGate；超大world诊断不得继续冻结Heartbeat。同时`alice-bds-demand-timer.py.active_owner`必须有`heartbeatFresh=true`且年龄<=10秒，status.json mtime+updatedAt均<=10秒，所有过期状态无条件禁止任何MCSManager查询。没有降低2样本4秒/0.75格和危险/路径门禁。
+- **实际回归**：`alice_mcsm_stale_heartbeat_mac_fixed_20261101_bo01` PASS Mac Python290项（skip3）；`alice_mcsm_stale_heartbeat_mint_fixed_20261101_bp01` PASS Mint Node24 **746/746**，Mac Python290，文件已同步原Mint，测试没有重启原BDS/世界。
+- **实际Alice客户端-only更换**：`alice_mcsm_heartbeat_client_reload_20261101_bq01` wrapper内部`observation=null`不能单凭外层PASS判成功；随后独立`alice_mcsm_heartbeat_postreload_audit_20261101_br01`当前Alice已在线、当前进程、心跳新鲜、源码已加载；`alice_mcsm_heartbeat_continuity_actual_20261101_bs01` 连续**8秒两次真读** `state=continuous`、`ownerSame=true`、`initialFresh=true`、`finalFresh=true`、`mtimeAdvanced=true`、`updatedAtAdvanced=true`、`statusBelow4KiB=true`、`clientOnline=true`，未向BDS发命令。此次未触发极端minimal fallback (`minimalFallbackUsed=false`)，但极端负载回归已覆盖。
+- **实际重新启用有界timer**：`alice_mcsm_timer_resume_after_heartbeat_20261101_bt01` PASS `state=resumed,heartbeatFresh=true,worldVerified=true,timerActive=true,timerEnabled=true,oldLoopInactive=true,bdsRestarted=false,aliceRestarted=false,serverCommandSent=false`；仅操作新`alice-bds-demand.timer`，按需批次<=2、40/h、55秒批间隔及用户timer约60s检查不变。旧`--loop`仍禁用。**必须另查新版本自发查询/ACK/服务器位移；定时器已启用不能冒充Alice已完成自主路径**。
+- 运维停止入口：`systemctl --user disable --now alice-bds-demand.timer`。任何新的后验如发现心跳停滞，定时器必须因新10秒门禁拒绝查询；禁止强制移动/注入BDS坐标或重启正式BDS。
+
 ## 2026-11-01 — 大型诊断数据造成status.json心跳停止：新受控Alice client-only重载
 
 - 修复 `compactStatus` 增设真实安全4KiB minimal fallback，及按需timer拒绝超过10秒状态；Mac `alice_mcsm_stale_heartbeat_mac_fixed_20261101_bo01` PASS Python **290（skip3）**；Mint `alice_mcsm_stale_heartbeat_mint_fixed_20261101_bp01` PASS Node24 **746/746**、Mac290；旧BDS和Alice没有被同步任务重启。新timer已暂停禁用，不允许在旧状态时恢复。
