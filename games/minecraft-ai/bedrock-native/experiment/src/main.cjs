@@ -211,6 +211,7 @@ async function main(args=process.argv.slice(2)){
     label:live?'正式基岩世界':'独立基岩实验世界',experienceFile:path.join(store,'routine-failures.json'),movementEvidence,
     requireBdsAlignedExplore:live,
     api:{Movements,GoalNear:goals.GoalNear,GoalFollow:goals.GoalFollow}})
+  runtime.currentRespawnStatus=()=>life?.summary()?.respawnStatus||null
   const commands=live?new CommandMailbox({runtime,log:runtimeLogger}):null
   const commandTimer=commands?setInterval(()=>commands.poll(),900):null
   commandTimer?.unref?.()
@@ -287,6 +288,7 @@ async function main(args=process.argv.slice(2)){
         lastBedFailure:runtime.lastBedFailure,
         sleepOpportunity:runtime.lastSleepOpportunity,
         rememberedBeds:runtime.observedBeds.summary(),
+        homeBed:runtime.homeBed.summary(),lastSpawnpointAttempt:runtime.lastSpawnpointAttempt,
         // Compact read-only escape survey; status heartbeat is capped at 4 KiB.
         escapeSurvey:runtime.lastEscapeSurvey,
         voxelNavigation:runtime.lastVoxelNavigation}
@@ -327,6 +329,10 @@ async function main(args=process.argv.slice(2)){
     const probe=resumeArmedProbe(runtime)
     if(probe.state==='started'||probe.state==='rejected')
       runtimeLogger.log('[Alice probe] BDS-triggered operator probe:',JSON.stringify(probe))
+    // Never query BDS continuously. An operator-approved, fresh, witnessed
+    // position pair can immediately unlock an already-adjacent bed interaction.
+    runtime.spawnpointTick().catch(err=>
+      runtimeLogger.warn('[Alice home] bed check:',String(err?.message||err).slice(0,70)))
     const recovery=respawnRecovery.get()
     const r=reconcileRespawnMirror({bot,evidence:movementEvidence,
       phase:recovery.phase,cycle:recovery.cycles,mirroredCycle:mirroredRespawnCycle})

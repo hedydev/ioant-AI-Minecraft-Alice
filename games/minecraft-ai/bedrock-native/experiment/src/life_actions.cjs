@@ -83,6 +83,30 @@ function equipmentSnapshot(bot,chooseWeapon){
   return {inventoryKnown:known,weaponInInventory:name(expected),
     heldItem:name(bot.heldItem),armorInInventory:armorNames,wornArmor:worn}
 }
+function otherPlayersOnline(bot){
+ const self=String(bot?.username||'').toLowerCase()
+ return Object.entries(bot?.players||{}).some(([name,player])=>
+   name.toLowerCase()!==self&&(player?.entity?.position||player?.username===name))
+}
+async function finishShortMultiplayerRest(bot,{signal,sleep=wait}={}){
+ if(bot?.isSleeping!==true)return {ok:false,reason:'sleep_entry_unconfirmed',entered:false}
+ // Bedrock's insomnia timer resets upon entering a bed; passing the night
+ // requires sleeping quorum, not necessary for rest. Never fake server stat.
+ if(!otherPlayersOnline(bot))return {ok:true,reason:'sleep_entered_wait_for_dawn',
+   entered:true,woke:false,insomniaResetInferred:true}
+ if(typeof bot.wake!=='function')return {ok:false,reason:'wake_api_missing',
+   entered:true,woke:false,insomniaResetInferred:true}
+ try{await bot.wake()}catch{return {ok:false,reason:'wake_failed',
+   entered:true,woke:false,insomniaResetInferred:true}}
+ for(let i=0;i<10;i++){
+  if(bot.isSleeping===false)return {ok:true,reason:'entered_bed_and_woke_for_other_players',
+    entered:true,woke:true,insomniaResetInferred:true}
+  if(signal?.aborted)break
+  await sleep(100)
+ }
+ return {ok:false,reason:'wake_not_confirmed',entered:true,woke:false,
+   insomniaResetInferred:true}
+}
 function inspectNightBeds(bot,radius=12,{avoidBed=()=>false,knownPositions=null}={}){
   const phase=environment(bot).phase
   const result={status:'unavailable',phase,found:0,eligible:0,
@@ -191,9 +215,8 @@ async function sleepNearby(bot,api,{signal,radius=12,avoidBed=()=>false,
    if(monstersNearBed(bot,bed))return {ok:false,reason:'hostile_mob_near_bed',bedPosition}
    phase='sleep'
    await race(Promise.resolve().then(()=>bot.sleep(bed)),5500,()=>{})
-   return {ok:bot.isSleeping===true,
-     reason:bot.isSleeping===true?'sleep_confirmed':'sleep_not_confirmed',
-     bedPosition,bedDiagnosis:diagnosis()}
+   const rest=await finishShortMultiplayerRest(bot,{signal})
+   return {...rest,bedPosition,bedDiagnosis:diagnosis()}
  }catch(e){
    const message=String(e?.message||e).slice(0,90)
    // The fork times out waiting for the sleeping state event; this does NOT
@@ -204,4 +227,4 @@ async function sleepNearby(bot,api,{signal,radius=12,avoidBed=()=>false,
      bedPosition,bedDiagnosis:diagnosis()}
  }
 }
-module.exports={isNight,canSleepNow,hasNearbyBed,inspectNightBeds,monstersNearBed,armorScore,bestArmorChoice,equipBetterArmor,equipBestHeldWeapon,equipmentSnapshot,sleepNearby}
+module.exports={isNight,canSleepNow,hasNearbyBed,inspectNightBeds,monstersNearBed,armorScore,bestArmorChoice,equipBetterArmor,equipBestHeldWeapon,equipmentSnapshot,sleepNearby,otherPlayersOnline,finishShortMultiplayerRest}

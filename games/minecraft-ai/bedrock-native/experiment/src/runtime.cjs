@@ -12,6 +12,7 @@ const {FollowInputObservation}=require('./follow_input_observation.cjs')
 const {ContinuousGoal}=require('./continuous_goal.cjs')
 const {evaluateShelter,placeShelterBlock}=require('./night_shelter.cjs')
 const {ObservedBeds}=require('./observed_beds.cjs')
+const {HomeBedMemory,selectAdjacentBed,useBedForSpawn}=require('./bed_spawnpoint.cjs')
 const {planNightReposition,nightConditions}=require('./night_survival.cjs')
 const {configureDoors,createResponsiveFollowGoal,observedLineOfSight}=require('./follow_navigation.cjs')
 const {followProximity}=require('./follow_proximity.cjs')
@@ -128,11 +129,16 @@ class AliceBedrockRuntime {
     this.lastFollowFaceAt=Number.NEGATIVE_INFINITY
     this.followGoalRadius=this.liveBehavior.settings.followDistance;this.lastFollowRadiusChange=0
     this.nextSleepAt=0;this.nextEquipAt=0;this.maintenanceBusy=false
+    this.nextSpawnpointAt=0;this.lastSpawnpointAttempt=null
     this.lastEquipObservation=null
     this.lastSleepOpportunity=null;this.lastSleepOpportunityKey=null
     this.observedBeds=new ObservedBeds({clock,log,
       file:experienceFile?require('node:path').join(
         require('node:path').dirname(experienceFile),'observed-beds.json'):null})
+    this.homeBed=new HomeBedMemory({clock,
+      file:experienceFile?require('node:path').join(
+        require('node:path').dirname(experienceFile),'home-bed.json'):null})
+    this.currentRespawnStatus=()=>null
     this.nextNightSafetyReviewAt=Number.NEGATIVE_INFINITY
     this.nextAutonomousCraftAt=0
     this.failureMemory=new FailureMemory(clock,experienceFile)
@@ -1328,6 +1334,43 @@ class AliceBedrockRuntime {
     this.followProgress.reset(player,this.bot.entity.position,entity.position,this.clock())
     this.log.log('[Alice follow] active target',player,'(movement needs server position validation)')
   }
+  async spawnpointTick(){
+    if(!this.ready()||this.bot.isSleeping||this.job||this.maintenanceBusy||
+       this.safetyBusy||this.threat()||this.core.hasFollowIntent()||
+       this.goalPlanner.stoppedByHuman||this.bot.health<16||
+       this.clock()<this.nextSpawnpointAt)return false
+    // The existing personal spawn packet proves an already active point.
+    if(this.currentRespawnStatus?.()==='observed_server_player_spawn_packet'||
+       this.homeBed.summary().status!=='not_verified')return false
+    const proof=scoutStartProof(this.bot,this.movementEvidence,this.clock)
+    if(!proof.ok)return false
+    const positions=this.observedBeds.nearby(this.bot,{radius:12})
+    const pick=selectAdjacentBed(this.bot,positions,{radius:12})
+    if(!pick.bed){
+      this.lastSpawnpointAttempt={ok:false,reason:pick.reason,attempted:false,at:this.clock()}
+      this.nextSpawnpointAt=this.clock()+20000
+      return false
+    }
+    // Spawnpoint setup is NOT sleep: no night gate or sleep-bed cooldown.
+    this.nextSpawnpointAt=this.clock()+90000
+    const block=pick.bed
+    this.startJob('RECOVER','自主生存',async signal=>{
+      const result=await useBedForSpawn(this.bot,block,{
+        evidence:this.movementEvidence,clock:this.clock,signal,
+        safe:()=>!this.closed&&this.ready()&&!this.threat()&&
+          !this.core.hasFollowIntent()&&this.bot.health>=16})
+      const confirmed=result.serverConfirmed===true&&this.homeBed.confirm(result)
+      this.lastSpawnpointAttempt={ok:confirmed,reason:confirmed?
+        'bed_personal_spawn_packet_confirmed':result.reason,
+        attempted:result.attempted===true,at:this.clock()}
+      if(confirmed)this.log.log('[Alice home] verified bed respawn:',
+        JSON.stringify({status:this.homeBed.summary().status,source:'server_player_spawn_packet'}))
+      else this.log.warn('[Alice home] bed spawn unconfirmed:',
+        JSON.stringify({reason:result.reason}))
+      return {ok:confirmed,reason:this.lastSpawnpointAttempt.reason}
+    },{label:'设置床位重生点',announce:false})
+    return !!this.job
+  }
   async maintenanceTick(){
     // Read-only bed observations can happen while Alice is exploring, not
     // just when idle at home. They are paced to once per 60 seconds and must
@@ -1359,6 +1402,9 @@ class AliceBedrockRuntime {
         this.log.warn('[Alice equipment] deferred:',JSON.stringify(this.lastEquipObservation))
       }finally{this.maintenanceBusy=false}
     }
+    // Bed-based respawn is a fundamental need even in companion mode;
+    // it is independent of sleep/night cooldown and never interrupts humans.
+    if(await this.spawnpointTick())return
     // A nearby known bed has priority over optional crafting/shelter.
     // Minecraft can forbid sleeping near monsters even through solid walls.
     // Observe and explain the bed opportunity even while a safety gate holds.
