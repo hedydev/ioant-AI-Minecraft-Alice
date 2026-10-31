@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Single Alice-only client restart to activate pinned target one-step probe, original 17879",
+  "steps": [
+    {
+      "name": "reload_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-one-target-client-reload-20261101.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "once_only_client_reload",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-one-target-client-reload-20261101.py",
+      "args": [
+        "--restart",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 275
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "client_reconnect",
+      "file": "alice_17879_client_restart.json",
+      "format": "json"
+    }
+  ]
+}
