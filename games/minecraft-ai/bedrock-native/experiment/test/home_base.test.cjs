@@ -27,7 +27,6 @@ function room({noDoor=false,noRoof=false,unknown=false,world='overworld'}={}){
 test('recognize roof, loaded enclosure, bed and wooden doorway without claiming movement',()=>{
  const {bot,bed,reads,actions}=room()
  const r=observeHome(bot,bed)
- console.log('ALICE_HOME_FIXTURE_FIRST_REASON='+String(r.reason||'unknown'))
  assert.equal(r.status,'observed_indoor_home_candidate',JSON.stringify(r))
  assert.deepEqual(r.door,{x:2,y:65,z:0})
  assert.equal(r.bed.z,1)

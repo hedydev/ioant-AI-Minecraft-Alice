@@ -24,25 +24,6 @@ def summarize(text):
     return {'node24':stats if set(stats)==set(NODE_FIELDS) else None,
             'failureNames':labels[:20]}
 
-def extract_home_failures(text):
-    # Permit only our source-free fixture assertion's reason/value token;
-    # never emit traceback, cwd, player data or arbitrary test log lines.
-    found=[]
-    for block in re.split(r'(?m)^✖\\s+',text):
-        if not block.startswith(('recognize roof, loaded enclosure', 'do not persist an unconfirmed bed')):
-            continue
-        name=block.splitlines()[0].split(' (')[0][:90]
-        reasons=re.findall(r'reason["\']?\\s*[:=]\\s*["\']([a-z_]{3,65})',block)
-        words=re.findall(r'(?m)^\\s*(?:actual|expected):\\s*[\'\"]?([a-z_]{3,65})',block)
-        found.append({'test':name,'reasonTokens':reasons[:4],'assertionTokens':words[:4]})
-    tokens=['enclosure_or_loaded_blocks_unverified','wooden_door_or_approach_unverified',
-      'roof_or_room_height_unverified','bed_out_of_loaded_observation_range',
-      'bed_block_not_loaded','observed_indoor_home_candidate',
-      'unverified','not_established','observed_candidate_not_route_verified']
-    observed=re.findall(r'ALICE_HOME_FIXTURE_FIRST_REASON=([a-z_]{3,64})',text)
-    return [{'homeFixtureReason':observed[-1] if observed else 'not_reported',
-             'homeFixtureReasons':[token for token in tokens if token in text][:9]}]
-
 def selftest():
     sample='✖ path-finder respects confirmed witness (2.0ms)\nℹ tests 3\nℹ pass 2\nℹ fail 1\nℹ skipped 0\n'
     x=summarize(sample)
@@ -60,15 +41,13 @@ def run(out,target):
     result={'audit':'ALICE_MINT_NODE24_FAILURE_DIAG','schemaVersion':1,
             'readOnly':True,'sourceSynced':False,'bdsCommandSent':False,
             'aliceRestarted':False,'worldModified':False,
-            'state':'unavailable','exitCode':None,'node24':None,'failureNames':[],
-            'homeFailureDetails':[]}
+            'state':'unavailable','exitCode':None,'node24':None,'failureNames':[]}
     try:
         env={**os.environ,'ALICE_SSH_TARGET':target}
         p=subprocess.run(['/bin/bash',str(wrapper),'test'],env=env,cwd=project,
                          capture_output=True,text=True,timeout=160,check=False)
         result['exitCode']=p.returncode
         result.update(summarize(p.stdout+'\n'+p.stderr))
-        result['homeFailureDetails']=extract_home_failures(p.stdout+'\n'+p.stderr)
         result['state']='passed' if p.returncode==0 else 'tests_failed'
     except subprocess.TimeoutExpired:
         result['state']='timeout_unverified'
@@ -80,8 +59,7 @@ def run(out,target):
         json.dump(result,file,separators=(',',':'))
         file.write('\n')
     print(json.dumps({'state':result['state'],'node24':result['node24'],
-                      'failureNames':result['failureNames'],
-                      'homeFailureDetails':result['homeFailureDetails']}))
+                      'failureNames':result['failureNames']}))
 
 if __name__=='__main__':
     if sys.argv[1:]==['--self-test']:

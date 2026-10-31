@@ -69,4 +69,4 @@ function planNightReposition(bot,voxel,{blocked=new Set(),visited=new Set()}={})
   return check.ok?{ok:true,reason:check.reason,candidate}:
     {ok:false,reason:check.reason}
 }
-module.exports={planNightReposition,nightConditions}
+module.exports={planNightReposition,nightConditions,knownHostiles}
