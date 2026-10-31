@@ -1,3 +1,9 @@
+## 2026-11-01 — MCSManager按需见证状态字段最终回归
+
+- 语义审查发现`navigationAuthorized:true`会错误暗示全部安全与导航条件已获授权；最终源码commit `21ed6d307450226c58b3f9de4f65afb2c4336f11`将其更名为`positionGateSatisfied:true`，且该字段只在已有`scoutStartProof`通过时为true；全局导航仍由原FOLLOW/停止/危险/路径门禁单独控制，绝不能把只读状态视为操作授权。
+- 实际 `alice_mcsm_position_gate_mac_20261101_j01` Mac Python **285项，skip 3，0 fail**；实际 `alice_mcsm_position_gate_mint_20261101_k01` Mint Node24 **734/734**、Mac Python285 PASS，`aliceRestarted=false`、`bdsRestarted=false`、`worldModifiedByTask=false`、`consoleCommandSent=false`。最终源码在Mint磁盘已安全同步，**正在运行的Alice Node进程不热更新**。旧持续见证被禁用，当前尚没有自动按需生产新BDS独立样本。
+- 后续应仅在授权允许的原MCSManager接口恢复**有界的、正确实例绑定的按需BDS查询**，验证2份4秒/0.75格、后验真实BDS位移；历史被工具安全审查阻止的生产查询操作不能通过换任务/SSH绕行；不必升级BDS或新建世界才能理解当前缺样本原因。
+
 ## 2026-11-01 — MCSManager按需坐标见证阶段1实际验收（真实只读，未恢复自动供给）
 
 - 代码 `7374a47f29cce93efcc5b7f1bdaecdd72ce04c88` 在Mac源验收 `alice_mcsm_demand_mac_regression_20261101_a01` Python280项（skip3）、Mint非重启 `alice_mcsm_demand_mint_regression_20261101_c01` Node24 **734/734** PASS；增设`witness_demand.cjs`仅检测两份当前会话4秒新鲜BDS样本缺口/对齐，不执行命令；`BdsWitnessReader`原子文件重复读取状态改为`already_consumed`，不虚增样本。
