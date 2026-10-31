@@ -1,3 +1,9 @@
+## 2026-11-01 — 大型诊断数据造成status.json心跳停止：新受控Alice client-only重载
+
+- 修复 `compactStatus` 增设真实安全4KiB minimal fallback，及按需timer拒绝超过10秒状态；Mac `alice_mcsm_stale_heartbeat_mac_fixed_20261101_bo01` PASS Python **290（skip3）**；Mint `alice_mcsm_stale_heartbeat_mint_fixed_20261101_bp01` PASS Node24 **746/746**、Mac290；旧BDS和Alice没有被同步任务重启。新timer已暂停禁用，不允许在旧状态时恢复。
+- 新`alice-mcsm-heartbeat-client-reload-20261101.py` + task 仅针对运行中的原Alice 17879 Node客户端：必须先调用现有`alice-mint.py check`检验用户环境、唯一PID、可restart，再用一次性私有intent调用`alice-mint.py restart`一次。绝不重启BDS/MCSM/其它服务器、不改世界。事后需以独立新进程当前心跳年龄<15秒、status.json mtime/updatedAt <10秒实机只读证明，不能靠外层task passed就宣称。
+- 如果预检被拒或重启结果无法确认，禁止重复提交相同intent或增加第二客户端；只读取原结果与当前进程状态排错。只有心跳证明恢复之后才允许按需timer重新启用。
+
 ## 2026-11-01 — 定时器安装后真实现场状态及需求门禁修复
 
 - 安装`alice_mcsm_timer_install_apply_20261101_bc01` PASS `timerActive=true,timerEnabled=true`，未修改世界/重启BDS/发送安装命令。只读`alice_mcsm_timer_live_audit_20261101_bd01`发现新opt-in=true、旧服务inactive、当小时额度已记录**4次**查询预算、当前Alice同PID已验证、`witnessNeed=needs_two_fresh_samples`，但`idleGate=eligible_for_work`、`demandFlag=false`，最近一次timer结果`no_navigation_demand`。`timerTriggered=false`来自systemd LastTriggerUSecMonotonic属性读取，不应据此否认已经有budget/journal证明的服务活动。
