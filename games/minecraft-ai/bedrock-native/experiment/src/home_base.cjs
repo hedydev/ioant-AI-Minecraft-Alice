@@ -134,6 +134,8 @@ class HomeBaseMemory{
    outerSurveyUnknown:this.last?.outerSurveyUnknown??null,
    outerSurveyFrontierObserved:this.last?.outerSurveyFrontierObserved??null,
    lastSurvey:this.last?.status||null,
-   lastReason:this.last?.reason||null}}
+   lastReason:this.last?.reason||null,
+   // Transient geometry is not persisted HOME or verified passage.
+   lastObservedAt:this.last?.at??null}}
 }
 module.exports={observeHome,homeAgenda,HomeBaseMemory}

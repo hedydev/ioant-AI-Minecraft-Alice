@@ -1,3 +1,10 @@
+## 2026-11-01 — HOME分层观察与床前置门禁（待测试/部署）
+
+- 17879实机已有bed+roof+spruce-door的`observed_indoor_home_candidate`证据，但`homeStatus=not_established`因为个人床spawn没有服务器确认，`doorKnown=false`只代表没有持久HOME，不能说Alice没看到门。
+- 本源码分开显示45秒内`lastObservedAt`几何候选、持久HOME以及独立BDS出门/回程；断线或过期显示未知。不会把临时屋顶视为防怪安全屋。
+- `spawnpointTick`原本在BDS无证据时直接退出且`lastSpawnpointAttempt=null`。现先只读观察`bedReach`再检查独立`positionGate`，未通过时只记录`attempted:false`并限速20秒；不会触发床互动，不放宽双样本4秒0.75米安全门禁、距离<=1.95、STOP/危险优先，不产生任何后台querytarget。
+- `live_control`4KiB两级压缩保存字段，回归覆盖不可信移动时远床和近床不触碰，以及界面显示一致性。此提交是源码待验收，不代表当前Alice已有这些新字段。
+
 ## 2026-11-01 — Alice takeover: raised-door recognition IN-WORLD OBSERVED (bed spawn and route STILL UNVERIFIED)
 
 - Reviewed **both** `hedydev/hero-skills` AI entry/standards and canonical `hedydev/ioant-AI-Minecraft-Alice` AGENTS + CURRENT_STATE, OPERATIONS, CAPABILITIES, ARCHITECTURE. Local main safely advanced by enrolled OpenClaw repository_fetch/sync; no clone/reset or overwritten work.

@@ -125,6 +125,41 @@ async function refreshCommandState(){
       '历史记录（本次未确认）':'未验证');
     setText('world-respawn-position',respawn&&state!=='not_verified'?
       'X '+respawn.x+' / Y '+respawn.y+' / Z '+respawn.z:'坐标未知；不会将附近床当作重生点');
+
+    // Loaded-room geometry, confirmed personal spawn HOME and actual server
+    // passage are separate evidence tiers; no local prediction becomes proof.
+    const home=routine.homeBase||{};
+    const age=Number.isFinite(home.lastObservedAt)?Date.now()-home.lastObservedAt:null;
+    const recentHome=age!==null&&age>=0&&age<=45000;
+    const candidate=recentHome&&home.lastSurvey==='observed_indoor_home_candidate';
+    setText('world-home-observed',!run?'状态未知':
+      candidate?'已观察到候选庇护所':recentHome?'室内结构未确认':'等待新鲜结构扫描');
+    setText('world-home-observed-detail',!run?'Alice 离线或状态过期':
+      candidate?'已观察到床、屋顶与木门；不保证完整封闭或可通过':
+      recentHome?'最近原因：'+(home.lastReason||'结构证据不足'):
+      '没有45秒内的结构扫描，不能沿用旧观察');
+    const established=home.status==='observed_candidate_not_route_verified';
+    setText('world-home-established',!run?'状态未知':
+      established?'已记录候选 HOME（未验证路线）':
+      candidate?'候选房间已看到 · 个人床位未确认':'尚未建立');
+    setText('world-home-route',!run?'路线状态未知':
+      home.exitVerified===true&&home.returnVerified===true?'出门和返程已有独立验证记录':
+      '出门及返程尚未通过独立 BDS 位移验证');
+    const attempt=routine.lastSpawnpointAttempt||{};
+    const reachLabels={bed_needs_verified_approach:'已发现床，尚不在可触及范围',
+      loaded_free_bed_in_reach:'已加载空床且在触及范围',
+      no_loaded_free_bed:'没有已验证可使用的空床',
+      bed_world_unverified:'床或维度信息不足',
+      bed_activation_unavailable:'床位互动接口不可用'};
+    const gateLabelsBed={verified:'独立BDS位置门禁通过（仅检查时刻）',
+      scout_bds_position_unavailable:'缺少两份新鲜独立BDS坐标见证',
+      scout_client_server_position_diverged:'客户端与BDS坐标未对齐'};
+    setText('world-bed-reach',!run?'状态未知':
+      established?'个人床位已记录 · 勿重复设置':
+      reachLabels[attempt.bedReach]||'尚无可验证的床前置检查');
+    setText('world-bed-gate',!run?'安全状态未知':
+      gateLabelsBed[attempt.positionGate]||
+      '床位操作需独立坐标门禁；观察到床不代表已设置重生点');
     const select=byId('world-command-target'),current=select.value;
     const players=(Array.isArray(run?.onlinePlayers)?run.onlinePlayers:[])
       .filter(n=>typeof n==='string'&&/^[A-Za-z0-9_]{3,16}$/.test(n));
@@ -174,6 +209,7 @@ async function refreshCommandState(){
     setText('world-idle-reason','⚠️ 控制服务不可用，无法确定 IDLE 原因');
     setText('world-death-learning','控制服务不可用，死亡原因未知');
     setText('world-deaths','未知');setText('world-respawn-status','未验证');
+    for(const id of ['world-home-observed','world-home-observed-detail','world-home-established','world-home-route','world-bed-reach','world-bed-gate'])setText(id,'状态未知');
     setText('world-command-readonly','控制服务不可用');
     if(!lastCommandId)showCommandResult('无法读取 Mint 控制状态：'+String(err.message||err),'error');
   }finally{commandReadBusy=false;disableCommandControls()}

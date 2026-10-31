@@ -3076,3 +3076,35 @@ test('equipment is attempted in threatened survival while new sleep work stays g
  assert.equal(e.lastEquipObservation.reason,'no_weapon')
  e.stop()
 })
+
+test('bed spawnpoint preflight reports loaded bed reach separately from BDS admission',async()=>{
+ const f=fixture(),e=new AliceBedrockRuntime({...f,policies:await policies()})
+ e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+ f.bot.entity.position=vec(.5,64,.5)
+ const bedPos=vec(6,64,0)
+ f.bot.blockAt=()=>({name:'red_bed',position:bedPos})
+ f.bot.parseBedMetadata=()=>({occupied:0})
+ f.bot.activateBlock=()=>{throw Error('bed activation without BDS verification')}
+ e.observedBeds.nearby=()=>[bedPos]
+ assert.equal(await e.spawnpointTick(),false)
+ assert.equal(e.lastSpawnpointAttempt.reason,'bed_needs_verified_approach')
+ assert.equal(e.lastSpawnpointAttempt.bedReach,'bed_needs_verified_approach')
+ assert.equal(e.lastSpawnpointAttempt.positionGate,'scout_bds_position_unavailable')
+ assert.equal(e.lastSpawnpointAttempt.attempted,false)
+ assert.equal(e.job,null)
+ e.stop()
+})
+test('reachable loaded bed without independent BDS proof is not activated',async()=>{
+ const f=fixture(),e=new AliceBedrockRuntime({...f,policies:await policies()})
+ e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+ const bedPos=vec(1,64,0)
+ f.bot.blockAt=()=>({name:'red_bed',position:bedPos})
+ f.bot.parseBedMetadata=()=>({occupied:0})
+ f.bot.activateBlock=()=>{throw Error('no bed activation without BDS proof')}
+ e.observedBeds.nearby=()=>[bedPos]
+ assert.equal(await e.spawnpointTick(),false)
+ assert.equal(e.lastSpawnpointAttempt.bedReach,'loaded_free_bed_in_reach')
+ assert.equal(e.lastSpawnpointAttempt.reason,'scout_bds_position_unavailable')
+ assert.equal(e.lastSpawnpointAttempt.attempted,false)
+ e.stop()
+})

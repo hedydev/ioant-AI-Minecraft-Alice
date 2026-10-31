@@ -1,7 +1,7 @@
 {
   "version": "Bedrock native 1.26.51 / control-center 0.4",
-  "asOf": "2026-10-25",
-  "notice": "2026-10-25：Mint Node24 638/638通过，但Alice PID3895891的独立BDS见证为0、移动输入为0，因scout_bds_position_unavailable保持IDLE。新源码仅修正独立BDS位移与混合服务端位置包里程的区分和验收判据，尚未部署进运行进程，不能声称Minecraft实际行走成功。暂停第四套实验BDS及Beta行为包。",
+  "asOf": "2026-11-01",
+  "notice": "2026-11-01：正式17879已确认 Alice 能观察床、屋顶及高一格的双开云杉门（702/702 Mint Node24、267 Mac Python）。个人重生点、睡觉、实际出门和返回、独立BDS行走仍未通过验收。现在分离临时几何观察和持久HOME，明确床距离与BDS安全门禁，不强制行动。",
   "statusNames": {
     "observed": "已有实机证据",
     "staged": "代码已接入·待验收",
@@ -9,6 +9,13 @@
     "pending": "尚未实现"
   },
   "capabilities": [
+    {
+      "name": "HOME候选庇护所与床位前置门禁分级显示",
+      "icon": "🏠",
+      "group": "运维与可观测性",
+      "status": "staged",
+      "detail": "上一版正式17879已观察到候选床+屋顶+双开木门，本次新增45秒临时扫描新鲜度、持久HOME/返程分离、床位可触及状态和BDS坐标门禁诊断。待新版本完整回归与页面验收；不代表设置了个人重生点或已安全出门。"
+    },
     {
       "name": "BDS 见证文件失败原因与复活阶段只读诊断",
       "icon": "🔎",

@@ -100,7 +100,7 @@
           <div class="revision-row"><span>🧭 分段探索进度（需服务端确认）</span><strong id="routine-scout-progress">尚无确认记录</strong></div>
           <p class="control-feedback" id="routine-scout-detail" role="status">探索距离动态变化；识别安全转弯及上下整格通道。未知、半砖或碰撞数据不足时暂停。</p>
           <div class="revision-row"><span>🛏️ 最近一次休息结果</span><strong id="routine-bed-result">暂无记录</strong></div>
-          <p class="control-fixed">🛏️ 重生点确认与床归属尚未实现。当前夜间/雷暴睡眠仍可能使用附近空床；请给 Alice 准备独立床位，避免覆盖其他玩家的重生点。</p>
+          <p class="control-fixed">🛏️ 床位重生点尝试已接入，但当前实机尚无个人重生点的服务器确认。已观察到的床不代表可直接触及；请为 Alice 准备独立床位，避免影响其他玩家。</p>
         </section>
         <section class="control-panel" aria-label="Xbox 连接历史" style="margin-top:22px">
           <div class="section-head"><div><h2>🔐 Bedrock 登录历史</h2><p>自动记录成功和失败连接的匿名握手校验结果；不会记录账号、XUID、JWT、设备标识或令牌。</p></div></div>
@@ -126,6 +126,9 @@
               <div><span>☁ 天气</span><strong id="world-day-weather">—</strong></div>
               <div><span>☠ 死亡次数</span><strong id="world-deaths">—</strong><small id="world-deaths-note">从新版开始记录</small></div>
               <div><span>🛏️ 重生点</span><strong id="world-respawn-status">未验证</strong><small id="world-respawn-position">坐标未知；不以床的位置猜测</small></div>
+              <div><span>🏠 房屋观察</span><strong id="world-home-observed">尚未观察</strong><small id="world-home-observed-detail">已看到床和门，不等于可以安全出门</small></div>
+              <div><span>📍 HOME 归属</span><strong id="world-home-established">尚未建立</strong><small id="world-home-route">往返路线尚未通过 BDS 验证</small></div>
+              <div><span>🛏️ 床位使用条件</span><strong id="world-bed-reach">等待床位检查</strong><small id="world-bed-gate">移动安全门禁状态未知</small></div>
             </div>
           </div>
           <div class="world-command-input">

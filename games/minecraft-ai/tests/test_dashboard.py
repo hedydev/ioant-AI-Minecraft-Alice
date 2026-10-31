@@ -552,3 +552,19 @@ class WorldIdleTruthTests(unittest.TestCase):
         self.assertIn("setText('world-state',view.alice.state||'IDLE')",ui)
         self.assertIn("holdAge<180000",ui)
         self.assertNotIn("setText('world-state','MOVING')",ui)
+
+class HomeObservationDashboardTests(unittest.TestCase):
+    def test_transient_shelter_and_persistent_home_are_separate(self):
+        html=(ROOT/'dashboard'/'index.html').read_text()
+        js=(ROOT/'dashboard'/'world.js').read_text()
+        for key in ('world-home-observed','world-home-observed-detail',
+                    'world-home-established','world-home-route',
+                    'world-bed-reach','world-bed-gate'):
+            self.assertIn('id="'+key+'"',html)
+            self.assertIn("setText('"+key+"'",js)
+        self.assertIn("home.lastSurvey==='observed_indoor_home_candidate'",js)
+        self.assertIn('age<=45000',js)
+        self.assertIn("home.status==='observed_candidate_not_route_verified'",js)
+        self.assertIn('home.exitVerified===true&&home.returnVerified===true',js)
+        self.assertIn('attempt.positionGate',js)
+        self.assertIn('attempt.bedReach',js)

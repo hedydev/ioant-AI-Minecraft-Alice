@@ -1,3 +1,8 @@
+## 2026-11-01 — HOME和床位分层可观测性（源码待实机）
+
+- Web 3D 区分45秒内新鲜加载的床/屋顶/门候选观察、个人服务器确认后持久HOME、独立BDS门往返；任何几何候选都不等于安全庇护所或服务器位移。
+- 床重生点预检新增`bedReach`与`positionGate`两个互不替代的原因；证据未通过只能报告`attempted:false`，不得激活床或绕过移动安全门禁。4KiB心跳降级兼容，待新回归/实机验收。
+
 ## 2026-11-01 — Raised spruce-door HOME geometry, original 17879 world confirmed
 
 - `escape_survey` now accepts loaded wooden-door bottom one level above a provably fully supported neighboring cell (and matching upper half) as a **non-executable geometric candidate**, not a movement path. 3 additional Node regressions; full Mint Node24 **702/702** and Mac Python **267** passed. Client-only guarded reload succeeded; original world passive HOME observer returned `observed_indoor_home_candidate` with bed + roof + wooden-door observed. No BDS/other-world restart, new world, game interaction or BDS query.

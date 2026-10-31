@@ -1,3 +1,8 @@
+## 2026-11-01 — HOME分层控制台与床诊断上线流程
+
+- 新只读`lastObservedAt`与`bedReach`/`positionGate`不提供新游戏操作；等待完整Mac/Mint测试后才能加载至当前Alice客户端。沿用有据的`.openclaw/tasks/alice_mint_nonrestart_sync.json`执行非重启同步和测试；网页静态更新可刷新（受具体Nginx文件映射影响）。Mint Alice客户端若要加载新runtime，必须建立新的一次性受控client-only任务；旧重载标记已消耗不可重用。
+- Bedrock BDS 17879、其他世界不重启；不运行或绕开先前被阻止的BDS双querytarget任务；无独立2份4秒0.75格坐标证据不移动、不激活床。
+
 ## 2026-11-01 — Raised-door fix accepted in original 17879 world (read-only candidate only)
 
 - Tested source `04e87e6` via `alice_raised_door_mint_nonrestart_20261101_v01`: Mac Python 267, Mint Node24 702/702; non-restart sync passed. Guarded client reload `alice_raised_door_client_reload_20261101_v01` had `client_reconnected_17879` with current owner PID/heartbeat/game session verified; BDS and other worlds NOT restarted. **Once-only task is consumed; never replay or remove the private intent marker.**

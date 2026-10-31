@@ -357,3 +357,24 @@ test('compacted 4 KiB heartbeat keeps server-confirmed bed and candidate HOME di
  assert.equal(data.worldRoutine.homeAgenda.returnRouteVerified,false)
  assert(Buffer.byteLength(JSON.stringify(data))<=4096)
 }))
+
+test('4KiB compact heartbeat retains transient HOME observation and bed safety reasons',()=>withDir(root=>{
+ const pub=new LiveStatus({root})
+ pub.publish({connected:true,state:'IDLE',worldRoutine:{
+  phase:'day',scouting:{huge:'x'.repeat(6500)},
+  homeBed:{status:'not_verified'},
+  lastSpawnpointAttempt:{reason:'bed_needs_verified_approach',
+   bedReach:'bed_needs_verified_approach',positionGate:'scout_bds_position_unavailable',
+   attempted:false,at:120000},
+  homeBase:{status:'not_established',lastSurvey:'observed_indoor_home_candidate',
+   lastReason:'bed_roof_and_wooden_door_observed',lastObservedAt:120100,
+   returnVerified:false,exitVerified:false}}})
+ const d=JSON.parse(fs.readFileSync(path.join(root,'status.json'),'utf8'))
+ assert.equal(d.statusCompacted,true)
+ assert.equal(d.worldRoutine.homeBase.status,'not_established')
+ assert.equal(d.worldRoutine.homeBase.lastSurvey,'observed_indoor_home_candidate')
+ assert.equal(d.worldRoutine.homeBase.lastObservedAt,120100)
+ assert.equal(d.worldRoutine.lastSpawnpointAttempt.bedReach,'bed_needs_verified_approach')
+ assert.equal(d.worldRoutine.lastSpawnpointAttempt.positionGate,'scout_bds_position_unavailable')
+ assert(Buffer.byteLength(JSON.stringify(d))<=4096)
+}))

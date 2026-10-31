@@ -1347,12 +1347,16 @@ class AliceBedrockRuntime {
     // The existing personal spawn packet proves an already active point.
     if(this.currentRespawnStatus?.()==='observed_server_player_spawn_packet'||
        this.homeBed.summary().status!=='not_verified')return false
-    const proof=scoutStartProof(this.bot,this.movementEvidence,this.clock)
-    if(!proof.ok)return false
+    // Observe bed reach before independent BDS admission; neither observation
+    // authorizes an interaction or bypasses the existing movement safety gate.
     const positions=this.observedBeds.nearby(this.bot,{radius:12})
     const pick=selectAdjacentBed(this.bot,positions,{radius:12})
-    if(!pick.bed){
-      this.lastSpawnpointAttempt={ok:false,reason:pick.reason,attempted:false,at:this.clock()}
+    const proof=scoutStartProof(this.bot,this.movementEvidence,this.clock)
+    if(!pick.bed||!proof.ok){
+      this.lastSpawnpointAttempt={ok:false,
+        reason:!pick.bed?pick.reason:proof.reason,
+        bedReach:pick.reason,positionGate:proof.ok?'verified':proof.reason,
+        attempted:false,at:this.clock()}
       this.nextSpawnpointAt=this.clock()+20000
       return false
     }
