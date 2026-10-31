@@ -1,3 +1,10 @@
+## 2026-11-01 — MCSManager private ACK与按需双样本上线准备
+
+- `witness_ack.cjs` 在原Alice真实接收某一独立BDS样本时同步原子写入private 0600 ACK，提供`writerPid`、`producerStartToken`、`independentSamples/At`、`loginAt`、`positionGateSatisfied`，无实际坐标/用户名/API key；只读外部消费者可0.1秒检查此回执，避免等待2秒心跳。配置不修改旧4秒/0.75格门禁，也不生成游戏命令。
+- 新`alice-mcsm-ack-coordinated-pair-20261101.py`独立用户授权的最多2次原17879 `--once`，逐次确认同一Alice会话和私有ACK已消费才尝试第二次，工具权限另行审查。每次2s等ACK最多，无无限循环/自动重复，实际输出匿名计数；比旧脚本增加正确PID/进程出生token绑定。
+- 新`alice-mcsm-ack-client-reload-20261101.py`和`.openclaw/tasks/alice_mcsm_ack_client_reload_20261101.json`仅经原`alice-mint.py check`成功、唯一进程可安全替换时单次Alice-client restart，绝不触碰BDS/世界，不使用此前已消费的restart intent。
+- 截至本记录只准备源码和安全任务，**不能宣称ACK已上线**；需先Mac/Mint全量测试和新Alice-only重载回执，再实测少量BDS查询与ACK配对。
+
 ## 2026-11-01 — MCSManager双见证触发原自主决策：客户端-only上线准备
 
 - 修复后的`src/witness_idle_resume.cjs` + `main.cjs` 被动消费当前登录后的4秒双样本，优先床检查完成后按正常安全保护调用一次`idleTick`，不自动查询MCSManager、不绕过危险/STOP/Pathfinder或行动冷却。真实Mint`alice_mcsm_idle_resume_mint_fixed_20261101_u01` PASS Node24 **740/740**、Mac Python285（skip3），源码已同步但运行中Node进程尚需单次安全reload。
