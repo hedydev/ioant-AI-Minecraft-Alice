@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Inspect only existing BDS 17879 world/pack/permissions/Beta API metadata, no operation",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-bds-script-metadata-readonly-20261101.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "read_existing_production_bds_meta",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-bds-script-metadata-readonly-20261101.py",
+      "args": [
+        "--inspect",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 85
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "preflight",
+      "file": "bds_script_preflight_readonly.json",
+      "format": "json"
+    }
+  ]
+}
