@@ -1,3 +1,11 @@
+## 2026-11-01 — HOME phase2 正式17879实机验收：候选庇护所+床前置门禁独立呈现（PASS）
+
+- OpenClaw `alice_home_phase2_mint_nonrestart_20261101_a01` PASS：源码 `035445c220295ee6f48046a032035a74a406e5da` 经 Mac Python **268项**、Mint Node24 **705/705** 回归，安全同步原Mint；没有重启Alice/BDS、没有世界操作。运维脚本/单次reload提交 `30caf3c664c9cafa3b6340866aa72946324f6a7d` 经 `alice_home_phase2_mac_regression_20261101_b01` Python268和9项定向回归通过。
+- `alice_home_phase2_client_only_reload_20261101_c01` 唯一受控reload PASS：回执`client_reconnected_17879`，当前进程owner、心跳和Bedrock会话确认；BDS17879及其他世界未重启，未创建新世界。任务`.openclaw/tasks/alice_home_phase2_client_reload.json`已消耗，一律禁止重放及删除其私有意图锁。
+- `alice_home_phase2_postlive_status_20261101_d01` 真正只读实机状态：`connected=true`, `health=20`, `phase=night`, `rememberedBeds=2`, `homeLastSurvey=observed_indoor_home_candidate`, `homeCandidateFresh=true`, `homeLastAgeSeconds=22`, `homeStatus=not_established`, `personalBedStatus=not_verified`, `lastBedReach=bed_needs_verified_approach`, `lastPositionGate=scout_bds_position_unavailable`, `lastSpawnpointReason=bed_needs_verified_approach`, `exitVerified=false`, `returnVerified=false`, `hasFollowTarget=false`, `jobActive=false`. 因此分离状态字段已实机验收；浏览器视觉渲染仍未逐像素验收。
+- `alice_home_phase2_gate_readonly_20261101_e01` 再证明 Alice **agentMode=autonomous**、autonomyEnabled=true、`coreState=IDLE`、`food=16`、`independentSamples=0`、`independentFreshPair=false`、`movingQueued=0`，`idleHoldReason=scout_bds_position_unavailable`、`worldRoutineIdleGate=position_witness_unverified`。这说明无BDS证据故被安全门禁阻止，而不是模型“选择不动”。没有独立服务端运动证据；新HTML不提供越权运动。
+- 后续真正的床重生/自动出门/返程必须先合法解决**持续新鲜独立BDS位置见证来源**并按2次4秒0.75格门禁验收。此前单次querytarget的操作任务被工具安全评估阻止，**不得改经其他调用方式绕过**。不能写死出生/庇护所坐标、不重启BDS或变更世界；新增官方/权限可信见证方式另行审查并完成用户允许的合法部署边界。专用床位归属未经证明前，不应影响其他玩家的床。
+
 ## 2026-11-01 — HOME分级诊断完整回归通过；一次性Alice客户端激活准备
 
 - Source commit `035445c`: user-visible HOME临时候选、持久HOME、返程与床位可及性四级分离。OpenClaw `alice_home_phase2_mint_nonrestart_20261101_a01` 实际验证 **705/705 Mint Node24**、**268 Mac Python**，无BDS重启、未改地图；这是源测试，不是实机床互动。

@@ -1,3 +1,10 @@
+## 2026-11-01 — HOME phase2 生产只读验收回执及不可重放记录
+
+- 已完成正式17879源代码安全同步（`035445c`, 268 Mac tests, 705 Mint Node24 tests）、`30caf3c` 新运维代码Mac268回归、专用Alice client-only reload `alice_home_phase2_client_only_reload_20261101_c01` PASS。私有once-only marker已使用，**禁止重放**，无需用户手动操作。
+- 生产只读：`alice_home_phase2_postlive_status_20261101_d01` 的`homeCandidateFresh=true`、22秒扫描、`lastBedReach=bed_needs_verified_approach`及`lastPositionGate=scout_bds_position_unavailable`；`alice_home_phase2_gate_readonly_20261101_e01` 的`independentSamples=0`、`movingQueued=0`。已定位安全静止的硬阻塞。无MCSManager/BDS command，未修改任何世界。
+- 当前Mac Nginx 8788静态根目录指向Alice项目`dashboard/`，刷新网页才会加载新HTML/JS；若服务本身没有启动应先用维护入口`scripts/alice-mac.sh`及现有受控流程检查，不能为观察状态而重新启动BDS或另起同账号Alice客户端。
+- 正式自动移动需重新设计**授权的真实BDS位置见证**（不是打开被安全阻止的一次性querytarget任务的后门），并经用户/工具权限审查；新代码保持不可移动的fail-closed行为，不自动轮询MCSManager。
+
 ## 2026-11-01 — HOME/bedReach 705-pass runtime acceptance and single client reload
 
 - `alice_home_phase2_mint_nonrestart_20261101_a01` PASS: Mac Python **268**, Mint Node24 **705/705**, original Alice NOT restarted during sync and BDS/world unchanged. Tracked one-shot gated client-only task `.openclaw/tasks/alice_home_phase2_client_reload.json` and maintained `scripts/alice-home-phase2-client-reload-20261101.py` apply the tested source by verifying operator identity and replacing ONLY Alice client, never the BDS process. Execute only once; after receipt `client_reconnected_17879` read `alice_home_base_status_readonly.json` with fresh operation ID. The read-only report includes `homeCandidateFresh` (<=45 seconds), `homeLastAgeSeconds`, `lastBedReach`, `lastPositionGate` without coordinates or BDS command.
