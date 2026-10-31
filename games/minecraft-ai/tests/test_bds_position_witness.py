@@ -331,9 +331,6 @@ class BdsWitnessTests(unittest.TestCase):
         self.assertEqual(calls, [("outputlog", {"size": "8KB"})])
         self.assertIn("no BDS command sent", stdout.getvalue())
 
-if __name__ == "__main__":
-    unittest.main()
-
     def test_legacy_loop_is_refused_before_config_or_any_network_command(self):
         from unittest.mock import patch
         with patch.object(sys, "argv", ["bds_position_witness.py", "--loop"]), \
@@ -346,3 +343,6 @@ if __name__ == "__main__":
         self.assertIn("--check only", script)
         self.assertNotIn("systemctl --user enable --now", script)
         self.assertNotIn("systemctl --user daemon-reload", script)
+
+if __name__ == "__main__":
+    unittest.main()
