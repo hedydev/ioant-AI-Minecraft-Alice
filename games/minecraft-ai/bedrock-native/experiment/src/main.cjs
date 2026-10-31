@@ -33,6 +33,7 @@ const {ENABLE:ANALOG_2193_MODE}=require('./analog_move_compat.cjs')
 const {BdsWitnessReader}=require('./bds_witness.cjs')
 const {witnessDemand}=require('./witness_demand.cjs')
 const {createWitnessIdleResume}=require('./witness_idle_resume.cjs')
+const {writeWitnessAck}=require('./witness_ack.cjs')
 const {attachStableActionbarWitness}=require('./stable_actionbar_witness.cjs')
 const aliceClientInputSync=require('./bedrock_client_input_sync.cjs')
 const {installNavigationPositionGuard}=require('./navigation_position_guard.cjs')
@@ -338,6 +339,11 @@ async function main(args=process.argv.slice(2)){
   })
   let mirroredRespawnCycle=0
   function onFreshIndependentBdsWitness(){
+    // Real-time private receipt: the independent sample was consumed by this
+    // Alice process, not merely written by an MCSManager-side query.
+    // It never requests another query or extends the four-second proof.
+    try{writeWitnessAck({bot,evidence:movementEvidence,producerStartToken})}
+    catch(err){runtimeLogger.warn('[Alice BDS witness] ack unavailable:',String(err?.message||err).slice(0,60))}
     // Called ONLY after a new independent position was accepted.
     // Neither server query nor an untrusted client physics frame is allowed.
     // Complete a preauthorized short-lived probe on THIS SAME 250ms

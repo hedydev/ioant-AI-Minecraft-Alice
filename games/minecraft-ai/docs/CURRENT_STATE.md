@@ -1,3 +1,9 @@
+## 2026-11-01 — BDS见证实时消费ACK：修复2秒心跳与4秒双样本竞争（源码待回归/上线）
+
+- 11/1重载后新一轮2次`querytarget`由MCSManager 2/2成功、Alice也接纳2/2当期样本，但最后`freshPairObserved=false`、`positionAligned=false`（`alice_mcsm_postreload_pair_live_20261101_z01`），显示**查询通道成功但两份样本未在同一4秒窗口有效**。禁止扩大4秒/0.75格门禁，也不继续无限尝试。
+- 原`main.cjs` 250ms读取源文件但`status.json`每2秒发布，外部采样器为证明前一查询已消费需要等待status采样增长，给短有效窗口引入额外抖动。新增`src/witness_ack.cjs`：只在`BdsWitnessReader.poll`/stable source真接纳一个独立样本时写owner-only `~/.alice-bedrock-control/bds-witness-ack.json`，原子替换、0600、目录0700、拒绝symlink/错误owner，记录当前PID/不可重放startToken/真实样本时间及计数与**当时**原`scoutStartProof`是否通过；不写玩家坐标、用户名、token或服务器命令。只读消费者可在250ms内发现前一个样本确已入库并尽快发下一个合法的**独立批准单次**查询，无需等2秒状态心跳。ACK只能辅助协调，**不是运动授权、不产生查询、不续期坐标**。原安全门禁仍逐次原始检查。
+- 当前版本在源码编译/测试门禁前不声明运行中Alice已启用ACK；正式世界/服务器不重启，不安装插件、不修改游戏世界。MCSManager实时查询仍要求独立受控operator执行，不能恢复旧2秒连续服务。
+
 ## 2026-11-01 — MCSManager真实短时见证3/3通过；4秒窗口触发自主决策改进（仅源码）
 
 - 真实用户明确授权后，`alice_mcsm_live_pair_verified_20261101_p01`在原正式BDS17879、经MCSManager原实例cwd=~/minecraft-bedrock和原服端口验证后执行`bds_position_witness.py --once` **3次/3次accepted**，实时当前Alice样本**0→3**，4秒内有效双样本`freshPairObserved=true`、客户端与BDS误差<=0.75格`positionAligned=true`，只针对原世界；`worldModifiedByTool=false`、`serviceRestarted=false`、`loopEnabled=false`。**这是BDS真实对齐实机验证**，未证明完整自主路径完成。
