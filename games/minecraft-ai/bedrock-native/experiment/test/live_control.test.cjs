@@ -395,3 +395,41 @@ test('compacted heartbeat retains bed approach as a non-verified route',()=>with
  assert.equal(d.worldRoutine.homeAgenda.objective,'plan_candidate_bed_approach')
  assert(Buffer.byteLength(JSON.stringify(d))<=4096)
 }))
+
+test('production oversized current-session heartbeat falls back to owner-bound minimal witness status',()=>withDir(root=>{
+ const warn=[]
+ const pub=new LiveStatus({root,log:{warn:(...a)=>warn.push(a.join(' '))}})
+ const base={producerPid:12345,producerStartToken:'731222000',
+  connected:true,sessionEstablished:true,world:'Bedrock level',serverPort:17879,
+  revision:18,settings:{...DEFAULTS,agentMode:'autonomous',autonomyEnabled:true},
+  state:'IDLE',health:20,food:16,position:{x:2,y:65,z:3},
+  movementEvidence:{loginAt:1000,independentSamples:12,independentAt:9900,
+    independentPreviousAt:9300,independentSource:'bds_querytarget',
+    independentLatestFeet:{x:2,y:65,z:3},
+    witnessStatus:'accepted',witnessDemand:{state:'needs_two_fresh_samples',
+      samplesNeeded:2,positionGateSatisfied:false},
+    enormousDiagnostic:'x'.repeat(14000)},
+  worldRoutine:{phase:'night',idleGate:'position_witness_unverified',
+    decision:{goal:'DISCOVER_RESOURCES',reason:'y'.repeat(11000)},
+    escapeSurvey:{extra:'z'.repeat(22000)}},
+  agent:{extra:'a'.repeat(22000)}}
+ pub.publish(base)
+ const file=path.join(root,'status.json')
+ const saved=JSON.parse(fs.readFileSync(file,'utf8'))
+ assert.equal(saved.statusMinimal,true)
+ assert.equal(saved.producerPid,12345)
+ assert.equal(saved.producerStartToken,'731222000')
+ assert.equal(saved.connected,true)
+ assert.equal(saved.sessionEstablished,true)
+ assert.equal(saved.settings.autonomyEnabled,true)
+ assert.equal(saved.worldRoutine.idleGate,'position_witness_unverified')
+ assert.equal(saved.movementEvidence.independentSamples,12)
+ assert.equal(saved.movementEvidence.witnessDemand.state,'needs_two_fresh_samples')
+ assert.equal(warn.length,0)
+ assert(Buffer.byteLength(fs.readFileSync(file))<=4096)
+ // A next frame must replace the old payload rather than leave a stale one.
+ pub.publish({...base,health:18,movementEvidence:{...base.movementEvidence,
+   independentSamples:13}})
+ assert.equal(JSON.parse(fs.readFileSync(file,'utf8')).movementEvidence.independentSamples,13)
+ assert.equal(fs.statSync(file).mode&0o777,0o600)
+}))

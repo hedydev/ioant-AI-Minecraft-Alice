@@ -68,15 +68,26 @@ def process_json(name, timeout=15):
 
 def active_owner():
     s = process_json("status")
-    if (s.get("processAlive") is not True or
+    # A live PID with a 15-minute-old status.json is NOT a live BDS
+    # navigation demand. Fail closed even when its last values say connected.
+    heartbeat = s.get("heartbeatAgeSeconds")
+    if (s.get("heartbeatFresh") is not True or
+        type(heartbeat) not in (int,float) or not 0<=heartbeat<=10 or
+        s.get("processAlive") is not True or
         s.get("reportedConnected") is not True or
         s.get("sessionEstablished") is not True or
         s.get("statusSource") != "current_process" or
         s.get("serverPort") not in (None, 17879) or
         s.get("world") not in (None, "Bedrock level")):
         raise ValueError("not_current_17879_session")
-    d = private_read(ROOT / "status.json", 8192)
-    if (d.get("producerPid") != s.get("pid") or
+    status_file=ROOT / "status.json"
+    mtime=status_file.stat().st_mtime
+    d = private_read(status_file, 8192)
+    updated=d.get("updatedAt")
+    nowms=int(time.time()*1000)
+    if (not isinstance(updated,int) or updated<=0 or updated>nowms+1000 or
+        nowms-updated>10000 or time.time()-mtime>10 or
+        d.get("producerPid") != s.get("pid") or
         d.get("world") != "Bedrock level" or d.get("serverPort") != 17879 or
         not isinstance(d.get("producerStartToken"), str)):
         raise ValueError("wrong_owner")

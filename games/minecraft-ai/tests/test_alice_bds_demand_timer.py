@@ -42,3 +42,9 @@ class DemandTimerTests(unittest.TestCase):
         self.assertIn('MAX_HOURLY = 40',source)
         self.assertIn('OnUnitActiveSec=60s',source)
 if __name__=="__main__":unittest.main()
+
+    def test_live_owner_must_have_fresh_heartbeat_and_publisher_timestamp(self):
+        text=SOURCE.read_text()
+        self.assertIn('s.get("heartbeatFresh") is not True',text)
+        self.assertIn('nowms-updated>10000',text)
+        self.assertIn('time.time()-mtime>10',text)

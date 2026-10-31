@@ -1,3 +1,10 @@
+## 2026-11-01 — 发现长期状态发布停滞，已暂停定时器并修复心跳降级
+
+- 仅只读`alice_mcsm_timer_consistency_readonly_20261101_bl01`：原Alice仍在线，`status.json`的mtime **older_than_5_min**、旧文件中`independentSamples=6`，而同一进程/登录的private 250ms ACK已为`independentSamples=12`、年龄<90s、`ackGateAtWrite=true`；timer预算记录`used=10`，日志近5min三次`position_pair_verified`。真实根因是**状态文件没有随BDS ACK更新**，不能继续用旧heartbeat驱动自动查询；ACK只证明位置采样在某瞬间通过门禁，不证明已执行成功导航。
+- 实际`alice_mcsm_timer_pause_due_stale_status_20261101_bm01` PASS `timerStopped=true,timerDisabled=true`；只暂停新`alice-bds-demand.timer`，**Alice与BDS没有重启、无console命令**，旧无限轮询保持disabled。
+- `LiveStatus.compactStatus`已有多级4KiB压缩，但如果所有可选home/生命诊断累计增长后仍超阈值，会直接抛`Alice essential status too large`，`LiveStatus.publish`catch后旧`status.json`保留，造成旧数据看起来是current_process（仅PID和出生token验证），却不再新鲜。本轮新**终极有界minimal状态降级**：只保留身份PID/startToken、连接/世界、settings、HP/食物、状态/坐标、MCSManager独立样本计数/时间/来源/接收门禁、精简worldRoutine.idleGate和行动原因，保证世界视图过大也能持续2秒private heartbeat；保持4KiB限制、原0600原子替换。新增单元测试覆盖超大诊断与下一帧刷新。
+- 同时`alice-bds-demand-timer.py active_owner`**强制heartbeatFresh=true且age<=10秒，private status.json updatedAt及mtime<=10秒**；过时状态必须停止任何BDS查询，不能凭存活PID和旧`connected=true`查询。保持40/h、2/批、55秒及原4秒/0.75m导航门禁。完成Mac/Mint全量回归、Alice客户端-only单次重载并实测心跳恢复后才能重新启用timer；**不能仅因代码提交即视为已上线**。
+
 ## 2026-11-01 — 定时器安装后真实现场状态及需求门禁修复
 
 - 安装`alice_mcsm_timer_install_apply_20261101_bc01` PASS `timerActive=true,timerEnabled=true`，未修改世界/重启BDS/发送安装命令。只读`alice_mcsm_timer_live_audit_20261101_bd01`发现新opt-in=true、旧服务inactive、当小时额度已记录**4次**查询预算、当前Alice同PID已验证、`witnessNeed=needs_two_fresh_samples`，但`idleGate=eligible_for_work`、`demandFlag=false`，最近一次timer结果`no_navigation_demand`。`timerTriggered=false`来自systemd LastTriggerUSecMonotonic属性读取，不应据此否认已经有budget/journal证明的服务活动。

@@ -210,7 +210,65 @@ function compactStatus(state){
     delete data.escort
     if(Buffer.byteLength(encode())<=STATUS_MAX_BYTES)return encode()
   }
-  throw Error('Alice essential status too large')
+  // Fallback for production status growth: never freeze the current-process
+  // heartbeat just because supplementary home/voxel/survival telemetry grew.
+  // Preserve only bounded identity, connection, health and independent BDS
+  // witness facts needed by the operator and demand-only controller.
+  const str=(v,n=80)=>typeof v==='string'?v.slice(0,n):null
+  const num=v=>Number.isFinite(v)?v:null
+  const xyz=p=>p&&[p.x,p.y,p.z].every(Number.isFinite)?
+    {x:p.x,y:p.y,z:p.z}:null
+  const e=state.movementEvidence||{},w=state.worldRoutine||{}
+  const d=e.witnessDemand||{},life=state.life||{},goal=state.longTermGoal||{}
+  const death=state.deathRecovery||{}
+  const essential={
+    updatedAt:Date.now(),statusCompacted:true,statusMinimal:true,
+    producerPid:Number.isSafeInteger(state.producerPid)?state.producerPid:null,
+    producerStartToken:str(state.producerStartToken,96),
+    connected:state.connected===true,sessionEstablished:state.sessionEstablished===true,
+    world:str(state.world,50),serverPort:num(state.serverPort),
+    revision:num(state.revision),
+    settings:state.settings&&{
+      agentMode:str(state.settings.agentMode,20),
+      autonomyEnabled:state.settings.autonomyEnabled===true,
+      followDistance:num(state.settings.followDistance),
+      occludedDistance:num(state.settings.occludedDistance)},
+    state:str(state.state,32),job:str(state.job,80),
+    position:xyz(state.position),health:num(state.health),food:num(state.food),
+    followTarget:str(state.followTarget,18),
+    life:{deathsSinceTracking:num(life.deathsSinceTracking),
+      respawnPoint:xyz(life.respawnPoint),respawnStatus:str(life.respawnStatus,55)},
+    deathRecovery:{phase:str(death.phase,60),cycles:num(death.cycles)},
+    longTermGoal:{goal:str(goal.goal,65),step:str(goal.step,65),
+      phase:str(goal.phase,40),reason:str(goal.reason,100),
+      nextReviewAt:num(goal.nextReviewAt)},
+    movementEvidence:{
+      loginAt:num(e.loginAt),lifeEpochAt:num(e.lifeEpochAt),
+      awaitingVerifiedRespawn:e.awaitingVerifiedRespawn===true,
+      independentSamples:num(e.independentSamples),
+      independentAt:num(e.independentAt),
+      independentPreviousAt:num(e.independentPreviousAt),
+      independentLatestFeet:xyz(e.independentLatestFeet),
+      independentSource:str(e.independentSource,40),
+      independentPairTravelBlocks:num(e.independentPairTravelBlocks),
+      independentTravelBlocks:num(e.independentTravelBlocks),
+      latestFeet:xyz(e.latestFeet),travelBlocks:num(e.travelBlocks),
+      witnessStatus:str(e.witnessStatus,48),
+      witnessDemand:{
+        state:str(d.state,48),samplesNeeded:num(d.samplesNeeded),
+        positionGateSatisfied:d.positionGateSatisfied===true,
+        permissionGranted:false,querySent:false}},
+    worldRoutine:{phase:str(w.phase,25),tick:num(w.tick),
+      weather:str(w.weather,20),idleGate:str(w.idleGate,48),
+      decision:w.decision&&{action:str(w.decision.action,45),
+        goal:str(w.decision.goal,65),reason:str(w.decision.reason,120)},
+      idleHold:w.idleHold&&{reason:str(w.idleHold.reason,110),
+        nextReviewAt:num(w.idleHold.nextReviewAt)},
+      nightSurvival:w.nightSurvival&&{reason:str(w.nightSurvival.reason,80)}}
+  }
+  if(Buffer.byteLength(JSON.stringify(essential))<=STATUS_MAX_BYTES)
+    return JSON.stringify(essential)
+  throw Error('Alice essential status too large even after bounded fallback')
 }
 class LiveStatus {
   constructor({root=rootDefault(),log=console}={}){this.root=root;this.log=log}
