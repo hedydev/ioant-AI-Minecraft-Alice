@@ -1,0 +1,37 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Alice Stable Server Position Witness",
+    "description": "Stable BDS script: server-owned player location to Alice-only action bar; no beta modules, commands, or world edits",
+    "uuid": "37ac86b0-11b0-4505-b15d-989d7ff5b10b",
+    "version": [
+      0,
+      1,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      26,
+      50
+    ]
+  },
+  "modules": [
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "baf12c4e-cf7a-47f1-97d8-b31213f6410a",
+      "version": [
+        0,
+        1,
+        0
+      ],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "2.10.0"
+    }
+  ]
+}
