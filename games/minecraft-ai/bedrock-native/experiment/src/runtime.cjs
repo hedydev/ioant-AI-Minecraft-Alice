@@ -1481,7 +1481,7 @@ class AliceBedrockRuntime {
     const initial=this.bot.entity?.position
     const routeOrigin=initial&&{x:initial.x,y:initial.y,z:initial.z}
     const phaseAllowed=()=>environment(this.bot).safeToExplore||
-      allowNightFallback&&nightConditions(this.bot,candidate,{routeOrigin}).ok===true
+      allowNightFallback&&nightConditions(this.bot,candidate.nightCorridor||candidate,{routeOrigin}).ok===true
     // One bounded local attempt, no break/place/sprint/teleport.
     // A one-cell verified climb may use normal Pathfinder jumping.
     // Pathfinder's local position estimate is not BDS server position evidence.

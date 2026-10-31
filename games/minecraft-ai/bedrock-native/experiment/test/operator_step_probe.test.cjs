@@ -18,6 +18,13 @@ test('survey two safe cells but issue only ONE adjacent Pathfinder goal',()=>{
  assert.equal(r.candidate?.target.x,11)
  assert.equal(r.candidate?.kind,'observed_one_cell_flat_probe')
 })
+test('night retains full two-cell shelter proof while executing only one cell',()=>{
+ const f=make({phase:13000})
+ const r=selectProbeRoute(f.bot,{survey:f.survey})
+ assert.equal(r.candidate?.distance,1)
+ assert.equal(r.candidate?.nightCorridor?.distance,2)
+ assert.equal(r.candidate?.nightCorridor?.waypoints.length,2)
+})
 test('unsafe/low health, nearby monster and wrong phase do not select route',()=>{
  for(const options of [{health:5},{food:3},{mobs:[{x:12,y:65,z:20}]},
   {phase:23500}]){
