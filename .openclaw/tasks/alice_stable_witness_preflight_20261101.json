@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Read only original-17879 stable pack attachment and Beta/world metadata; do not alter BDS",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-stable-witness-preflight-20261101.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "inspect_existing_17879",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-stable-witness-preflight-20261101.py",
+      "args": [
+        "--inspect",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 65
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "stable_preflight",
+      "file": "stable_witness_preflight.json",
+      "format": "json"
+    }
+  ]
+}
