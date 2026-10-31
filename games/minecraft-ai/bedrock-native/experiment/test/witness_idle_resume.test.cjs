@@ -82,7 +82,7 @@ test('job starts between event and scheduled callback so no collision',async()=>
 })
 test('main routes genuine accepted witness to deferred safe idle resume',()=>{
  const main=fs.readFileSync(path.join(__dirname,'../src/main.cjs'),'utf8')
- assert.match(main,/createWitnessIdleResume\(\{runtime,bot,evidence:movementEvidence,/)
+ assert.match(main,/createWitnessIdleResume\(\{\s*runtime,bot,evidence:movementEvidence,/)
  assert.match(main,/witnessIdleResume\.request\(\)/)
  assert.doesNotMatch(fs.readFileSync(path.join(__dirname,'../src/witness_idle_resume.cjs'),'utf8'),
     /querytarget\s+@|child_process|execSync|spawnSync/)
