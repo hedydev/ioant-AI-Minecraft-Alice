@@ -2,7 +2,7 @@
 """Read one current 17879 Alice voxel snapshot to diagnose observed door visibility.
 
 Never runs BDS commands, movement, console, model inference or raw world DB reads.
-Only returns limited counts/distances, never absolute coordinates or entities.
+Only returns bounded counts, relative door offsets and distances; never absolute coordinates or entities.
 """
 import json,math,os,re,shlex,subprocess,sys
 from pathlib import Path
@@ -67,7 +67,7 @@ try:
   view=json.loads(v.read_text())
   age=int(time.time()*1000)-view.get('observedAt',0)
   if view.get('version')!=1 or view.get('connected') is not True or not 0<=age<=12000 or view.get('dimension')!='overworld':raise ValueError('stale_view')
-  # A bounded redacted summary only; relative voxel coordinates never leave Mint.
+  # Bounded door-column offsets only; absolute world coordinates never leave Mint.
   __SUMMARIZER__
   result=summarize(view)
 except (OSError,ValueError,TypeError,KeyError,subprocess.SubprocessError):
@@ -105,7 +105,7 @@ def run(folder):
             x=json.loads(p.stdout)
             if x.get('state') in ('observed','unverified') and set(x)<={
                 'state','reason','source','doorVoxelCount','doorWithinSurvey7','nearestDoorHorizontal',
-                'bedVoxelCount','bedWithin12','nearestBedHorizontal','unknownCells'}:obs=x
+                'bedVoxelCount','bedWithin12','nearestBedHorizontal','unknownCells','relativeDoorColumns'}:obs=x
     except (OSError,ValueError,subprocess.SubprocessError):pass
     report={'audit':'ALICE_HOME_DOOR_VOXEL_READONLY','schemaVersion':1,
       'bdsCommandsSent':False,'movementAttempted':False,'observation':obs}
