@@ -98,14 +98,14 @@ function runCommand(runtime,command,report){
     runtime.lastHumanAt=runtime.clock()
     runtime.nextIdleAt=Math.max(runtime.nextIdleAt,
       runtime.clock()+runtime.p.autonomy_policy.AUTONOMY_GRACE_MS)
-    const started=runtime.startJob('EXPLORE','控制台',async signal=>{
+    runtime.startJob('EXPLORE','控制台',async signal=>{
       const result=await runtime.boundedScout(candidate,signal,{allowNightFallback:true})
       const ok=result?.serverMovementVerified===true
       report(ok?'completed':'failed',ok?'server_verified_scout_endpoint':
         safeReason(result?.reason),'试走 '+(ok?'服务端移动已验证':'未获得实际移动确认'))
       return result
     },{label:'两格安全试走',announce:false})
-    if(!started||!runtime.job)return response('rejected','probe_start_denied','试走未能通过生存与导航检查')
+    if(!runtime.job)return response('rejected','probe_start_denied','试走未能通过生存与导航检查')
     const dest=candidate.target
     return response('started','probe_route_started',
       '已选择附近坐标 '+[dest.x,dest.y,dest.z].join(',')+'；2格安全步行，等待 BDS 见证')
