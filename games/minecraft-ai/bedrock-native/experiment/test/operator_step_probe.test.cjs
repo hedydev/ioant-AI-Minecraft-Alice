@@ -10,12 +10,13 @@ function make({phase=5000,health=20,food=20,mobs=[]}={}){
  const survey={status:'route_candidate',walkRoutes:[route],walkRoute:route,center:[10,65,20]}
  return {bot,survey}
 }
-test('select verified observed two-cell flat walking route, not a fixed absolute coordinate',()=>{
+test('survey two safe cells but issue only ONE adjacent Pathfinder goal',()=>{
  const f=make()
  const r=selectProbeRoute(f.bot,{survey:f.survey})
- assert.equal(r.candidate?.distance,2)
- assert.deepEqual(r.candidate?.waypoints,[{x:11,y:65,z:20},{x:12,y:65,z:20}])
- assert.equal(r.candidate?.target.x,12)
+ assert.equal(r.candidate?.distance,1)
+ assert.deepEqual(r.candidate?.waypoints,[{x:11,y:65,z:20}])
+ assert.equal(r.candidate?.target.x,11)
+ assert.equal(r.candidate?.kind,'observed_one_cell_flat_probe')
 })
 test('unsafe/low health, nearby monster and wrong phase do not select route',()=>{
  for(const options of [{health:5},{food:3},{mobs:[{x:12,y:65,z:20}]},

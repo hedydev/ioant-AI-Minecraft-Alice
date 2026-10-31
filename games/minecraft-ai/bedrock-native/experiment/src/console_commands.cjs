@@ -165,7 +165,7 @@ function startOperatorProbe(runtime,report){
   if(!runtime.job)return resp('rejected','probe_start_denied','试走未通过生存与导航检查')
   const dest=candidate.target
   return resp('started','probe_route_started',
-    '已选择附近坐标 '+[dest.x,dest.y,dest.z].join(',')+'；2格安全步行，等待 BDS 见证')
+    '已选择附近坐标 '+[dest.x,dest.y,dest.z].join(',')+'；1格安全步行，等待 BDS 见证')
 }
 function cancelArmedProbe(runtime,why='probe_cancelled'){
  const arm=runtime?.pendingOperatorProbe
