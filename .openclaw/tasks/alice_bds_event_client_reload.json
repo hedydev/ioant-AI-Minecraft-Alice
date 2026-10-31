@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Single existing Alice client-only reload for BDS-event-armed probe, original world 17879",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-bds-event-client-reload-20261031.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "one_guarded_client_only_reload",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-bds-event-client-reload-20261031.py",
+      "args": [
+        "--restart",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 275
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "client_reconnect",
+      "file": "alice_17879_client_restart.json",
+      "format": "json"
+    }
+  ]
+}
