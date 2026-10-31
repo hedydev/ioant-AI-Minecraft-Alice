@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Finite user-approved original 17879 MCSManager samples coordinated by accepted 250ms Alice ACK, no loop",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mcsm-ack-coordinated-pair-20261101.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "current_session_ack_pair",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mcsm-ack-coordinated-pair-20261101.py",
+      "args": [
+        "--run",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 130
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "ack_pair",
+      "file": "alice_mcsm_ack_pair.json",
+      "format": "json"
+    }
+  ]
+}
