@@ -1,3 +1,9 @@
+## 2026-11-01 — 独立BDS服务器替代正式服测试：容量只读检查（待运行）
+
+- 用户明确拒绝短停/改动正式17879，要求尝试另一台/另一实例BDS测试。采用**独立新测试目录+独立生成的世界**作为候选方案；旧17878/17880/17879和已有v1/v2/v3/v4实验目录不触碰、不覆盖。新服务器拟专用UDP IPv4 17882、IPv6 27882，须实机先确认未被占用。
+- 新脚本 `scripts/alice-isolated-bds-readiness.py` 和 `.openclaw/tasks/alice_isolated_bds_readiness.json` 只读取Mint /proc/meminfo、/proc/loadavg、/proc/net/udp{,6}和指定已有实验目录是否存在，**不bind端口、不访问世界内容、不启动/停止BDS、不修改任何文件**；网络端口 `not_observed` 只表示采样时内核表未看到，不保证启动时可绑定。结果还需结合当前剩余内存及负载决策。
+- 当前仅代码检查计划。先在全量Python回归及OpenClaw只读检查验证以后再考虑独立新BDS实际创建/启动；不复制在线LevelDB、不启用生产pack、不使用同Xbox Alice账户并发登录。端到端Alice移动测试还需要独立测试Xbox身份，或以后单独批准Alice客户端暂离正式服（绝不重启BDS）。
+
 ## 2026-11-01 — BDS离线备份进程识别已完成Mac+Mint回归（未做正式服备份）
 
 - 修复提交 `3036f405469b09e200550b9dda425b9e3f75dfb9` 已通过实际OpenClaw `alice_backup_proc_guard_mac_regression_20261101_a01`：定向9/9、Mac全量Python 277 (skip 3, fail 0)，安全fast-forward同一源码。
