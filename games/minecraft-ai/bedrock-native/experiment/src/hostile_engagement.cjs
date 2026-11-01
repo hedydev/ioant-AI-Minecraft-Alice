@@ -89,11 +89,15 @@ class HostileEngagement {
      now-hitAt<=3000
    const meleeReachable=barrier==='clear'||
      (near.distance<=1.2&&recentHit&&barrier!=='blocked')
+   const closeContactAfterHit=recentHit&&near.distance<=1.2
    if(meleeReachable&&near.distance<=this.meleeRadius&&
-      (approaching>=2||recentHit)){
+      (approaching>=2||closeContactAfterHit)){
+    // A health drop does not identify an attacker. At point-blank range
+    // evade defensively, but NEVER authorize a counterattack on proximity.
+    const unidentified=approaching<2&&closeContactAfterHit
     observed.push({target:mob,role:near.role,distance:near.distance,
-      evidence:recentHit?'nearby_recent_hurt':'directed_close_approach',
-      urgentAttack:recentHit})
+      evidence:unidentified?'unattributed_close_damage':'directed_close_approach',
+      urgentAttack:approaching>=2&&recentHit})
    }
   }
   // Projectile motion must predict a hit on Alice or an escorted player.
@@ -119,7 +123,7 @@ class HostileEngagement {
   // nearest corroborated hostile, never an unrelated closer passive mob.
   observed.sort((a,b)=>{
    const score=x=>x.evidence==='incoming_projectile'?3:
-     x.evidence==='nearby_recent_hurt'?2:1
+     x.evidence==='directed_close_approach'?2:1
    return score(b)-score(a)||a.distance-b.distance
   })
   for(const [id,v] of this.seen)
@@ -128,8 +132,10 @@ class HostileEngagement {
   const found=observed[0]
   if(!found)return null
   return {
-   type:health<=13?'SURVIVE':found.role==='owner'?'GUARD':'SELF_DEFENSE',
-   priority:health<=13?100:found.role==='owner'?80:90,
+   type:health<=13||found.evidence==='unattributed_close_damage'?
+     'SURVIVE':found.role==='owner'?'GUARD':'SELF_DEFENSE',
+   priority:health<=13||found.evidence==='unattributed_close_damage'?
+     100:found.role==='owner'?80:90,
    target:found.target,evidence:found.evidence,urgentAttack:found.urgentAttack
   }
  }
