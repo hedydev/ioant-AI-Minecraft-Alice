@@ -1,3 +1,9 @@
+## 2026-11-01 — 同一BDS双样本延迟本地对齐：重新核对实际加载
+
+- `alice_idle_late_drift_client_reload_20261101_s10` 外层task PASS但**内层** `preflight_blocked,unsafe_live_state,clientRestartAttempted=false`，绝非实际加载。紧接只读`alice_idle_late_drift_block_reason_20261101_s11`：Alice原17879在线、IDLE、HP20、food20、无job，旧BDS 4个样本已expired；`alice_idle_late_drift_health_readonly_20261101_s12`：当前PID heartbeatFresh=true、但`runtimeSourceLoadedAfterSync=false`，运行中尚未加载最新250ms延迟漂移补救代码。
+- 唯一新`.openclaw/tasks/alice_idle_late_drift_safe_window_20261101.json`使用全新私有`alice-idle-late-drift-safe-window-20261101.intent`，仍必须Operator check通过 +唯一当前PID +heartbeat新鲜 +相同原17879世界、自治健康IDLE无任务/安全idleGate，才允许一次Alice-client-only restart；任何COMBAT、健康下降、主体变更即阻断，不重启BDS、不改世界、不复用s10已消费操作。事后必须读**内层**结果和新PID/heartbeat，不凭外层pass自称上线。
+- 此前Mac Python296(3skip)、Mint Node24 753/753零失败，镜像候选仍只在当前生命独立两份BDS<4秒且静止时做≤3格本地镜像；0.75格及全部安全门禁没有更改。
+
 ## 2026-11-01 — 同一4秒BDS双样本内迟到客户端偏差：安全重载新代码
 
 - `main.cjs`和`verified_idle_position_mirror.test.cjs`已修改：保留完全相同4秒/0.75格双BDS见证、当前生命/静止/安全IDLE/HP>=16等门禁；每250ms被动观察器若没有读到新独立sample，只对**已有尚在4秒内的独立双样本**复核有无迟到的客户端物理预测漂移。仅调用原`reconcileVerifiedIdleMirror`，不创建sample/ACK、不执行MCSManager `querytarget`、不发送Minecraft包/服务端命令、不续期证据；成功原来日志字段不变，失败不在250ms日志刷屏。

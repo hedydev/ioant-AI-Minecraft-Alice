@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "One new safety-window attempt to reload verified healthy IDLE Alice client for late BDS prediction drift; no BDS changes",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-idle-late-drift-safe-window-20261101.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "one_guarded_safe_window_reload",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-idle-late-drift-safe-window-20261101.py",
+      "args": [
+        "--restart",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 275
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "safe_window_reload",
+      "file": "alice_17879_client_restart.json",
+      "format": "json"
+    }
+  ]
+}
