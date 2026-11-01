@@ -191,3 +191,15 @@ period. The finite observer emits only fixed snapshot-failure codes.
 authorized lifecycle to establish this feature is publishing. It is not a
 source hash or convergence verdict. Current replay-only telemetry from the
 earlier client is insufficient; source tests do not imply the live fix.
+
+### Activity-guard source validation
+
+Source `e3f814cfb145d4cc84d7b1bfa8246a9887957ed0` passed actual fixed MCP `alice_reconcile_activity_guard_mint_20261102_k4n8v2cs_15`:
+Mint Node24 **798/798**, Mac Python299 (skip3), non-restart source sync.
+The declared report SHA-256 is
+`fb1e29e6e49e84c4f1118c3952bc283869a012e3c2df7911380d4d7dea5fec07`.
+No Alice/BDS restart, console command or world write was performed by the task.
+The operator has been asked for a new normal client-only lifecycle to load
+this patch; require `activityGuardVersion=1` in the current owner before
+restarting finite observation. Original0.75/4s/40h/180s and no-replay rules
+remain in force. This is not real coordinate-convergence acceptance.

@@ -1,3 +1,28 @@
+## 2026-11-02 latest continuation — activity guard source synced, live loading pending
+
+- Latest functional source `e3f814cfb145d4cc84d7b1bfa8246a9887957ed0`; read current Git/CURRENT_STATE before writing.
+- User normal restart changed oldPID1384063 to1862683. Current-owner telemetry,
+  connected original17879, HP20/food20 confirmed through actual MCP06/07.
+- Finite observation12 was inconclusive:759 snapshots/190.996s, no qualified
+  distance window, six sample-skew readings and later snapshot failure. No
+  convergence success. Post-event receipt14 found seven motion inputs,
+  navigation rejection0.8 and one0.91 local idle mirror.
+- Source temporal defect fixed: idle/respawn local mirrors require both
+  independent samples after latest queued motion/applied authoritative update.
+  Unknown metadata fails closed; no threshold/query budget loosened. Fresh
+  witness status is published before new activity, with original sample TTL.
+- Actual MCP `alice_reconcile_activity_guard_mint_20261102_k4n8v2cs_15` passed source sync and Mint798/798, Mac Python299(skip3).
+  Source is on Mint disk; running old process is not thereby patched.
+- User has been asked for a second normal client-only lifecycle to load this
+  NEW patch. Wait for their result; don't repeat prior denied restarts or
+  consumed intents via another tool/ID. Require current-owner
+  `activityGuardVersion=1`, then use the bounded natural-sample observer.
+- Do not replay old probes, query manually, increase40/h or180s cadence,
+  disable stationary backoff, relax0.75/4s, restart BDS or alter worlds.
+- Stable task: `.ai-work/tasks/cf34f05d-a84c-4cbe-999f-76e5d3366a7d`.
+  Remains awaiting_device_validation; independent fresh stationary and
+  authorized bounded-movement evidence plus human acceptance remain.
+
 ## 2026-10-23 — Injected-client initialization and stable BDS input IDs (Mint movement and first endpoint verified)
 
 The injected native client bypassed the pinned Mineflayer Bedrock factory and its initial loading-screen/aim-assist sequence. Restore the same sequence once on player_spawn, only for protocol 2193. Tests compare against the actual installed factory offline and verify exact codec bytes; no extra login or node_modules patch. Only initial join is in scope.

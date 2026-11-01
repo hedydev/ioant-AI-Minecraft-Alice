@@ -1,0 +1,35 @@
+{
+  "schema_version": 2,
+  "event_id": "a5c8bde5-b3a8-407a-914a-be2b806e1183",
+  "task_id": "cf34f05d-a84c-4cbe-999f-76e5d3366a7d",
+  "event_type": "validation_recorded",
+  "occurred_at": "2026-11-01T20:51:10.522632Z",
+  "actor": {
+    "actor_type": "ai",
+    "ai_name": "ChatGPT",
+    "ai_session_id": "k4n8v2cs"
+  },
+  "ledger_branch": "main",
+  "development_branch": "main",
+  "observed_commit": "e3f814cfb145d4cc84d7b1bfa8246a9887957ed0",
+  "message": "Activity-qualified mirror patch passed full Mint regression and non-restart sync. Operator normal lifecycle loading and independent live acceptance remain required.",
+  "changes": {
+    "status": {
+      "from": "awaiting_device_validation",
+      "to": "awaiting_device_validation"
+    },
+    "remaining_work": [
+      "Operator normal client lifecycle loading activityGuardVersion1",
+      "Finite capture of qualified same-life stationary and authorized movement evidence",
+      "Human acceptance"
+    ]
+  },
+  "evidence": [
+    {
+      "operation_id": "alice_reconcile_activity_guard_mint_20261102_k4n8v2cs_15",
+      "result": "cached true, Node24 798/798, Mac Python299 skip3; no client/BDS restart, world write or console operation",
+      "artifact_sha256": "fb1e29e6e49e84c4f1118c3952bc283869a012e3c2df7911380d4d7dea5fec07"
+    }
+  ],
+  "supersedes_event_id": null
+}
