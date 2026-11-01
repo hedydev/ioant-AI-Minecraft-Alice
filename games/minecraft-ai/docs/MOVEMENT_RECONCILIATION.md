@@ -203,3 +203,26 @@ The operator has been asked for a new normal client-only lifecycle to load
 this patch; require `activityGuardVersion=1` in the current owner before
 restarting finite observation. Original0.75/4s/40h/180s and no-replay rules
 remain in force. This is not real coordinate-convergence acceptance.
+
+## Actual loaded-client stationary acceptance, 2026-11-02
+
+Operator lifecycle now yielded PID1924898. Receipt16 confirms
+`activityGuardVersion=1`,2 reconciliations/13 replayed frames and40 retained
+frames; receipt17 confirms connected original17879 HP20/food20.
+
+- Observation18:210.074s,835 reads, ONE fresh pair window/five qualified
+  readings; min/max/last relative distance0.00, max sample skew809ms.
+- Observation19:210.053s,835 reads, SECOND fresh pair window/four qualified
+  readings; min/max/last0.00, max skew660ms.
+- Both same owner, idle-only windows, no input in those windows, no snapshot
+  failure. Values have0.01-block report precision; they are not exact float
+  equality, nine independent pairs or continuously fresh seven-minute proof.
+- Later six motion inputs and zero idle/respawn mirrors are observed. The
+  independent post-movement position/displacement remains unverified. A later
+ 0.819 historical subtraction must not be presented as current drift.
+- Existing40/h,180s minimum and stationary backoff remain; no extra query,
+  process control or world mutation was submitted by the observer.
+
+Keep overall live acceptance pending until the movement endpoint and fresh
+coordinate agreement are independently evidenced. The loaded-source blocker
+is resolved; do not ask for another restart merely to continue this read.

@@ -1,3 +1,22 @@
+## 2026-11-02 latest state — loaded; stationary windows accepted; moving endpoint pending
+
+PID1924898 is connected original17879 and publishes activityGuardVersion1.
+No further restart is needed for current source. Actual read-only observation18
+and19 each ran210s/835 reads and captured one distinct fresh stationary BDS
+pair window: five plus four qualified readings, min/max relative error0.00 at
+0.01-block precision, no snapshot failure, max skews809/660ms. These are TWO
+windows, not nine independent pairs or seven minutes of continuous fresh proof.
+Later receipt22 has six moving inputs; receipt20 has no idle/respawn mirrors,
+old unqualified difference0.819, no independently verified post-movement BDS
+endpoint yet. Overall acceptance remains pending. Timer21 active,6/40 hourly,
+three stationary pairs,442.1s pause remaining at21:08:56UTC; preserve backoff,
+180s cadence,40/h and all movement safety. Continue finite observation on the
+same owner around the next naturally admitted fresh pair. Never force queries,
+replay old intents, restart BDS/world or loosen0.75/4s. Read CURRENT_STATE and
+latest MCP handoff/receipts before acting. Source e3f814c passed Mint798/798;
+this is evidence-only progress. Taskcf34f05d-a84c-4cbe-999f-76e5d3366a7d still
+awaiting_device_validation for active motion and later human acceptance.
+
 ## 2026-11-02 latest continuation — activity guard source synced, live loading pending
 
 - Latest functional source `e3f814cfb145d4cc84d7b1bfa8246a9887957ed0`; read current Git/CURRENT_STATE before writing.

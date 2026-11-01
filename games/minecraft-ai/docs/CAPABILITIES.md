@@ -1,3 +1,7 @@
+## 2026-11-02 — Loaded activity guard and fresh stationary position agreement (OBSERVED scope)
+
+Actual current-owner activityGuardVersion1 and original17879 login confirmed on PID1924898. Two separate finite observations captured two distinct fresh BDS-pair windows; five plus four repeated qualified readings reported0.00-block relative error at0.01 precision, with no snapshot failures. This accepts the measured stationary windows only, not exact float equality or continuously identical positions. Later six motion inputs have no independently verified fresh post-movement endpoint yet; active movement acceptance remains pending. Source798/798 regression evidence is unchanged.
+
 ## 2026-11-02 — Activity-qualified stationary mirrors (STAGED)
 
 Idle and respawn local mirrors now require two independent observations AFTER the latest queued movement input and applied authoritative position update. Missing/invalid activity metadata denies mirroring. This prevents movement-before-IDLE from making an old stationary pair eligible to overwrite a newer local trajectory; it does not authorize navigation or relax0.75/4s gates. Immediate witness-triggered status publication preserves the original sample timestamp, and `activityGuardVersion=1` identifies feature telemetry in the current process. Actual MCP `alice_reconcile_activity_guard_mint_20261102_k4n8v2cs_15` passed Mint798/798 and Mac Python299(skip3), source synced without restart. Source validation/loading and fresh BDS effect must remain separate; full live convergence is not accepted yet.
