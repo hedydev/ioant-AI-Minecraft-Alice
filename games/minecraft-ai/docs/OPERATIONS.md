@@ -1,3 +1,10 @@
+## 2026-11-01 — 同一4秒BDS双样本内迟到客户端偏差：安全重载新代码
+
+- `main.cjs`和`verified_idle_position_mirror.test.cjs`已修改：保留完全相同4秒/0.75格双BDS见证、当前生命/静止/安全IDLE/HP>=16等门禁；每250ms被动观察器若没有读到新独立sample，只对**已有尚在4秒内的独立双样本**复核有无迟到的客户端物理预测漂移。仅调用原`reconcileVerifiedIdleMirror`，不创建sample/ACK、不执行MCSManager `querytarget`、不发送Minecraft包/服务端命令、不续期证据；成功原来日志字段不变，失败不在250ms日志刷屏。
+- 实机契机：`alice_idle_mirror_reason_live_audit_20261101_s06`：原17879当前Alice在线且当前登录独立样本4，`deferredEvents=4,lastDeferredReason=already_aligned,lastDeferredState=IDLE`，说明首次样本到达时对齐，但随后离开原0.75格容差；原事件驱动回调不会检查到达之后的漂移。
+- 真实测试 `alice_idle_late_drift_mac_regression_20261101_s07` Mac Python296（skip3）PASS。第一次Mint Node24 750/753失败：三个静态回归断言期待旧版逐字`if(poll())onFresh()`、以及镜像直接写在onFresh函数内部；已更正断言为验证新共享函数且镜像检查发生在ACK、探测、床动作之前，不放松原门禁。第二次`alice_idle_late_drift_mint_fixed_20261101_s09` **Node24 753/753**，Mac296 PASS、原BDS/Alice均未重启。
+- 唯一新私有一次性intent `alice-idle-late-drift-client-reload-20261101.intent` 只在现有`alice-mint.py check` preflight通过且当前客户端为健康`IDLE`、同PID同世界、无任务和COMBAT时进行**唯一Alice客户端**更换。真实BDS不操作，旧重启intent不重放。加载后必须再验证真实镜像次数和BDS后验位移，不能宣称本地修正等于真实行走。
+
 ## 2026-11-01 — 本地mirror有限拒绝原因诊断：只更换健康IDLE Alice客户端
 
 - 原Alice最新代码 `main.cjs` 增加只有真正被BDS独立见证读取器接纳才触发的mirror拒绝固定原因/有限状态日志，reason变化或>=15秒才写，完全不携带玩家坐标/身份/凭证、不发送BDS命令、不放松门禁。Mac `alice_idle_mirror_reason_mac_regression_20261101_s02` PASS Python296（skip3）；Mint `alice_idle_mirror_reason_mint_regression_20261101_s03` PASS Node24 **751/751**、Mac296，非重启同步PASS（BDS/Alice未重启，世界未修改）。
