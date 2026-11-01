@@ -1,3 +1,12 @@
+## 2026-11-02 — 独立复核 Codex 历史帧坐标纠正；新增原服进程实际版本遥测检查
+
+- Codex `618aad3` 历史tick回滚/物理重放方案代码已查，完整 `d741525` 记录和MCP原回执已复核，Mint777/777、Mac Python299。无已获准Alice生命周期更新，不得把源码验收等同原服BDS移动。
+- 独立执行 `alice_codex_reconcile_mac_recheck_20261102_v01` Mac Python299（3skip），Mac新专项直接执行 `alice_reconcile_node_direct_verify_20261102_v08`：纯历史帧16/16、插件5/5；Mac原Physics脚本因本地缺失`vec3`无法执行而非测试通过。另在真实 Mint Node24.22.0 通过 `alice_reconcile_mint_direct_20261102_v10`三套专项 **28/28**，已补充长期可执行的只读MCP任务。
+- 实际 `alice_codex_reconcile_live_gate_20261102_v04`、`alice_codex_reconcile_live_pos_20261102_v05` 原17879 owner在线autonomous IDLE HP20 food20，独立BDS样本181，最近pair过期，旧进程客户端-BDS差1.503格；不能将这个差额当成新代码失败。
+- 继续开发并提交 `inspect_reconciliation_runtime.cjs` +4测试与安全只读 `alice-reconcile-runtime-readonly.py` / MCP任务：只允许原运行进程/私有实时wire audit，不导出坐标/包，读取回滚次数、回放帧数、fallback、拒绝、有限reason，并判定“当前进程有无新计数字段”。这不是凭源码mtime或Git HEAD推断进程已重载。
+- `alice_reconcile_runtime_mac_regression_20261102_v11` Python299（3skip）PASS，`alice_reconcile_runtime_mint_sync_20261102_v12` Mint Node24 **781/781 PASS**、Mac299，`aliceRestarted=false`、`bdsRestarted=false`、`worldModifiedByTask=false`、`consoleCommandSent=false`。原服实时只读 `alice_reconcile_runtime_live_read_20261102_v13`：owner已验证，`telemetryPresent=false`、`runtime_counters_unavailable`，客户端-BDS相对差1.26格；运行进程尚未提供新replay telemetry，不声称新算法实机生效。
+- 原本被平台阻断的Alice-only reload不得用不同工具、task、operation ID绕过。真正下一项是获准的正常进程生命周期后：再读同一只读任务验证新字段，再独立双样本/4秒/0.75格起点安全门禁及真实BDS导航终点；不重启17879 BDS、不切换世界。
+
 ## 2026-11-02 — Tick-indexed movement reconciliation (source; live acceptance pending)
 
 - The maintained injected input plugin now applies player corrections to their historical input tick and replays subsequent physics-only frames, instead of overwriting the present frame and re-anchoring its clock to an old tick. Mint's installed `bedrock_1.26.51` schema was read-only verified: `delta` and `on_ground`, not `velocity`.
