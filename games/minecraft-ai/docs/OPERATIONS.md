@@ -1,3 +1,12 @@
+## 2026-11-02 — 继续执行：安全窗口核查与平台重载阻断（本轮实际回执）
+
+- GitHub main 已从上一会话的 `d55bfd2e...` 正常前进12个提交至 `767836ed8f14acb5745e7a5a9b00d177d539904c`（当前本轮再添加只读diagnostic）；涵盖 **4秒内已有双样本晚到250ms客户端漂移修正**、本地镜像拒绝原因匿名日志、MCSManager成功ACK但BDS不动时10分钟退避等，保留原BDS 17879，不创建测试世界、不降低0.75格门禁/4秒TTL。第一次旧HEAD回归 `alice_idle_mirror_mac_regression_20261102_a01` 被 `remote_commit_mismatch` 安全阻止，未运行错版本。
+- 最新HEAD实际 `alice_idle_mirror_latest_mac_regression_20261102_b01` Mac全量PASS；`alice_idle_mirror_latest_mint_regression_20261102_c01` PASS **Mint Node24 753/753, Mac Python296项（3 skip）**，非重启同步，`aliceRestarted=false,bdsRestarted=false,worldModifiedByTask=false,consoleCommandSent=false`。
+- 实际原服只读 `alice_idle_mirror_pre_reload_reasons_20261102_d01`：同登录Alice在线fresh、独立BDS位置样本74、**本地镜像成功20次**、模型规划建议21次，最后匿名拒绝 `already_aligned`，不能将本地镜像次数当成真正服务器位移。最新`alice_idle_mirror_reload_block_gate_20261102_f01`：Alice IDLE HP20 food20、无job、autonomous、样本76、上一对BDS `independentPairTravelBlocks=0`、`movingQueued=226`、`idleHoldReason=scout_bds_position_unavailable`、当前样本expired。**未证明真正独立BDS自主位移完成**。
+- 第一次尝试用户授权、原安全保护的client-only reload `alice_idle_late_drift_safe_reload_20261102_e01` 外层PASS但**内层** `preflight_blocked,unsafe_live_state,clientRestartAttempted=false`；没有重启任何进程。新增只读 predicate task `.openclaw/tasks/alice_idle_mirror_safe_window_diagnose_20261102.json` 与 `alice_idle_mirror_guard_flags_20261102_g01`：checkPassed/useRestart/PID一致/heartBeat/原世界/IDLE/HP>=16/noJob/autonomous/idleGate/mtime全部true，证明已有一个满足条件的瞬时窗口。但第二次实际尝试`alice_idle_late_drift_safe_reload_after_audit_20261102_h01`被**工具执行平台安全审核直接阻止**，无执行回执，严禁通过更换工具/脚本/operation_id绕过审核。
+- 最后仅只读`alice_idle_after_block_readonly_20261102_i01` PASS：Alice仍在线、heartbeatFresh=true、原世界匹配、独立样本76，`aliceRestartedByTask=false,bdsRestarted=false`；`runtimeSourceLoadedAfterSync=true`是文件修改时间相对PID的**间接判断**，不等于证明新的250ms晚到修正实际已触发。当前不声称晚到补救功能已实际验证或Alice走到目标。
+- 下一步：在获准的执行/部署流程内确认新版本运行中的真实镜像触发情况，或自然安全生命周期更新后重新验收（不重试已被平台拒绝的执行路径）；继续使用既有MCSManager只读BDS后验，要求独立服务器位置位移>0再确认真实移动。旧无限loop仍禁用，原17879 BDS不停止、不改世界。
+
 ## 2026-11-01 — 同一BDS双样本延迟本地对齐：重新核对实际加载
 
 - `alice_idle_late_drift_client_reload_20261101_s10` 外层task PASS但**内层** `preflight_blocked,unsafe_live_state,clientRestartAttempted=false`，绝非实际加载。紧接只读`alice_idle_late_drift_block_reason_20261101_s11`：Alice原17879在线、IDLE、HP20、food20、无job，旧BDS 4个样本已expired；`alice_idle_late_drift_health_readonly_20261101_s12`：当前PID heartbeatFresh=true、但`runtimeSourceLoadedAfterSync=false`，运行中尚未加载最新250ms延迟漂移补救代码。
