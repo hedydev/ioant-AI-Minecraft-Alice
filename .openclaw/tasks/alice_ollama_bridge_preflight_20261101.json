@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Read-only Mac Ollama 11435 and Mint loopback 11435 socket/forwarding readiness",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-ollama-bridge-preflight.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "inspect_mac_mint",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-ollama-bridge-preflight.py",
+      "args": [
+        "--inspect",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 45
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "bridge_preflight",
+      "file": "alice_ollama_bridge_preflight.json",
+      "format": "json"
+    }
+  ]
+}
