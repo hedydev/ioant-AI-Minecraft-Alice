@@ -70,16 +70,19 @@ test('every life, current pair, stable BDS and idle-safety precondition fails cl
 })
 test('main reconciles on true independent witness before autonomous/bed movement opportunities',()=>{
  const main=fs.readFileSync(path.join(__dirname,'../src/main.cjs'),'utf8')
+ const helper=main.indexOf('function maybeMirrorVerifiedIdle(')
  const start=main.indexOf('function onFreshIndependentBdsWitness(){')
  const end=main.indexOf('stableWitness=live?',start)
- assert(start>=0&&end>start)
+ assert(helper>=0&&start>helper&&end>start)
+ const shared=main.slice(helper,start)
+ assert.match(shared,/reconcileVerifiedIdleMirror\(\{bot,evidence:movementEvidence,/)
+ assert.match(shared,/idleMirrorLastAt=Date\.now\(\)/)
  const part=main.slice(start,end)
- const mirror=part.indexOf('reconcileVerifiedIdleMirror(')
+ const mirror=part.indexOf('maybeMirrorVerifiedIdle(true)')
  const ack=part.indexOf('writeWitnessAck(')
  const probe=part.indexOf('resumeArmedProbe(')
  const bed=part.indexOf('runtime.spawnpointTick(')
  assert(mirror>=0&&mirror<ack&&ack<probe&&probe<bed)
- assert.match(part,/idleMirrorLastAt=Date\.now\(\)/)
 })
 
 test('main emits only bounded reason/state when local mirror is deferred, not coords',()=>{

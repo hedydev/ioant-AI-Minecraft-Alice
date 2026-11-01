@@ -67,7 +67,7 @@ test('unsafe destination and public control directory are refused',()=>{
 test('main publishes ACK only on accepted independent BDS sample path',()=>{
  const main=fs.readFileSync(path.join(__dirname,'../src/main.cjs'),'utf8')
  assert.match(main,/writeWitnessAck\(\{bot,evidence:movementEvidence,/)
- assert.match(main,/if\(bdsWitness\.poll\(movementEvidence\)\)onFreshIndependentBdsWitness\(\)/)
+ assert.match(main,/if\(bdsWitness\.poll\(movementEvidence\)\)\{\s*onFreshIndependentBdsWitness\(\)/)
  assert.doesNotMatch(fs.readFileSync(path.join(__dirname,'../src/witness_ack.cjs'),'utf8'),
    /querytarget\s+@|child_process|fetch\(|http\.request/)
 })
