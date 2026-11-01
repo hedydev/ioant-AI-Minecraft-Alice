@@ -1,3 +1,14 @@
+## 2026-11-01 — Alice Ollama 模型服务恢复（原17879/不动BDS）
+
+- 项目OpenClaw上一次handoff revision33，仓库原HEAD `94fb4b61...`；用户要求继续`model_unavailable`和真实自主移动。最先只读`alice_model_preflight_gate_20261101_ca01`：原Alice在线，但当前HP**2**、SURVIVE、独立BDS位置为`prior_life_witness`，安全低血量门禁阻止探索是正确行为，不能降低HP与移动保护。
+- `alice_model_endpoint_live_readonly_20261101_cb01` 实际只读：Alice配置`ALICE_OLLAMA_MODEL=granite4:3b`、`ALICE_OLLAMA_JSON_MODE=strict`、`ALICE_OLLAMA_TIMEOUT_MS=12000`，endpoint是**Mint本机loopback**，GET /api/tags 无法连接；已有私有当前进程日志 **9次 Ollama plan unavailable、0成功**，根因之一为Mac模型没有网络桥接，不是必须升级Minecraft/BDS。
+- `alice_model_bridge_preflight_20261101_cc01`：Mac本机Ollama `127.0.0.1:11435` HTTP GET成功且确认`granite4:3b`与`gemma4:26b-a4b`都在（9个已安装模型）；Mint的127.0.0.1:11435端口空闲。安装代码`scripts/alice-ollama-ssh-bridge.py`仅创建 Mac 用户LaunchAgent `com.ioant.alice.ollama-reverse-ssh`，通过私有现有SSH认证执行`ssh -N -T -R 127.0.0.1:11435:127.0.0.1:11435 tedz@192.168.0.104`；本机两端loopback、不把Ollama开放到LAN或Tailnet、不在仓库存储API密钥；LaunchAgent KeepAlive，SSH断线后节流重连，远端端口冲突/模型未就绪则回滚仅该新增服务，绝不改已有Gateway/ClashX/BDS/MCSM。
+- **真实安装** `alice_model_ssh_bridge_install_20261101_cd01` PASS `installed_verified,macOllamaReady=true,mintBridgeVerified=true,launchAgentInstalled=true,launchAgentEnabled=true,bdsRestarted=false,aliceRestarted=false,worldModified=false`；Mint直接从自己的127.0.0.1:11435 GET /api/tags确认了原配置模型存在。
+- **单次真实模型推理** `alice_model_real_goal_smoke_20261101_ce01`：Mint通过桥向Mac Ollama发一次等效配置的`granite4:3b`严格JSON高层建议（无游戏命令），`status=valid_json_goal,httpCode=200,elapsedMs=1795,completedUnderConfiguredTimeout=true`，证明12秒内可调用且JSON格式兼容。
+- 原世界后续被动只读`alice_model_home_survival_20261101_cf01` Alice HP5/night/有threat，`alice_model_lowhealth_gate_20261101_cg01` HP15、food20、COMBAT/post_threat_window，证明正有生存行为和安全拦截，**并未证明已成功逃离、移动到目标或实际BDS位移**。模型接通不能强行覆盖SURVIVE/COMBAT、STOP、低血量门禁。最新 `alice_model_postbridge_runtime_20261101_ch01` Alice存活、loopback模型GET通、但战斗状态下未记录新的主动模型规划成功；等安全条件成立才调用高层目标模型。
+- Mac受控SSH隧道关闭：`launchctl bootout gui/$(id -u)/com.ioant.alice.ollama-reverse-ssh`，永久停用需再删除`~/Library/LaunchAgents/com.ioant.alice.ollama-reverse-ssh.plist`（先bootout再由用户决定）；不能动原OpenClaw Gateway LaunchAgent。原BDS17879/其它世界未重启。
+- 当前目标仍是用户要求的真实后验：在Alice安全恢复至HP>=16、无威胁、能进入IDLE后，检查真实model proposals / guarded SCOUT，以及BDS独立位移。任何模型单次smoke或控制台移动输入计数不能冒充路径成功。
+
 ## 2026-11-01 — 原17879 MCSManager自动位置见证恢复：真实验收回执
 
 - **根因已确证**：`status.json`久未更新（>5min，旧`independentSamples=6`），同一进程最新250ms private ACK 已`independentSamples=12`且有<90秒的独立BDS样本和`positionGateSatisfied=true`。原用户级按需timer以owner PID但陈旧status作为需求输入，预算曾计入10次，无法证明运动。已先实际**停用新timer**：`alice_mcsm_timer_pause_due_stale_status_20261101_bm01` `timerStopped=true,timerDisabled=true`，BDS/Alice未重启。
