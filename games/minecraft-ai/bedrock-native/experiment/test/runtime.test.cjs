@@ -3204,3 +3204,30 @@ test('BDS witness overrides old 20s bed observation cooldown only when proof is 
  assert.equal(n,1)
  e.stop()
 })
+
+test('model scout refused at BDS start remains blocked rather than reported handled',async()=>{
+ const now=300000,f=fixture(()=>now)
+ f.bot.time={timeOfDay:6000}
+ const e=new AliceBedrockRuntime({...f,policies:await policies(),planner:{
+   url:'http://127.0.0.1:11435',
+   suggestGoal:async()=>({tool:'scout_safe',reason:'observed safe corridor'})
+ }})
+ e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+ e.lastHumanAt=0
+ e.requireBdsAlignedExplore=true
+ e.lastWorldRoutine={phase:'day',weather:'clear',safeToExplore:true}
+ e.goalPlanner.observe=()=>{}
+ e.goalPlanner.request=async()=>({tool:'scout_safe'})
+ let rejectReason=null
+ e.goalPlanner.reject=reason=>{rejectReason=reason}
+ const outcome=await e.runAutonomousModelStep({
+   wood:0,woodFailure:false,movementFailure:false,
+   candidate:{ok:true,key:'verified-flat-corridor'},
+   drive:{scene:{kind:'observed_voxel'}},terrainWork:null
+ })
+ assert.equal(outcome,'blocked','rejected start cannot be counted as handled')
+ assert.equal(e.job,null,'no job was launched without server position proof')
+ assert.equal(rejectReason,'scout_start_position_unverified')
+ assert.equal(f.calls.filter(x=>x[0]==='goto').length,0)
+ e.stop()
+})
