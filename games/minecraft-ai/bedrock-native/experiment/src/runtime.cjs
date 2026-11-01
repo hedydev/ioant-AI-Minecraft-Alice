@@ -2654,6 +2654,10 @@ class AliceBedrockRuntime {
       if(this.planner?.url){
         const actionEpoch=this.epoch
         const modelOutcome=await this.runAutonomousModelStep({wood,woodFailure,movementFailure,candidate,drive,terrainWork})
+        // A real witnessed action or STOP may have advanced the epoch while
+        // the LLM was thinking. Never let its late completion replace the
+        // active job's hold/status or trigger a second action.
+        if(this.epoch!==actionEpoch||this.closed||this.job)return
         // OBSERVE is not a veto of a separately validated, bounded
         // non-destructive skill. The old unconditional return disabled indoor
         // door/SCOUT execution whenever Ollama was configured.
