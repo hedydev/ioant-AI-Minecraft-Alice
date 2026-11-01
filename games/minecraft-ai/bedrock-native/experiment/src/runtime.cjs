@@ -326,9 +326,11 @@ class AliceBedrockRuntime {
   start(){
     if(this.started){this.seenSpawn=true;this.lastSafetyAt=this.clock();
       this.lastSelfDamageAt=0 // prior-life damage must not survive respawn
+      this.hostileEngagement.reset()
       this.verticalWatch.reset();return}
     this.started=true;this.closed=false;this.seenSpawn=true
     this.lastSelfDamageAt=0
+    this.hostileEngagement.reset()
     this.verticalWatch.reset()
     this.configureMovement()
     this.bot.on?.('entityHurt',this.onEntityHurt)
@@ -538,6 +540,7 @@ class AliceBedrockRuntime {
     if(Number.isFinite(this.bot.health)&&this.bot.health>=0&&this.bot.health<=2048){
       this.hasHealth=true
       if(this.bot.health<=0){
+        this.hostileEngagement.reset()
         this.cancelActive('death');this.hasHealth=false;this.seenSpawn=false
         this.lastSafetyAt=this.clock()
         this.core.transition('SURVIVE','death: waiting for respawn')
