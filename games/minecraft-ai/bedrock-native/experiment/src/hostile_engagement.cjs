@@ -63,7 +63,10 @@ class HostileEngagement {
    if(!near)continue
    const prev=id===null?null:this.seen.get(id)
    const gap=prev?now-prev.at:Infinity
-   let approaching=0
+   // Multiple controllers inspect danger inside the same 300ms safety
+   // period. Preserve the previous observation until a new movement sample
+   // exists, rather than erasing a two-sample approach on a repeated read.
+   let approaching=prev&&gap>=0&&gap<180?prev.approaching:0
    if(prev&&gap>=180&&gap<=2200){
     const delta={x:mob.position.x-prev.position.x,
       z:mob.position.z-prev.position.z}
@@ -75,7 +78,7 @@ class HostileEngagement {
     if(travel>=0.18&&travel<=2.8&&toward>=0.78)
       approaching=Math.min((prev.approaching||0)+1,4)
    }
-   if(id!==null)this.seen.set(id,{
+   if(id!==null&&(!prev||gap>=180||gap<0))this.seen.set(id,{
      at:now,approaching,
      position:{x:mob.position.x,y:mob.position.y,z:mob.position.z}})
    // An observed solid wall vetoes inferred melee intent; a confirmed
