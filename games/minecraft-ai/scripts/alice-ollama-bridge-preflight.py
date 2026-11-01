@@ -28,8 +28,8 @@ def mint():
    capture_output=True,text=True,timeout=25,check=False)
   if p.returncode==0 and len(p.stdout)<900:
    x=json.loads(p.stdout)
-   if x.get('state')=='observed' and x.get('mintPort11435') in ('available','occupied') and
-      x.get('bdsCommandSent') is False and x.get('changedConfig') is False:
+   if (x.get('state')=='observed' and x.get('mintPort11435') in ('available','occupied') and
+       x.get('bdsCommandSent') is False and x.get('changedConfig') is False):
     record=x
  except (OSError,ValueError,subprocess.SubprocessError):pass
  return record
