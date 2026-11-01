@@ -409,7 +409,17 @@ async function main(args=process.argv.slice(2)){
     // decision timer runs every five seconds, so it may miss that window.
     // After giving the higher-priority bed/respawn check its turn, re-run
     // the ORIGINAL fail-closed idleTick once. No direct input or goal override.
-    Promise.resolve(bedCheck).then(()=>witnessIdleResume.request()).catch(err=>
+    Promise.resolve(bedCheck).then(()=>{
+      // The bed/spawnpoint check retains priority. A prepared autonomy route
+      // can only be admitted by the real, still-fresh BDS witness event and
+      // the ORIGINAL guarded startJob / boundedScout path.
+      const prepared=runtime.resumePreparedScoutOnWitness()
+      if(prepared.state==='started')
+        runtimeLogger.log('[Alice autonomy] prepared route admitted:',
+          JSON.stringify({reason:prepared.reason,independentBdsStart:true,
+            bdsDestinationVerified:false}))
+      else witnessIdleResume.request()
+    }).catch(err=>
       runtimeLogger.warn('[Alice autonomy] witness idle check:',String(err?.message||err).slice(0,70)))
     // Only a genuine newly ingested independent witness may initiate one
     // short flat bed-approach step; the full two-sample 4s gate is rechecked.
