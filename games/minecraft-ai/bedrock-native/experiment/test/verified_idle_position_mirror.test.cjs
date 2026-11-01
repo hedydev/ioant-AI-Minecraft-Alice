@@ -89,3 +89,29 @@ test('main emits only bounded reason/state when local mirror is deferred, not co
  assert.match(main,/t-idleMirrorRejectionLoggedAt>=15000/)
  assert.match(main,/correctionApplied:false,bdsQuerySentByAlice:false/)
 })
+
+test('later drift can be corrected using the SAME still-fresh pair, never stale',()=>{
+ const s=scene()
+ s.bot.entity.position.x=7
+ assert.equal(reconcileVerifiedIdleMirror(s.args).reason,'already_aligned')
+ assert.deepEqual(s.count(),[0,0,0])
+ // The player physics prediction subsequently drifts without another
+ // server witness; no new independentSamples are invented.
+ s.bot.entity.position.x=8.9
+ assert.equal(s.state.independentSamples,2)
+ assert.equal(reconcileVerifiedIdleMirror(s.args).ok,true)
+ assert.deepEqual(s.count(),[1,1,0])
+ const expired=scene()
+ expired.args.clock=()=>14500
+ assert.equal(reconcileVerifiedIdleMirror(expired.args).ok,false)
+ assert.deepEqual(expired.count(),[0,0,0])
+})
+test('250ms timer revisits only an existing live pair; never polls extra BDS',()=>{
+ const main=fs.readFileSync(path.join(__dirname,'../src/main.cjs'),'utf8')
+ assert.match(main,/if\(bdsWitness\.poll\(movementEvidence\)\)\{/)
+ assert.match(main,/else if\(runtime\.core\?\.state==='IDLE'\)/)
+ assert.match(main,/t-e\.independentPreviousAt<=4000/)
+ assert.match(main,/maybeMirrorVerifiedIdle\(false\)/)
+ assert.match(main,/maybeMirrorVerifiedIdle\(true\)/)
+ assert.equal((main.match(/bdsWitness\.poll\(movementEvidence\)/g)||[]).length,1)
+})

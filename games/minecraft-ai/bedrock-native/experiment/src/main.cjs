@@ -342,6 +342,32 @@ async function main(args=process.argv.slice(2)){
   let idleMirrorLastAt=0
   let idleMirrorLastRejection=null
   let idleMirrorRejectionLoggedAt=0
+  function maybeMirrorVerifiedIdle(logDeferred=false){
+    // Check ONLY an already verified BDS pair. No query, tick renewal,
+    // packet injection, goal or server-side position modification.
+    const idle=reconcileVerifiedIdleMirror({bot,evidence:movementEvidence,
+      runtime,lastMirroredAt:idleMirrorLastAt})
+    if(idle.ok){
+      idleMirrorLastAt=Date.now()
+      idleMirrorLastRejection=null
+      runtimeLogger.log('[Alice movement] safe-idle BDS-local mirror:',JSON.stringify({
+        reason:idle.reason,correctionBlocks:idle.distance,
+        bdsTeleport:false,bdsQuerySentByAlice:false}))
+    }else if(logDeferred){
+      const t=Date.now()
+      if(idle.reason!==idleMirrorLastRejection||t-idleMirrorRejectionLoggedAt>=15000){
+        idleMirrorLastRejection=idle.reason
+        idleMirrorRejectionLoggedAt=t
+        const state=runtime.core?.state
+        runtimeLogger.log('[Alice movement] safe-idle BDS-local mirror deferred:',JSON.stringify({
+          reason:idle.reason,
+          state:['IDLE','SURVIVE','COMBAT','FOLLOW','EXPLORE','RECOVER','SLEEP'].includes(state)
+            ?state:'other',
+          correctionApplied:false,bdsQuerySentByAlice:false}))
+      }
+    }
+    return idle
+  }
   function onFreshIndependentBdsWitness(){
     // Reconcile local-only physics *before* ACK and any bed/SCOUT decision.
     // Two current-life stationary BDS samples are required; never move BDS.
@@ -355,30 +381,7 @@ async function main(args=process.argv.slice(2)){
         cycle:r.cycle,correctionBlocks:r.distance,bdsTeleport:false,
         bdsQuerySentByAlice:false}))
     }else{
-      const idle=reconcileVerifiedIdleMirror({bot,evidence:movementEvidence,
-        runtime,lastMirroredAt:idleMirrorLastAt})
-      if(idle.ok){
-        idleMirrorLastAt=Date.now()
-        idleMirrorLastRejection=null
-        runtimeLogger.log('[Alice movement] safe-idle BDS-local mirror:',JSON.stringify({
-          reason:idle.reason,correctionBlocks:idle.distance,
-          bdsTeleport:false,bdsQuerySentByAlice:false}))
-      }else{
-        // Keep bounded, non-positional evidence of *why* live correction was
-        // refused. This is only a diagnosis, never permission to bypass proof.
-        // Changes in reason are useful across the two-sample 4-second window.
-        const t=Date.now()
-        if(idle.reason!==idleMirrorLastRejection||t-idleMirrorRejectionLoggedAt>=15000){
-          idleMirrorLastRejection=idle.reason
-          idleMirrorRejectionLoggedAt=t
-          const state=runtime.core?.state
-          runtimeLogger.log('[Alice movement] safe-idle BDS-local mirror deferred:',JSON.stringify({
-            reason:idle.reason,
-            state:['IDLE','SURVIVE','COMBAT','FOLLOW','EXPLORE','RECOVER','SLEEP'].includes(state)
-              ?state:'other',
-            correctionApplied:false,bdsQuerySentByAlice:false}))
-        }
-      }
+      maybeMirrorVerifiedIdle(true)
     }
     // Real-time private receipt: the independent sample was consumed by this
     // Alice process, not merely written by an MCSManager-side query.
@@ -413,7 +416,20 @@ async function main(args=process.argv.slice(2)){
     onAccepted:onFreshIndependentBdsWitness
   }):null
   const witnessTimer=live&&bdsWitness?setInterval(()=>{
-    if(bdsWitness.poll(movementEvidence))onFreshIndependentBdsWitness()
+    if(bdsWitness.poll(movementEvidence)){
+      onFreshIndependentBdsWitness()
+    }else if(runtime.core?.state==='IDLE'){
+      // The client can drift AFTER a pair was accepted (at acceptance it may
+      // have been aligned). Recheck the SAME immutable witness at 250ms only
+      // while the full two-sample proof remains within the original 4s TTL.
+      // This branch never re-ingests or renews the witness or queries BDS.
+      const e=movementEvidence.get()
+      const t=Date.now()
+      if(Number.isSafeInteger(e?.independentPreviousAt)&&
+         e.independentPreviousAt<=t&&t-e.independentPreviousAt<=4000){
+        maybeMirrorVerifiedIdle(false)
+      }
+    }
   },250):null
   witnessTimer?.unref?.()
   const statusTimer=live?setInterval(()=>{

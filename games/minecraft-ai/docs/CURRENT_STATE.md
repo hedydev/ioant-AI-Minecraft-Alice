@@ -1,3 +1,9 @@
+## 2026-11-01 — 修复BDS见证到达时已对齐、随后250ms物理预测漂移的错位时序
+
+- 当前原17879已安全重载限流镜像拒绝诊断，`alice_idle_mirror_reason_live_audit_20261101_s06` 实际同一当前进程：`ownerVerified=true,clientConnected=true,heartbeatFresh=true,statusIndependentSamples=4,logReadable=true,deferredEvents=4,acceptedMirrors=0,lastDeferredReason=already_aligned,lastDeferredState=IDLE`，说明至少最后一次BDS独立采样**刚到时本地坐标仍然对齐**，但后续被动读取已有明显1格以上漂移。此前镜像只在`onFreshIndependentBdsWitness`即时运行，样本到达后物理预测继续漂移时没有再次检查，从而安全门禁不断拒绝后续导航。timer预算当小时40/40已达，不能强制补查。
+- 现在将`reconcileVerifiedIdleMirror`原完整严格决策集中到`maybeMirrorVerifiedIdle(logDeferred)`：收到真实BDS样本仍优先检查/保留仅变化原因日志；在现有250ms**被动文件读取器**没有新sample时，只要当前runtime`IDLE`且已有independentPreviousAt合法且<=原4秒时限，就可以**重新验证同一独立BDS双样本**。仍须原`scoutStartProof`两次4秒、当前生命、服务器pair静止<=0.1格、客户端偏差(0.75,3]格、HP>=16、无战斗/威胁/跟随/STOP/任务、60秒冷却，绝不写新BDS样本或延长4秒时限，绝不发送Minecraft动作/查询/传送；非真实样本回读不生成另一个ACK，也不唤醒模型或打乱床/自主动机。成功日志保持原固定字段和0.75格后验门禁。
+- 新Node单元测试覆盖**首次证据已对齐、随后同一pair仍有效时客户端漂移允许本地修正**，而该pair过期时继续拒绝；证明仍只调用一次实际`bdsWitness.poll`，tick不新建证据。后续需Mac/Mint全量回归，通过后客户端-only受控reload才生效，必须真实核对mirror success日志和独立BDS移动，不能把本地修正误称为BDS位移。
+
 ## 2026-11-01 — Alice verified-idle mirror 未触发：增加限流、非位置化拒绝原因观测
 
 - 当前新登录真实 `alice_idle_mirror_resume_log_20261101_s01`：原17879客户端在线、IDLE、HP20、独立BDS位置累计34、模型提案12且最近是observe；但`idleMirrorCount=0`，最近nav拒绝client-server偏差1.17格，客户端相对BDS的X~0.804/Z~1.409格、最近独立pair位移0；证明高层模型已恢复但原服真实行走尚未成功，不可强制越过0.75格门禁。
