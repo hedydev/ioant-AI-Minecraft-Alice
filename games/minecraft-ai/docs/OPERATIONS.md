@@ -1,3 +1,12 @@
+## 2026-11-01 — 本地镜像上线后验、MCSManager零进展退避与可观测性
+
+- 原17879 Alice客户端**已真实受控重载新镜像代码**：最早尝试`alice_idle_mirror_guarded_client_reload_20261101_rc01`因Alice处于COMBAT/threat_nearby，内层明确`preflight_blocked,clientRestartAttempted=false`；后续只读`alice_idle_mirror_safety_window_readonly_20261101_re01`确认恢复健康IDLE HP20、food20、无当前任务，`alice_idle_mirror_client_reload_safe_20261101_rf01`内层`state=client_reconnected_17879`、新进程身份心跳/登录全验证，BDS未重启、其它服务器与世界完全未触碰。后续读`alice_idle_mirror_postrestart_gate_20261101_rg01` IDLE HP20、零独立BDS新登录样本；`alice_idle_mirror_postrestart_log_20261101_ri01` 现登录未记录mirror或位移。
+- 新版本地`verified_idle_position_mirror.cjs`已加载；只用当期生命周期4秒内两份静止BDS见证、客户端偏差(0.75,3]格、生命值>=16、无威胁/FOLLOW/STOP/任务/冷却的IDLE状态；本地坐标修正**绝不修改BDS**，且不降低导航起点0.75格检查。当前**尚无新登录样本触发镜像的实机证据**，不能写“已走到目标”。
+- `alice_idle_mirror_timer_live_audit_20261101_rj01`真实检查：原MCSM用户timer`active=true/enabled=true`、旧loop未启用、当前需求needs_two_fresh_samples，但该小时预算**39/40**，新批次固定需要至少2次，因此`cooldown_or_budget`，不合法绕过总量；下一整点小时重新开始有额度时由timer自然处理，**不强制补发querytarget**。
+- 针对该小时前40次仍无真实位移的空转，新增MCSManager按需查询`refresh_stall_state/record_verified_stationary_pair`：同一登录连续3批次已有**Alice真正ACK的对齐证明**而原BDS累计里程始终差<0.25格，则自动暂停请求10分钟；观察到BDS累计位移增加>=0.25格或新登录就解除；仍<=2条/批、<=40条/小时、每批>=55秒，原脚本每分钟只检查真实需求，旧无穷`--loop`禁止；任何无效模型/HTTP查询应答不作为BDS认可移动。
+- 为便于后续**真实**验收，扩充`scripts/alice-model-navigation-log-readonly.py`匿名审计：`idleMirrorCount`、`respawnMirrorCount`、`lastIdleMirrorDistance`，只从本进程私有operator日志取有限计数与上限3格的镜像量，不读取/导出真实坐标、模型内容或认证。后续需确认`idleMirrorCount>0`及同生命周期BDS`independentPairTravelBlocks>0`，二者属于不同验证：镜像不是服务器真实行走证据。
+- 本轮新增回归 `alice_idle_mirror_stall_guard_mac_20261101_rk01` Mac Python **296项、3 skip、0 fail**，`alice_idle_mirror_stall_guard_mint_20261101_rl01` Node24 **750/750**、Mac296，通过且不重启BDS/Alice；`alice_idle_mirror_observability_mac_20261101_rm01`同样Python296通过，`alice_idle_mirror_observability_mint_20261101_rn01` Mint Node24 **750/750**，Mac296，已同步原Mint新脚本，不启动新世界。自动timer下次运行读取更新Python脚本，无需重启任何MC进程。
+
 ## 2026-11-01 — Alice Ollama 模型服务恢复（原17879/不动BDS）
 
 - 项目OpenClaw上一次handoff revision33，仓库原HEAD `94fb4b61...`；用户要求继续`model_unavailable`和真实自主移动。最先只读`alice_model_preflight_gate_20261101_ca01`：原Alice在线，但当前HP**2**、SURVIVE、独立BDS位置为`prior_life_witness`，安全低血量门禁阻止探索是正确行为，不能降低HP与移动保护。
