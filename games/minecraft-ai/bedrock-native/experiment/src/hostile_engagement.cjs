@@ -83,7 +83,9 @@ class HostileEngagement {
      position:{x:mob.position.x,y:mob.position.y,z:mob.position.z}})
    // An observed solid wall vetoes inferred melee intent; a confirmed
    // incoming projectile must be handled separately from melee LOS.
-   const barrier=barrierFor(mob)
+   // Test the attacker's line to the victim, not always Alice's line.
+   // A player can be attacked while Alice is on the other side of a wall.
+   const barrier=barrierFor(mob,near.position,near.role)
    const hitAt=near.role==='self'?lastSelfDamageAt:lastOwnerDamageAt
    const recentHit=Number.isSafeInteger(hitAt)&&hitAt>0&&now>=hitAt&&
      now-hitAt<=3000
