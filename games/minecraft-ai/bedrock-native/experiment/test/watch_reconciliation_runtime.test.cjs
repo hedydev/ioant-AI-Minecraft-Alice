@@ -41,8 +41,9 @@ test('real qualified errors remain visible rather than clamped to an acceptance 
  assert.equal(r.windows[0].maxDistance,2)
 })
 test('unavailable or wrong-world evidence cannot claim a successful observation',async()=>{
- const a=fixture();a.options.snapshot=()=>{throw Error('stale')}
- assert.equal((await observe(a.options)).state,'snapshot_unavailable')
+ const a=fixture();a.options.snapshot=()=>{throw Error('movement_report_stale')}
+ const r=await observe(a.options)
+ assert.equal(r.state,'snapshot_unavailable');assert.equal(r.snapshotFailure,'movement_report_stale')
  const b=fixture();b.data.core.serverPort=17880
  assert.equal((await observe(b.options)).state,'session_unverified')
  await assert.rejects(observe({...b.options,seconds:211}),/invalid_observation_duration/)

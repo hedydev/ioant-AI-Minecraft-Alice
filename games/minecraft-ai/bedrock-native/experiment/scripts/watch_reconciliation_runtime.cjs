@@ -5,6 +5,8 @@
 const {liveSnapshots}=require('./inspect_movement_sync.cjs')
 const {summarizeReconciliation}=require('./inspect_reconciliation_runtime.cjs')
 const MAX_SECONDS=210,MAX_WINDOWS=6
+const SNAPSHOT_FAILURES=new Set(['unsafe_movement_report_source','movement_process_identity_unavailable',
+  'movement_process_identity_mismatch','movement_report_stale'])
 async function observe({snapshot=liveSnapshots,seconds=MAX_SECONDS,
   clock=()=>performance.now(),sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms))}={}){
   if(!Number.isInteger(seconds)||seconds<1||seconds>MAX_SECONDS)throw Error('invalid_observation_duration')
@@ -13,12 +15,16 @@ async function observe({snapshot=liveSnapshots,seconds=MAX_SECONDS,
   const report={audit:'ALICE_RECONCILIATION_FINITE_OBSERVATION',schemaVersion:1,
     readOnly:true,bdsCommandSent:false,clientRestarted:false,worldModified:false,
     state:'no_fresh_samples',ownerPid:null,elapsedMs:0,observations:0,
-    telemetryPresent:false,comparisonReasons:{},windows:[],firstCounters:null,lastCounters:null}
+    telemetryPresent:false,activityGuardVersion:null,snapshotFailure:null,comparisonReasons:{},windows:[],firstCounters:null,lastCounters:null}
   const counters=r=>Object.fromEntries(['correctionReplays','replayedFrames',
     'correctionFallbacks','correctionsRejected','historyFrames'].map(k=>[k,r[k]]))
   while(clock()-started<seconds*1000){
     let data
-    try{data=snapshot()}catch{report.state='snapshot_unavailable';break}
+    try{data=snapshot()}catch(err){
+      report.state='snapshot_unavailable'
+      report.snapshotFailure=SNAPSHOT_FAILURES.has(err?.message)?err.message:'inspection_unavailable'
+      break
+    }
     const core=data.core
     if(!core||!Number.isSafeInteger(core.producerPid)||core.producerPid<=1||
       typeof core.producerStartToken!=='string'||core.world!=='Bedrock level'||
@@ -31,6 +37,7 @@ async function observe({snapshot=liveSnapshots,seconds=MAX_SECONDS,
     const r=summarizeReconciliation(data)
     report.observations++
     report.telemetryPresent=r.telemetryPresent
+    report.activityGuardVersion=r.activityGuardVersion
     if(r.telemetryPresent){firstCounters??=counters(r);lastCounters=counters(r)}
     report.comparisonReasons[r.coordinateComparison]=(report.comparisonReasons[r.coordinateComparison]||0)+1
     if(r.coordinateComparison==='fresh_relative_sample'&&r.clientBdsDistance!==null){

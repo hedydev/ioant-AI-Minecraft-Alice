@@ -166,3 +166,28 @@ counters. These are close-time samples, not exact tick equality or attribution
 of server motion to Alice. A successful script exit, loaded telemetry or lack
 of fresh evidence must never be reported as convergence. Original stationary
 backoff and40/h/180s budget remain mandatory.
+
+## Post-movement mirror temporal guard (source patch)
+
+The first real observation on PID1862683 did not qualify a convergence window
+(sample skew plus a later snapshot failure). Subsequent actual receipts found
+seven moving inputs, one0.8-block navigation rejection and a0.91-block idle
+mirror. The source admitted a stationary BDS pair that predated motion after
+the job had returned to IDLE. That pair cannot establish where the server is
+after the attempt, even while its four-second age limit still passes.
+
+Idle/respawn mirrors now additionally require both samples to follow the last
+actually queued motion input and the latest applied authoritative position.
+Unknown/future timeline values deny the mirror. This preserves the original
+0.75 threshold, stationary/current-life/safety checks and independent sources;
+it neither simulates server truth nor authorizes another path.
+
+Fresh witness status is published immediately after ACK, before autonomous
+activity, with unchanged sample time/expiry. Diagnostics use the post-read
+clock for file freshness and still reject truly future files without a grace
+period. The finite observer emits only fixed snapshot-failure codes.
+
+`activityGuardVersion=1` must be seen in the current owner after a normal
+authorized lifecycle to establish this feature is publishing. It is not a
+source hash or convergence verdict. Current replay-only telemetry from the
+earlier client is insufficient; source tests do not imply the live fix.

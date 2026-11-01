@@ -22,7 +22,7 @@ WINDOW={'firstObservedAfterMs','observations','minDistance','maxDistance','lastD
  'bdsPairTravel','idleOnly','movementInputsObserved','maxSampleSkewMs'}
 TOP={'audit','schemaVersion','readOnly','bdsCommandSent','clientRestarted','worldModified',
  'state','ownerPid','elapsedMs','observations','telemetryPresent','comparisonReasons',
- 'windows','firstCounters','lastCounters'}
+ 'windows','firstCounters','lastCounters','snapshotFailure','activityGuardVersion'}
 def number(v,maximum=1e9):return type(v) in (int,float) and math.isfinite(v) and 0<=v<=maximum
 def target_binding():
  # Reuse the enrolled repository's existing maintained sync destination;
@@ -39,7 +39,10 @@ def validate(d):
  if d['audit']!='ALICE_RECONCILIATION_FINITE_OBSERVATION' or d['schemaVersion']!=1:return None
  if d['readOnly'] is not True or any(d[k] is not False for k in ('bdsCommandSent','clientRestarted','worldModified')):return None
  if d['state'] not in ('no_fresh_samples','fresh_relative_samples_observed','snapshot_unavailable','session_unverified','owner_changed'):return None
+ if d['snapshotFailure'] not in (None,'unsafe_movement_report_source','movement_process_identity_unavailable',
+   'movement_process_identity_mismatch','movement_report_stale','inspection_unavailable'):return None
  if d['ownerPid'] is not None and (type(d['ownerPid']) is not int or not 1<d['ownerPid']<=1e9):return None
+ if d['activityGuardVersion'] is not None and (type(d['activityGuardVersion']) is not int or d['activityGuardVersion']!=1):return None
  if not number(d['elapsedMs'],235000) or not number(d['observations'],1000) or type(d['telemetryPresent']) is not bool:return None
  reasons=d['comparisonReasons']
  if not isinstance(reasons,dict) or not set(reasons)<=REASONS or any(not number(n,1000) for n in reasons.values()):return None
@@ -72,7 +75,7 @@ def selftest():
  good=dict(audit='ALICE_RECONCILIATION_FINITE_OBSERVATION',schemaVersion=1,readOnly=True,
    bdsCommandSent=False,clientRestarted=False,worldModified=False,state='no_fresh_samples',
    ownerPid=123,elapsedMs=210000,observations=840,telemetryPresent=True,
-   comparisonReasons={'bds_pair_unverified':840},windows=[],firstCounters=None,lastCounters=None)
+   comparisonReasons={'bds_pair_unverified':840},windows=[],firstCounters=None,lastCounters=None,snapshotFailure=None,activityGuardVersion=None)
  assert validate(good)==good
  assert validate({**good,'bdsCommandSent':True}) is None
  assert validate({**good,'position':{'x':1,'y':2,'z':3}}) is None

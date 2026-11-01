@@ -48,6 +48,7 @@ function summarizeReconciliation({core,wire,now}={}){
     readOnly:true,worldModified:false,bdsCommandSent:false,
     currentOwnerEvidence:true,
     telemetryPresent:telemetryComplete,
+    activityGuardVersion:wire.syncWitnessContextVersion===1?1:null,
     // This proves the currently owner-verified process publishes the new
     // counters, not its exact code hash or that the physics matches BDS.
     evidenceLevel:telemetryComplete?'runtime_counters_observed':'runtime_counters_unavailable',

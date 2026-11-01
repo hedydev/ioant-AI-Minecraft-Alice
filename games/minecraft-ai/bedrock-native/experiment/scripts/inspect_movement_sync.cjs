@@ -46,23 +46,28 @@ function liveOwner({controlRoot=guardRoot,procRoot='/proc',now=Date.now()}={}){
  if(!token||!/^[0-9]+$/.test(token))reject('movement_process_identity_unavailable')
  return {pid:owner.pid,token,now}
 }
-function liveSnapshots({controlRoot=guardRoot,procRoot='/proc',now=Date.now()}={}){
- const owner=liveOwner({controlRoot,procRoot,now})
+function liveSnapshots({controlRoot=guardRoot,procRoot='/proc',now,clock=Date.now}={}){
+ const owner=liveOwner({controlRoot,procRoot,now:now??clock()})
  const statusFile=path.join(controlRoot,'status.json')
  const wireFile=path.join(controlRoot,'outbound-input-audit.json')
  const st=privateFile(statusFile,8192),wt=privateFile(wireFile,2048)
  const core=JSON.parse(fs.readFileSync(statusFile,'utf8'))
  const wire=JSON.parse(fs.readFileSync(wireFile,'utf8'))
- const fresh=(at,seconds)=>Number.isFinite(at)&&at<=now&&now-at<=seconds
+ // Take the validation time AFTER the reads. A legitimate atomic writer can
+ // publish between function entry and stat/read; that is not a future file.
+ // Explicit test clocks still freeze both sides. Normalize filesystem
+ // sub-millisecond precision to Date.now's millisecond clock; no grace window.
+ const checkedAt=now??clock()
+ const fresh=(at,seconds)=>Number.isFinite(at)&&at<=checkedAt&&checkedAt-at<=seconds
  if(core?.producerPid!==owner.pid||core?.producerStartToken!==owner.token)
    reject('movement_process_identity_mismatch')
- if(!fresh(st.mtimeMs,15000)||!fresh(wt.mtimeMs,15000)||
+ if(!fresh(Math.floor(st.mtimeMs),15000)||!fresh(Math.floor(wt.mtimeMs),15000)||
     wire?.version!==1||wire?.kind!=='queue_only_not_network_or_BDS_proof'||
     !fresh(wire.updatedAt,15000))
    reject('movement_report_stale')
  if(Math.abs(wire.updatedAt-st.mtimeMs)>15000)
    reject('movement_report_stale')
- return {core,wire,now}
+ return {core,wire,now:checkedAt}
 }
 // Pure, read-only evidence classifier. A server correction and a BDS sample
 // are different sources: only two temporally fresh independent samples may

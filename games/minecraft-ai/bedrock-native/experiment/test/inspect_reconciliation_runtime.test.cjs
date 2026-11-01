@@ -14,7 +14,7 @@ function fixture(){
    updatedAt:99500,lastMovingAgeMs:100,serialized:15,movingQueued:4,
    syncCorrectionReplays:0,syncReplayedFrames:0,
    syncCorrectionFallbacks:1,syncCorrectionsRejected:0,
-   syncHistoryFrames:40,syncLastCorrectionReason:'correction_history_miss'}
+   syncHistoryFrames:40,syncLastCorrectionReason:'correction_history_miss',syncWitnessContextVersion:1}
  return {core,wire,now}
 }
 test('current-process movement counters are observed with only relative distance',()=>{
@@ -23,6 +23,7 @@ test('current-process movement counters are observed with only relative distance
  assert.equal(r.telemetryPresent,true)
  assert.equal(r.evidenceLevel,'runtime_counters_observed')
  assert.equal(r.correctionFallbacks,1)
+ assert.equal(r.activityGuardVersion,1)
  assert.equal(r.bdsFreshPair,true)
  assert.equal(r.clientBdsDistance,1)
  assert.equal(r.coordinateComparison,'fresh_relative_sample')
@@ -36,10 +37,12 @@ test('current-process movement counters are observed with only relative distance
 test('missing current-run counters never claim that new runtime was loaded',()=>{
  const v=fixture()
  delete v.wire.syncCorrectionReplays
+ delete v.wire.syncWitnessContextVersion
  const r=summarizeReconciliation(v)
  assert.equal(r.telemetryPresent,false)
  assert.equal(r.evidenceLevel,'runtime_counters_unavailable')
  assert.equal(r.correctionReplays,null)
+ assert.equal(r.activityGuardVersion,null)
 })
 test('malicious reasons and fractional or negative counters are discarded',()=>{
  const v=fixture()

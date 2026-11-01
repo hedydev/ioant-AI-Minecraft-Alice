@@ -4,6 +4,7 @@
 // for proof. This does not authorize a path: the caller must still apply all
 // normal movement and safety gates after the correction.
 const {scoutStartProof}=require('./scout_start_proof.cjs')
+const {stationaryWitnessAfterActivity}=require('./stationary_witness_context.cjs')
 const finite=p=>!!p&&[p.x,p.y,p.z].every(Number.isFinite)
 const COOLDOWN_MS=60000
 function verifiedIdleMirrorDecision({bot,evidence,runtime,clock=Date.now,lastMirroredAt=0}={}){
@@ -35,6 +36,8 @@ function verifiedIdleMirrorDecision({bot,evidence,runtime,clock=Date.now,lastMir
     !Number.isFinite(s.independentPairTravelBlocks)||
     s.independentPairTravelBlocks>0.1)
   return {ok:false,reason:'idle_mirror_not_stationary_same_life'}
+ const activity=stationaryWitnessAfterActivity(bot,s,now)
+ if(!activity.ok)return activity
  const server=s.independentLatestFeet
  if(!finite(server))return {ok:false,reason:'idle_mirror_no_server_position'}
  const distance=Math.hypot(server.x-self.x,server.y-self.y,server.z-self.z)

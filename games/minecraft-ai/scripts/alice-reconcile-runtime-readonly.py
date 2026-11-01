@@ -21,7 +21,7 @@ print(p.stdout.strip())
 '''
 BOOLEANS={'readOnly','worldModified','bdsCommandSent','currentOwnerEvidence','telemetryPresent','bdsFreshPair'}
 NUMBERS={'correctionReplays','replayedFrames','correctionFallbacks','correctionsRejected',
- 'historyFrames','bdsPairTravel','clientBdsDistance','bdsSampleAgeMs','comparisonSkewMs'}
+ 'historyFrames','bdsPairTravel','clientBdsDistance','bdsSampleAgeMs','comparisonSkewMs','activityGuardVersion'}
 COMPARISONS={'bds_pair_unverified','position_time_unverified','sample_time_skew',
  'client_position_unavailable','fresh_relative_sample'}
 FIELDS={'audit','schemaVersion','evidenceLevel','lastCorrectionReason','coordinateComparison',*BOOLEANS,*NUMBERS}

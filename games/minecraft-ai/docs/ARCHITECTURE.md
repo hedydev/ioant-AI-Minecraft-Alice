@@ -228,3 +228,14 @@ User clarified wood is just an example. Ultimate goal: understand arbitrary Mine
 ## 2026-11-02 — Bounded player prediction history
 
 The injected input plugin owns the live 20Hz scheduler; `movement_prediction_history.cjs` owns in-memory frame snapshots and physics-only replay. A correction tick selects the historical post-input state, then recorded inputs are re-simulated without network or event side effects. Loaded collision-world, pose/attribute, lifecycle and external kinematic changes invalidate incompatible history. This is separate from independent BDS evidence and never authorizes navigation. Initial tick mode is retained; correction ticks no longer re-anchor the current clock. Full behavior/limits and verification: [MOVEMENT_RECONCILIATION](MOVEMENT_RECONCILIATION.md).
+
+## 2026-11-02 — Stationary evidence must follow activity
+
+`stationary_witness_context.cjs` restricts idle/respawn LOCAL mirroring using
+the injected input plugin's last queued motion-input and last applied
+authoritative-position timestamps. A pre-activity independent pair cannot
+rewind the stopped client. This adds a restriction, not movement authority.
+Fresh-witness publication occurs after ACK and before autonomy/probe/bed
+callbacks, leaving the source timestamp/TTL and all navigation checks intact.
+The diagnostic snapshot clock is sampled after reads to avoid mistaking a
+legitimate concurrent atomic publication for a future file.

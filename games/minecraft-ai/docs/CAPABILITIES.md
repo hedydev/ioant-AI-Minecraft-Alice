@@ -1,3 +1,7 @@
+## 2026-11-02 — Activity-qualified stationary mirrors (STAGED)
+
+Idle and respawn local mirrors now require two independent observations AFTER the latest queued movement input and applied authoritative position update. Missing/invalid activity metadata denies mirroring. This prevents movement-before-IDLE from making an old stationary pair eligible to overwrite a newer local trajectory; it does not authorize navigation or relax0.75/4s gates. Immediate witness-triggered status publication preserves the original sample timestamp, and `activityGuardVersion=1` identifies feature telemetry in the current process. Source validation/loading and fresh BDS effect must remain separate; full live convergence is not accepted yet.
+
 ## 2026-11-02 — Running replay telemetry and finite evidence observer
 
 Actual current-owner MCP06 confirms the loaded client publishes replay counters and40 history frames after the user's maintained normal restart. MCP07 confirms online HP20/food20 in original17879; this is loaded/connected acceptance, not coordinate agreement. New finite210-second read-only observer captures naturally arriving fresh relative samples locally at250ms, stops on owner/session failure and stores only bounded relative metrics. No BDS query, movement, AI call or process control. Actual sample-distance acceptance is pending.

@@ -1,0 +1,41 @@
+{
+  "schema_version": 2,
+  "event_id": "9070f45e-3ece-4dac-8558-b5c30eb8dff6",
+  "task_id": "cf34f05d-a84c-4cbe-999f-76e5d3366a7d",
+  "event_type": "progress_recorded",
+  "occurred_at": "2026-11-01T20:46:33.228232Z",
+  "actor": {
+    "actor_type": "ai",
+    "ai_name": "ChatGPT",
+    "ai_session_id": "k4n8v2cs"
+  },
+  "ledger_branch": "main",
+  "development_branch": "main",
+  "observed_commit": "f8c3ca1b0b6e1a0221ce1949f24efc33bb371de2",
+  "message": "Finite real capture was inconclusive; post-motion mirror temporal defect found and guarded. Add immediate coherent status and strict post-read freshness clock; new source requires validation/lifecycle.",
+  "changes": {
+    "remaining_work": [
+      "Full Mint regression of the activity guard patch",
+      "Normal authorized client lifecycle showing activityGuardVersion1",
+      "Qualified fresh stationary and bounded movement BDS acceptance",
+      "Human acceptance"
+    ]
+  },
+  "evidence": [
+    {
+      "operation_id": "alice_reconcile_observer_sync_20261102_k4n8v2cs_09",
+      "result": "Node24 791/791, Mac Python299 skip3; no restart"
+    },
+    {
+      "operation_id": "alice_reconcile_fresh_window_20261102_k4n8v2cs_12",
+      "result": "owner1862683;759 reads; no qualified window; snapshot_unavailable; not convergence",
+      "artifact_sha256": "baa7fec75cc91bcfe3bc4df4841c6784b31633564bd1a0bfe3bd76040c1d316f"
+    },
+    {
+      "operation_id": "alice_reconcile_after_movement_nav_20261102_k4n8v2cs_14",
+      "result": "navReject0.8, idleMirrorCount1, distance0.91 after seven movement inputs; historical post-read difference not real-time proof",
+      "artifact_sha256": "f5cbc0525b2f2603f88dc71899dce50233937e16bd73215870a61f0468318e7a"
+    }
+  ],
+  "supersedes_event_id": null
+}

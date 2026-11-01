@@ -22,6 +22,7 @@ const KEYS=Object.freeze([
   'syncCallbackContactMutationsPrevented',
   'syncCorrectionReplays','syncReplayedFrames','syncCorrectionFallbacks',
   'syncCorrectionsRejected','syncHistoryFrames','syncLastCorrectionReason',
+  'syncWitnessContextVersion',
   'transportHookAttached','transportHookState',
   'transportCalls','transportLast10s','transportThrows',
   'lastTransportAgeMs','pendingPacketBuffers','corrections',

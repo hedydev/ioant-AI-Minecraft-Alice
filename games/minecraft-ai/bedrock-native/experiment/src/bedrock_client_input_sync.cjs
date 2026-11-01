@@ -35,11 +35,12 @@ function inject (bot, options={}) {
   let anchorTime = clock()
   let lastEmittedTick = null
   const MAX_CATCHUP_TICKS=32
-  const timeline={version:1,tickMode,emitted:0,batches:0,deathPauses:0,respawnResumes:0,catchupFrames:0,
+  const timeline={version:1,witnessContextVersion:1,tickMode,emitted:0,batches:0,deathPauses:0,respawnResumes:0,catchupFrames:0,
     maxBatchFrames:0,overruns:0,skippedTicks:0,lastBatchFrames:0,
     controlsChangedInsideFrame:0,lastOverrunReason:null,
     callbackPositionMutationsPrevented:0,callbackVelocityMutationsPrevented:0,
-    callbackContactMutationsPrevented:0}
+    callbackContactMutationsPrevented:0,
+    lastMotionInputAt:null,lastAuthoritativePositionAt:null}
   const history=new MovementPredictionHistory({simulate:state=>{
     const next=bot.physics.simulatePlayer(state,world)
     if(next.fireworkRocketDuration>0){
@@ -94,7 +95,9 @@ function inject (bot, options={}) {
   // changes, server self-position updates or lifecycle/pose discontinuities.
   for(const event of ['blockUpdate','chunkColumnLoad','chunkColumnUnload'])
     bot.on(event,()=>history.reset('collision_world_changed'))
-  bot.on('entityMoved',entity=>{if(entity===bot.entity)history.reset('server_self_position')})
+  bot.on('entityMoved',entity=>{if(entity===bot.entity){
+    timeline.lastAuthoritativePositionAt=Date.now();history.reset('server_self_position')
+  }})
   bot.on('forcedMove',()=>history.reset('forced_move'))
   bot._client.on('change_dimension',()=>history.reset('dimension_changed',{
     lifeBoundary:true,floor:lastEmittedTick}))
@@ -269,6 +272,7 @@ function inject (bot, options={}) {
       bot.entity.eyeHeight||1.62,lastEmittedTick)
     if(!corrected.state)return
     corrected.state.apply(bot)
+    timeline.lastAuthoritativePositionAt=Date.now()
     if(corrected.fallback){
       const frame=capturePhysicalFrame(bot.entity)
       try{bot.clearControlStates();bot.pathfinder?.stop?.()}
@@ -424,6 +428,8 @@ function inject (bot, options={}) {
           z:conv.toNotchianYaw(bot.vehicle.yaw||preYaw||0)}
       }
       bot._client.queue('player_auth_input',packet)
+      if(move.vector.x!==0||move.vector.z!==0||preFlags.includes('jumping')||preFlags.includes('start_gliding'))
+        timeline.lastMotionInputAt=Date.now()
       timeline.emitted++
       lastEmittedTick=tick
     }

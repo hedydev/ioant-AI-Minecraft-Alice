@@ -4,7 +4,8 @@ const {reconcileRespawnMirror}=require('../src/respawn_position_mirror.cjs')
 function scenario({server={x:8,y:64,z:10},local={x:4,y:61,z:10},
  pairTravel=0,first=8700,second=9800}={}){
  let stops=0,clears=0,wire=0
- const bot={health:20,entity:{position:{...local},velocity:{x:1,y:-1,z:1},onGround:true},
+ const bot={_aliceBedrockInputSync:{summary:()=>({lastMotionInputAt:null,lastAuthoritativePositionAt:null})},
+ health:20,entity:{position:{...local},velocity:{x:1,y:-1,z:1},onGround:true},
  pathfinder:{setGoal:g=>{assert.equal(g,null);stops++}},clearControlStates:()=>clears++,
  _client:{queue:()=>wire++}}
  const evidence={get:()=>({independentSource:'bds_querytarget',independentSamples:2,
@@ -22,6 +23,13 @@ test('post-respawn fresh stationary independent BDS pair re-aligns only local fe
  assert.equal(f.bot.entity.onGround,false)
  assert.deepEqual(f.count(),[1,1,0])
  assert.equal(reconcileRespawnMirror({...args,mirroredCycle:7}).ok,false)
+})
+test('respawn mirror also refuses a pair older than real movement input',()=>{
+ const f=scenario()
+ f.bot._aliceBedrockInputSync.summary=()=>({lastMotionInputAt:9900,lastAuthoritativePositionAt:null})
+ const r=reconcileRespawnMirror({bot:f.bot,evidence:f.evidence,phase:'respawn_verified',cycle:7,clock:()=>10000})
+ assert.equal(r.reason,'local_mirror_witness_precedes_activity')
+ assert.deepEqual(f.count(),[0,0,0])
 })
 test('never use old/unstable/large or non-respawn samples',()=>{
  for(const opt of [{first:5900},{pairTravel:1},{server:{x:35,y:64,z:10}},

@@ -5,7 +5,8 @@ const {verifiedIdleMirrorDecision,reconcileVerifiedIdleMirror,COOLDOWN_MS}=
   require('../src/verified_idle_position_mirror.cjs')
 function scene(){
  let stops=0,clears=0,packets=0
- const bot={health:20,isSleeping:false,entity:{position:{x:8.9,y:64,z:10},
+ const bot={_aliceBedrockInputSync:{summary:()=>({lastMotionInputAt:null,lastAuthoritativePositionAt:null})},
+ health:20,isSleeping:false,entity:{position:{x:8.9,y:64,z:10},
   velocity:{x:1,y:0,z:0},onGround:true},
   pathfinder:{setGoal:goal=>{assert.equal(goal,null);stops++}},
   clearControlStates:()=>clears++,_client:{queue:()=>packets++}}
@@ -29,6 +30,25 @@ test('2 current-life, stationary independent BDS positions repair local idle phy
  assert.deepEqual(x.bot.entity.velocity,{x:0,y:0,z:0})
  assert.equal(x.bot.entity.onGround,false)
  assert.deepEqual(x.count(),[1,1,0])
+})
+test('a stopped movement attempt cannot be rewound using its pre-movement BDS pair',()=>{
+ const x=scene()
+ x.bot.entity.position.x=7.91
+ x.bot._aliceBedrockInputSync.summary=()=>({lastMotionInputAt:9600,lastAuthoritativePositionAt:null})
+ const r=reconcileVerifiedIdleMirror(x.args)
+ assert.equal(r.reason,'local_mirror_witness_precedes_activity')
+ assert.equal(r.ok,false);assert.equal(x.bot.entity.position.x,7.91)
+ assert.deepEqual(x.count(),[0,0,0])
+ // Only two genuinely newer independent observations may restore eligibility.
+ x.state.independentPreviousAt=9700;x.state.independentAt=9800
+ assert.equal(reconcileVerifiedIdleMirror(x.args).ok,true)
+})
+test('idle mirror cannot undo a later authoritative correction or operate without an activity timeline',()=>{
+ for(const summary of [()=>({lastMotionInputAt:null,lastAuthoritativePositionAt:9600}),()=>({})]){
+  const x=scene();x.bot._aliceBedrockInputSync.summary=summary
+  assert.equal(reconcileVerifiedIdleMirror(x.args).ok,false)
+  assert.deepEqual(x.count(),[0,0,0])
+ }
 })
 test('never lower strict BDS start proof, invent a fresh sample or move server',()=>{
  const x=scene(),source=fs.readFileSync(path.join(__dirname,
@@ -81,8 +101,9 @@ test('main reconciles on true independent witness before autonomous/bed movement
  const mirror=part.indexOf('maybeMirrorVerifiedIdle(true)')
  const ack=part.indexOf('writeWitnessAck(')
  const probe=part.indexOf('resumeArmedProbe(')
+ const publish=part.indexOf('publishStatus()')
  const bed=part.indexOf('runtime.spawnpointTick(')
- assert(mirror>=0&&mirror<ack&&ack<probe&&probe<bed)
+ assert(mirror>=0&&mirror<ack&&ack<publish&&publish<probe&&probe<bed)
 })
 
 test('main emits only bounded reason/state when local mirror is deferred, not coords',()=>{

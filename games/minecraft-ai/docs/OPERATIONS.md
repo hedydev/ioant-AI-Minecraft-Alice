@@ -1,3 +1,9 @@
+## 2026-11-02 — Activity-qualified mirror rollout and observer clock
+
+The new stationary activity guard is runtime code and needs an authorized normal Alice-only lifecycle after sync/tests. Read `activityGuardVersion`:1 identifies the new input timeline marker; older replay counters with a null marker do not establish this patch loaded. The version marker is feature telemetry, not a cryptographic source hash or independent BDS acceptance. Do not replay a prior platform-rejected reload or consume an old intent again.
+
+Both samples used for idle/respawn mirroring must now be later than queued motion inputs and applied authoritative position updates. No query, sample renewal, navigation bypass, BDS restart or world change was added. Fresh witness callbacks publish status before any newly authorized activity; original witness timestamps/4s TTL remain intact. The read-only observer validates file freshness against its post-read clock, preserving strict rejection of genuinely future-dated files. Its fixed `snapshotFailure` distinguishes failed provenance/freshness reads without printing paths or raw error text. The earlier observation12 remains inconclusive, never a pass.
+
 ## 2026-11-02 — Finite current-owner synchronization observation
 
 After a normal client lifecycle, use `.openclaw/tasks/alice_reconcile_finite_observation.json` with the exact full committed SHA, `repository_task`, `workspace_mode=current` and a fresh observation operation ID. It calls maintained `scripts/alice-reconcile-watch-readonly.py` and Node `bedrock-native/experiment/scripts/watch_reconciliation_runtime.cjs`. It observes EXISTING files for at most210s at250ms intervals; no BDS query, timer change, gameplay input, process signal or model. Poll the same operation receipt; fetch its declared `finite_observation` artifact when finished. Do not resubmit an uncertain job.

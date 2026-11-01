@@ -236,7 +236,7 @@ async function main(args=process.argv.slice(2)){
           'callbackPositionMutationsPrevented','callbackVelocityMutationsPrevented',
           'callbackContactMutationsPrevented','correctionReplays','replayedFrames',
           'correctionFallbacks','correctionsRejected','historyFrames',
-          'lastCorrectionReason'].includes(key))
+          'lastCorrectionReason','witnessContextVersion'].includes(key))
         .map(([key,value])=>['sync'+key[0].toUpperCase()+key.slice(1),value])),
       analogCompatEnabled:analogCompat.enabled,
       analogCompatCorrected:analogCompat.summary().corrected,
@@ -390,6 +390,10 @@ async function main(args=process.argv.slice(2)){
     // It never requests another query or extends the four-second proof.
     try{writeWitnessAck({bot,evidence:movementEvidence,producerStartToken})}
     catch(err){runtimeLogger.warn('[Alice BDS witness] ack unavailable:',String(err?.message||err).slice(0,60))}
+    // Publish the freshly consumed independent position BEFORE any queued
+    // activity, rather than waiting up to 2s for the periodic heartbeat.
+    // This does not change the source timestamp or its original 4s TTL.
+    publishStatus()
     // Called ONLY after a new independent position was accepted.
     // Neither server query nor an untrusted client physics frame is allowed.
     // Complete a preauthorized short-lived probe on THIS SAME 250ms

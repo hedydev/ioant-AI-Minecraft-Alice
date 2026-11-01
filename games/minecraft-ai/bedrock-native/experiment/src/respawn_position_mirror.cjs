@@ -1,6 +1,7 @@
 'use strict'
 // Reconcile LOCAL Bedrock physics only. Never issue any server teleport.
 const {scoutStartProof}=require('./scout_start_proof.cjs')
+const {stationaryWitnessAfterActivity}=require('./stationary_witness_context.cjs')
 const finite=p=>p&&[p.x,p.y,p.z].every(Number.isFinite)
 function decide({bot,evidence,phase,cycle=0,mirroredCycle=0,clock=Date.now}={}){
  if(!Number.isSafeInteger(cycle)||cycle<1||cycle<=mirroredCycle||phase!=='respawn_verified')
@@ -15,6 +16,8 @@ function decide({bot,evidence,phase,cycle=0,mirroredCycle=0,clock=Date.now}={}){
  if(!finite(p)||!Number.isFinite(s.independentPairTravelBlocks)||
     s.independentPairTravelBlocks>0.1)
    return {ok:false,reason:'server_pair_not_stationary'}
+ const activity=stationaryWitnessAfterActivity(bot,s,clock())
+ if(!activity.ok)return activity
  const m=Math.hypot(p.x-bot.entity.position.x,p.y-bot.entity.position.y,p.z-bot.entity.position.z)
  if(!(m>0.75&&m<=16))return {ok:false,reason:'local_mirror_delta_out_of_bound'}
  return {ok:true,reason:'verified_bds_respawn_local_mirror',

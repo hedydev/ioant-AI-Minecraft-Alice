@@ -62,6 +62,28 @@ test('previous Alice heartbeat with reused PID is never trusted',()=>{
    /movement_process_identity_mismatch/)
  }finally{f.close()}
 })
+test('an atomic publication during the read is judged against post-read time, without accepting future files',()=>{
+ const f=fixture();try{
+  const published=f.now+5
+  f.write('outbound-input-audit.json',{...f.wire,updatedAt:published})
+  for(const name of ['status.json','outbound-input-audit.json']){
+   const at=new Date(published);fs.utimesSync(path.join(f.root,name),at,at)
+  }
+  let ticks=0
+  const result=liveSnapshots({controlRoot:f.root,procRoot:f.procRoot,clock:()=>++ticks===1?f.now:f.now+10})
+  assert.equal(result.now,f.now+10)
+  assert.equal(result.wire.updatedAt,published)
+  // Filesystem mtime can be fractional while Date.now is integral. These
+  // represent the same clock millisecond, not a future timestamp allowance.
+  const fraction=(published+.75)/1000
+  for(const name of ['status.json','outbound-input-audit.json'])
+   fs.utimesSync(path.join(f.root,name),fraction,fraction)
+  assert.equal(liveSnapshots({controlRoot:f.root,procRoot:f.procRoot,clock:()=>published}).now,published)
+  const future=new Date(published+1)
+  fs.utimesSync(path.join(f.root,'status.json'),future,future)
+  assert.throws(()=>liveSnapshots({controlRoot:f.root,procRoot:f.procRoot,clock:()=>published}),/movement_report_stale/)
+ }finally{f.close()}
+})
 test('stale outbound audit cannot report movement from an earlier login',()=>{
  const f=fixture();try{
   f.write('outbound-input-audit.json',{...f.wire,updatedAt:f.now-60000})
