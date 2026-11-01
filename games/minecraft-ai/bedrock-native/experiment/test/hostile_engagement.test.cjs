@@ -1,0 +1,112 @@
+'use strict'
+const test=require('node:test'),assert=require('node:assert/strict')
+const {HostileEngagement,incomingProjectile,likelyShooter}=
+ require('../src/hostile_engagement.cjs')
+const at=(x,y=64,z=0)=>({x,y,z})
+const mob=(name,x,y=64,z=0,id=1)=>({id,name,position:at(x,y,z)})
+const arrow=(x,vx=-1,y=65.2)=>({name:'arrow',position:at(x,y,0),velocity:at(vx,0,0)})
+const tick=()=>{
+ let now=1000
+ return {clock:()=>now,advance:ms=>{now+=ms}}
+}
+const select=(f,mobs,opt={})=>f.guard.select({
+ hostiles:mobs,selfPosition:at(0),barrierFor:()=> 'clear',...opt})
+function fixture(){
+ const time=tick()
+ return {...time,guard:new HostileEngagement({clock:time.clock})}
+}
+test('stationary hostile one or two blocks away is NOT combat just by proximity',()=>{
+ const f=fixture(),m=mob('zombie',1.5)
+ assert.equal(select(f,[m]),null)
+ for(let i=0;i<12;i++){f.advance(300);assert.equal(select(f,[m]),null)}
+})
+test('same-close-range creeper without ignition or directed pursuit is not automatically attacked',()=>{
+ const f=fixture(),m=mob('creeper',2.5)
+ for(let i=0;i<4;i++){assert.equal(select(f,[m]),null);f.advance(300)}
+})
+test('observed directed approach for multiple frames within three blocks is real engagement',()=>{
+ const f=fixture(),m=mob('zombie',2.9)
+ assert.equal(select(f,[m]),null)
+ f.advance(300);m.position=at(2.65)
+ assert.equal(select(f,[m]),null)
+ f.advance(300);m.position=at(2.36)
+ const d=select(f,[m])
+ assert.equal(d?.type,'SELF_DEFENSE')
+ assert.equal(d?.target,m)
+ assert.equal(d?.evidence,'directed_close_approach')
+})
+test('wall or unverified LOS veto close approach and fight',()=>{
+ for(const barrier of ['blocked','unknown']){
+  const f=fixture(),m=mob('zombie',2.9)
+  select(f,[m],{barrierFor:()=>barrier})
+  f.advance(300);m.position=at(2.6);select(f,[m],{barrierFor:()=>barrier})
+  f.advance(300);m.position=at(2.3)
+  assert.equal(select(f,[m],{barrierFor:()=>barrier}),null,barrier)
+ }
+})
+test('passing or moving away without target approach is not aggression',()=>{
+ const f=fixture(),m=mob('zombie',1,64,2.1)
+ select(f,[m])
+ f.advance(300);m.position=at(1,64,2.45);select(f,[m])
+ f.advance(300);m.position=at(1,64,2.8)
+ assert.equal(select(f,[m]),null)
+})
+test('mob actually approaching nearby player can trigger GUARD, without follow intent',()=>{
+ const f=fixture(),m=mob('zombie',8),ownerPosition=at(5)
+ select(f,[m],{ownerPosition})
+ f.advance(300);m.position=at(7.7);select(f,[m],{ownerPosition})
+ f.advance(300);m.position=at(7.4)
+ const d=select(f,[m],{ownerPosition})
+ assert.equal(d?.type,'GUARD')
+ assert.equal(d?.target,m)
+})
+test('unobserved attacker cannot be attributed to distant zombie after unrelated damage',()=>{
+ const f=fixture(),m=mob('zombie',9)
+ select(f,[m])
+ f.advance(400)
+ assert.equal(select(f,[m],{lastSelfDamageAt:1200}),null)
+})
+test('damage + reachable adjacent mob is defensive but never claims verified attacker',()=>{
+ const f=fixture(),m=mob('zombie',1.5)
+ const d=select(f,[m],{lastSelfDamageAt:900})
+ assert.equal(d?.evidence,'nearby_recent_hurt')
+ assert.equal(d?.urgentAttack,true)
+ const g=fixture()
+ assert.equal(select(g,[m],{lastSelfDamageAt:900,barrierFor:()=> 'blocked'}),null)
+})
+test('projectile must actually be flying toward Alice for a ranged threat',()=>{
+ const f=fixture(),s=mob('skeleton',7)
+ const d=select(f,[s],{projectiles:[arrow(5)]})
+ assert.equal(d?.target,s)
+ assert.equal(d?.evidence,'incoming_projectile')
+ assert.equal(select(f,[s],{projectiles:[arrow(5,1)]}),null)
+})
+test('incoming arrow aimed at nearby player protects player without attributing passive zombies',()=>{
+ const f=fixture(),z=mob('zombie',5,64,0,1),s=mob('skeleton',9,64,0,2)
+ const d=select(f,[z,s],{ownerPosition:at(5),projectiles:[arrow(7)]})
+ assert.equal(d?.type,'GUARD')
+ assert.equal(d?.target,s)
+})
+test('multiple equally plausible shooters cannot be assigned as attacker',()=>{
+ const f=fixture(),m1=mob('skeleton',7,64,0,1),m2=mob('stray',7.2,64,0,2)
+ assert.equal(select(f,[m1,m2],{projectiles:[arrow(5)]}),null)
+})
+test('line-of-fire and shooter geometry reject clearly irrelevant missiles',()=>{
+ const s=mob('skeleton',7)
+ assert.equal(incomingProjectile(arrow(5),at(0)),true)
+ assert.equal(incomingProjectile(arrow(5,1),at(0)),false)
+ assert.equal(likelyShooter(s,arrow(5)),true)
+ assert.equal(likelyShooter(s,arrow(5,1)),false)
+})
+test('unknown or invalid snapshots never silently authorize combat',()=>{
+ const f=fixture(),m=mob('zombie',2)
+ m.position=at(NaN)
+ assert.equal(select(f,[m]),null)
+ assert.equal(f.guard.select({selfPosition:null,hostiles:[m]}),null)
+})
+test('stop, relog and reset erase accumulated pursuit evidence',()=>{
+ const f=fixture(),m=mob('zombie',2.9)
+ select(f,[m]);f.advance(300);m.position=at(2.6);select(f,[m])
+ f.guard.reset();f.advance(300);m.position=at(2.3)
+ assert.equal(select(f,[m]),null)
+})
