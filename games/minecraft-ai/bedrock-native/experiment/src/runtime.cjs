@@ -2119,6 +2119,14 @@ class AliceBedrockRuntime {
       }
       this.startJob('EXPLORE','自主模型',signal=>this.boundedScout(candidate,signal),{
         announce:false,label:'模型建议：安全短程观察',scoutCandidate:candidate})
+      // A model proposal is not an admitted game action. In particular the
+      // server-position proof can expire between the awaited model answer and
+      // startJob(). Never label a refused BDS start as "model_handled".
+      if(this.job?.type!=='EXPLORE'||this.action?.source!=='自主模型'){
+        const proof=scoutStartProof(this.bot,this.movementEvidence,this.clock)
+        this.goalPlanner.reject(proof.ok?'scout_job_not_admitted':'scout_start_position_unverified')
+        return 'blocked'
+      }
     }
     return 'handled'
   }
