@@ -11,6 +11,44 @@ class DemandTimerTests(unittest.TestCase):
         old={"version":1,"hour":20,"used":40,"lastBatch":72000}
         self.assertEqual(m.budget_value(72100,old)["used"],40)
         self.assertEqual(m.budget_value(75601,old)["used"],0)
+    def test_spread_existing_40_hourly_budget_across_hour(self):
+        # A 60-second systemd timer must not burn 40 calls in 20 minutes.
+        start=7201
+        b=m.budget_value(start)
+        self.assertTrue(m.budget_allows_batch(start,b))
+        b["used"]=2
+        b["lastBatch"]=start
+        self.assertFalse(m.budget_allows_batch(start+60,b))
+        self.assertFalse(m.budget_allows_batch(start+179,b))
+        self.assertTrue(m.budget_allows_batch(start+180,b))
+        self.assertFalse(m.budget_allows_batch(start+360,{**b,"used":40}))
+        self.assertEqual(m.MAX_HOURLY,40)
+        self.assertEqual(m.SUSTAINED_BATCH_SECONDS,180)
+
+    def test_hour_rollover_preserves_pacing_and_stalled_cooldown(self):
+        b={"version":1,"hour":1,"used":38,"lastBatch":7150,
+           "trackedLoginAt":6500,"trackedTravel":66.04,
+           "stalledPairs":3,"pauseUntil":7550}
+        after=m.budget_value(7201,b)
+        self.assertEqual(after["hour"],2)
+        self.assertEqual(after["used"],0)
+        self.assertEqual(after["lastBatch"],7150)
+        self.assertEqual(after["stalledPairs"],3)
+        self.assertFalse(m.budget_allows_batch(7201,after))
+        self.assertTrue(m.refresh_stall_state(after,{"movementEvidence":{
+            "loginAt":6500,"independentTravelBlocks":66.04}},7201))
+        self.assertFalse(m.refresh_stall_state(after,{"movementEvidence":{
+            "loginAt":6500,"independentTravelBlocks":66.04}},7551))
+        self.assertEqual(after["pauseUntil"],7550)
+        self.assertTrue(m.budget_allows_batch(7551,after))
+
+    def test_legacy_hour_rollover_budget_retains_last_batch(self):
+        previous={"version":1,"hour":3,"used":40,"lastBatch":14390}
+        after=m.budget_value(14401,previous)
+        self.assertEqual(after["used"],0)
+        self.assertEqual(after["lastBatch"],14390)
+        self.assertFalse(m.budget_allows_batch(14401,after))
+        self.assertTrue(m.budget_allows_batch(14570,after))
     def test_budget_bounded_and_invalid(self):
         self.assertFalse(m.consume_budget(72000,{"version":1,"hour":20,"used":40,"lastBatch":0}))
         with self.assertRaises(ValueError):
