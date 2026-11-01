@@ -1,3 +1,7 @@
+## 2026-11-02 — Qualified coordinate comparison (STAGED)
+
+The owner-bound read-only inspector now withholds distance for stale/cross-life BDS samples, stale/missing/future client timestamps or sample skew>1000ms; it reports explicit fixed reasons and bounded ages. A close-time relative sample does not prove exact tick synchronization. Extended pinned-Physics regressions cover30 seconds stationary after correction and repeated delayed stop/turn corrections. Running-client loading and independent real BDS behavior remain pending; no navigation or query limit was relaxed.
+
 ## 2026-11-02 — Historical player correction replay (STAGED)
 
 - Alice now has bounded input/state history and physics-only rewind/replay for player corrections. Uses the installed 1.26.51 `delta`/`on_ground` schema, applies even sub-half-block position error, and never resets the present clock to a historical correction tick. Replay preserves new intent and generates no duplicated game action or AI callback.

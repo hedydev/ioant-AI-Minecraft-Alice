@@ -3,6 +3,7 @@
 // Never disclose player coordinates, the private operator log, input packets
 // or account identifiers. Telemetry is NOT independent BDS movement proof.
 const {liveSnapshots,evaluateMovement}=require('./inspect_movement_sync.cjs')
+const MAX_SAMPLE_SKEW_MS=1000 // Diagnostic comparison only; never changes navigation admission.
 const COUNTERS=Object.freeze([
   'syncCorrectionReplays','syncReplayedFrames','syncCorrectionFallbacks',
   'syncCorrectionsRejected','syncHistoryFrames'
@@ -25,6 +26,23 @@ function summarizeReconciliation({core,wire,now}={}){
   const telemetryComplete=COUNTERS.every(key=>clean[key]!==null)
   const reason=wire.syncLastCorrectionReason
   const distance=movement.clientBdsDivergence
+  const m=core.movementEvidence||{}
+  const sampleAt=m.independentAt,positionAt=core.updatedAt
+  const age=Number.isSafeInteger(sampleAt)&&sampleAt<=now?now-sampleAt:null
+  const skew=Number.isSafeInteger(sampleAt)&&Number.isSafeInteger(positionAt)
+    ?Math.abs(positionAt-sampleAt):null
+  const currentLife=Number.isSafeInteger(m.loginAt)&&sampleAt>m.loginAt&&
+    m.independentPreviousAt>m.loginAt&&m.awaitingVerifiedRespawn!==true&&
+    (!Number.isSafeInteger(m.lifeEpochAt)||
+      sampleAt>m.lifeEpochAt&&m.independentPreviousAt>m.lifeEpochAt)
+  const positionFresh=Number.isSafeInteger(positionAt)&&positionAt<=now&&now-positionAt<=4000
+  // A fresh heartbeat can contain a minutes-old BDS coordinate. Never report
+  // that subtraction as a current synchronization error. Even the qualified
+  // result below is a close-time relative sample, not exact input-tick equality.
+  const comparisonReason=!movement.bdsWitnessFresh||!currentLife?'bds_pair_unverified':
+    !positionFresh?'position_time_unverified':
+    skew>MAX_SAMPLE_SKEW_MS?'sample_time_skew':distance==null?'client_position_unavailable':'fresh_relative_sample'
+  const comparable=comparisonReason==='fresh_relative_sample'
   return {
     audit:'ALICE_RECONCILIATION_LIVE_READONLY',schemaVersion:1,
     readOnly:true,worldModified:false,bdsCommandSent:false,
@@ -39,10 +57,13 @@ function summarizeReconciliation({core,wire,now}={}){
     correctionsRejected:clean.syncCorrectionsRejected,
     historyFrames:clean.syncHistoryFrames,
     lastCorrectionReason:typeof reason==='string'&&REASONS.has(reason)?reason:'unknown',
-    bdsFreshPair:movement.bdsWitnessFresh===true,
-    bdsPairTravel:movement.bdsLastPairTravel==null?null:
+    bdsFreshPair:movement.bdsWitnessFresh===true&&currentLife,
+    bdsPairTravel:!currentLife||movement.bdsLastPairTravel==null?null:
       Math.max(0,Math.round(movement.bdsLastPairTravel*100)/100),
-    clientBdsDistance:distance==null?null:Math.min(10000,distance)
+    coordinateComparison:comparisonReason,
+    bdsSampleAgeMs:age!==null?Math.min(1e9,age):null,
+    comparisonSkewMs:skew!==null?Math.min(1e9,skew):null,
+    clientBdsDistance:comparable?Math.min(10000,distance):null
   }
 }
 function main(){

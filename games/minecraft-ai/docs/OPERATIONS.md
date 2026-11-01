@@ -1,3 +1,9 @@
+## 2026-11-02 — Read coordinate evidence before judging drift
+
+The existing `alice_reconcile_live_runtime_readonly_20261102.json` task remains read-only. `clientBdsDistance=null` now means no qualified current comparison; read `coordinateComparison`, `bdsSampleAgeMs` and `comparisonSkewMs`. Both BDS samples must be current-life/fresh and the current position timestamp must be fresh and within1000ms of the latest sample. `fresh_relative_sample` is still not exact input-tick equality. Never substitute a historical subtraction (including1.503 or2.78) for fresh acceptance. The4s/0.75 navigation gate is unchanged.
+
+Read-only normal-lifecycle preflight was checked successfully, but it does not grant a platform exception. Keep all original owner/logout/health/world checks. Do not replay the previously platform-rejected reload through a different tool/task/ID; obtain normal client lifecycle loading through the permitted operator process before asserting live acceptance. BDS, world and query budget remain untouched.
+
 ## 2026-11-02 — Movement reconciliation deployment boundary
 
 The input plugin now retains bounded historical physics states; see [MOVEMENT_RECONCILIATION](MOVEMENT_RECONCILIATION.md). Reuse the maintained `alice-mac.sh sync` for tracked source copy with backups and full Mint Node24 tests. This does **not** restart Alice, open another Xbox client, query MCSManager, or change BDS/world state. A successful sync is not proof that the running process loaded the module.

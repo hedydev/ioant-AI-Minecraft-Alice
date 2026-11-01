@@ -1,3 +1,10 @@
+## 2026-11-02 — Fresh coordinate comparison and extended replay acceptance
+
+- Actual read-only `alice_reconcile_runtime_20261102_k4n8v2cs_02`: current owner verified, replay telemetry absent, no fresh BDS pair; old snapshot subtraction was2.78 blocks. This is not a qualified real-time error or new algorithm acceptance. `alice_reconcile_safe_window_20261102_k4n8v2cs_03` independently reports all normal client-reload safety predicates true, restartAttempted=false. No client/BDS process was changed.
+- Fixed the read-only runtime inspector: `clientBdsDistance` is now null unless both BDS samples are fresh/current-life, the client's position timestamp is fresh and within1000ms of the latest BDS sample. Added fixed `coordinateComparison`, bounded sample age/skew. The result remains a relative close-time sample, not exact tick equality. Regressions cover the actual117.41s stale-sample pattern and old-life/future/missing timestamps.
+- Added real pinned-Physics tests for600 stationary ticks after a delayed grounded correction, and stop/turn inputs across two delayed corrections, with no duplicate packet/event. Source/regression evidence will be updated after Mint execution. Original independent4s/0.75-block navigation gate and witness budget are unchanged.
+- Running Alice still needs an authorized normal lifecycle to load the source. A prior platform-denied client reload must not be retried by changing tools, scripts or IDs; do not call this task complete from offline tests. Remaining acceptance is new telemetry plus fresh stationary and authorized bounded-movement BDS evidence.
+
 ## 2026-11-02 — 独立复核 Codex 历史帧坐标纠正；新增原服进程实际版本遥测检查
 
 - Codex `618aad3` 历史tick回滚/物理重放方案代码已查，完整 `d741525` 记录和MCP原回执已复核，Mint777/777、Mac Python299。无已获准Alice生命周期更新，不得把源码验收等同原服BDS移动。

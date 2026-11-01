@@ -140,3 +140,41 @@ test('real pinned Physics rewinds a delayed correction without duplicate events 
     assert.equal(packets.at(-1).tick,'1009')
   }})
 })
+test('real pinned Physics stays stationary for 600 ticks after a delayed grounded correction',()=>{
+ run(500,{verify:({bot,client,packets,advance})=>{
+  const p=packets.at(-5)
+  client.emit('correct_player_move_prediction',{
+   prediction_type:'player',tick:BigInt(p.tick),
+   position:{...p.pos,x:p.pos.x+.125,z:p.pos.z-.125},
+   delta:p.delta,on_ground:p.input.includes('vertical_collision')
+  })
+  const corrected=bot.entity.position.clone()
+  for(let i=0;i<600;i++)advance(50)
+  assert(bot.entity.position.distanceTo(corrected)<1e-9)
+  assert.equal(bot._aliceBedrockInputSync.summary().historyFrames,40)
+  assert.equal(bot._aliceBedrockInputSync.summary().correctionFallbacks,0)
+ }})
+})
+test('real pinned Physics preserves stop-and-turn inputs through two delayed corrections',()=>{
+ run(400,{beginForward:true,verify:({bot,client,packets,advance,getTicks})=>{
+  bot.setControlState('forward',false);bot.entity.yaw=Math.PI/2
+  for(let i=0;i<6;i++)advance(50)
+  const correct=()=>{
+   const p=packets.at(-5),before=bot.entity.position.clone(),count=packets.length,ticks=getTicks()
+   client.emit('correct_player_move_prediction',{
+    prediction_type:'player',tick:BigInt(p.tick),position:p.pos,
+    delta:p.delta,on_ground:p.input.includes('vertical_collision')
+   })
+   assert(bot.entity.position.distanceTo(before)<1e-8)
+   assert.equal(packets.length,count);assert.equal(getTicks(),ticks)
+   assert.equal(bot.entity.yaw,Math.PI/2)
+  }
+  correct()
+  bot.setControlState('forward',true)
+  for(let i=0;i<8;i++)advance(50)
+  bot.setControlState('forward',false)
+  correct()
+  assert.equal(bot._aliceBedrockInputSync.summary().correctionReplays,2)
+  assert.equal(bot._aliceBedrockInputSync.summary().correctionFallbacks,0)
+ }})
+})

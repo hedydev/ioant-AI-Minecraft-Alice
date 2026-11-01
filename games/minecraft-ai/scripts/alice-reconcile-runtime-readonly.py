@@ -21,8 +21,10 @@ print(p.stdout.strip())
 '''
 BOOLEANS={'readOnly','worldModified','bdsCommandSent','currentOwnerEvidence','telemetryPresent','bdsFreshPair'}
 NUMBERS={'correctionReplays','replayedFrames','correctionFallbacks','correctionsRejected',
- 'historyFrames','bdsPairTravel','clientBdsDistance'}
-FIELDS={'audit','schemaVersion','evidenceLevel','lastCorrectionReason',*BOOLEANS,*NUMBERS}
+ 'historyFrames','bdsPairTravel','clientBdsDistance','bdsSampleAgeMs','comparisonSkewMs'}
+COMPARISONS={'bds_pair_unverified','position_time_unverified','sample_time_skew',
+ 'client_position_unavailable','fresh_relative_sample'}
+FIELDS={'audit','schemaVersion','evidenceLevel','lastCorrectionReason','coordinateComparison',*BOOLEANS,*NUMBERS}
 def verify(x):
  if not isinstance(x,dict) or x.get('audit')!='ALICE_RECONCILIATION_LIVE_READONLY' or x.get('schemaVersion')!=1:return None
  if x.get('readOnly') is not True or x.get('worldModified') is not False or x.get('bdsCommandSent') is not False:return None
@@ -35,6 +37,8 @@ def verify(x):
  for k in NUMBERS:
   if x[k] is not None and (type(x[k]) not in (int,float) or not 0<=x[k]<=1e9):return None
  if type(x['lastCorrectionReason']) is not str or len(x['lastCorrectionReason'])>48:return None
+ if type(x['coordinateComparison']) is not str or x['coordinateComparison'] not in COMPARISONS:return None
+ if x['coordinateComparison']!='fresh_relative_sample' and x['clientBdsDistance'] is not None:return None
  if x['telemetryPresent']!=(x['evidenceLevel']=='runtime_counters_observed'):return None
  return x
 def run(folder):
@@ -55,6 +59,7 @@ def selftest():
  assert "'--test'" not in REMOTE and "'restart'" not in REMOTE
  probe={'audit':'ALICE_RECONCILIATION_LIVE_READONLY','schemaVersion':1,
  'evidenceLevel':'runtime_counters_unavailable','lastCorrectionReason':'unknown',
+ 'coordinateComparison':'bds_pair_unverified',
  'readOnly':True,'worldModified':False,'bdsCommandSent':False,
  'currentOwnerEvidence':True,'telemetryPresent':False,'bdsFreshPair':False,
  **{k:None for k in NUMBERS}}

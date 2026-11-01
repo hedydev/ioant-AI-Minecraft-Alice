@@ -118,3 +118,21 @@ check and independent BDS/game acceptance. See CURRENT_STATE for actual results.
 - Live original-world `alice_codex_reconcile_live_gate_20261102_v04` and `alice_codex_reconcile_live_pos_20261102_v05`: owner-verified autonomous IDLE, full health, independent sample count **181**, no fresh BDS pair, client-to-BDS distance **1.503 blocks**; this is older running-client behavior, **not** new algorithm evidence. Subsequent `alice_reconcile_runtime_live_read_20261102_v13`: verified same running Alice owner, `telemetryPresent=false`, `evidenceLevel=runtime_counters_unavailable`, client-to-BDS distance **1.26 blocks**. The new motion correction module has not been established as loaded into this process. No raw player positions are emitted by this task.
 - **Live acceptance still pending:** previous client-only reload was denied by platform execution safety; do not retry through other scripts, IDs, or tools. Once a permitted normal lifecycle loads the new code, require fresh `syncCorrectionReplays`/`syncCorrectionFallbacks` and independent BDS paired positions plus a safe, completed movement goal, rather than relying on tests, file mtime, or inferred version.
 
+
+## Qualified live coordinate comparisons
+
+The runtime inspector suppresses `clientBdsDistance` when BDS samples are stale,
+from a prior login/life, or lack a nearby fresh client position timestamp. It
+adds `coordinateComparison`, `bdsSampleAgeMs`, `comparisonSkewMs`. The1000ms
+skew limit applies only to this diagnostic, never to navigation authorization.
+A qualified distance remains a close-time relative comparison; querytarget
+does not identify the exact PlayerAuthInput tick. A null distance is unknown,
+not zero. Replay counters can establish runtime feature presence, not server
+position agreement.
+
+Extended real pinned-Physics tests cover600 stationary ticks following a
+delayed correction and repeated delayed corrections during stop/turn input.
+They do not operate or simulate an authoritative BDS server. Live acceptance
+still requires an authorized client lifecycle, fresh independent samples and
+matched stationary/movement observations. Never bypass the prior platform
+reload rejection or lower the original4s/0.75-block gate to obtain a pass.
