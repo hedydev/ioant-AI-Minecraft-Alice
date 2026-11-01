@@ -6,6 +6,7 @@ const {BedrockOperations,qty,WOOD_LOGS} = require('./operations.cjs')
 const {stationaryDefense,defenseDelay}=require('./defensive_melee.cjs')
 const {equipmentSnapshot}=require('./life_actions.cjs')
 const {observedHostileBarrier,OwnerMotion,escortAssessment}=require('./escort_threat.cjs')
+const {HostileEngagement}=require('./hostile_engagement.cjs')
 const {OllamaPlanner} = require('./planner.cjs')
 const {FollowProgress} = require('./follow_progress.cjs')
 const {FollowInputObservation}=require('./follow_input_observation.cjs')
@@ -245,6 +246,7 @@ class AliceBedrockRuntime {
         JSON.stringify({player:name,reason:'bedrock_player_list_remove',
           safetyPreserved:safetyActive,jobPreserved:!!this.job}))
     }
+    this.hostileEngagement=new HostileEngagement({clock})
     this.attackBackoff=new Map();this.observedHurt=new Map()
     this.recentAttackAttempts=new Map()
     this.onEntityHurt=entity=>{
@@ -480,6 +482,7 @@ class AliceBedrockRuntime {
     if(this.closed)return
     this.closed=true;this.started=false
     this.verticalWatch.reset()
+    this.hostileEngagement.reset()
     this.timers.forEach(clearInterval);this.timers=[]
     this.stopDirectFollow('runtime_stopped')
     this.bot.off?.('entityHurt',this.onEntityHurt)
@@ -552,13 +555,36 @@ class AliceBedrockRuntime {
   }
   threat(){
     if(!this.ready())return null
-    const mobs=Object.values(this.bot.entities||{}).filter(e=>HOSTILES.has(e?.name)&&e?.position&&typeof e.position.distanceTo==='function')
+    const self=this.bot.entity.position
+    const entities=Object.values(this.bot.entities||{})
+    const mobs=entities.filter(e=>HOSTILES.has(e?.name)&&e?.position&&
+      Number.isFinite(e.position.x)&&Number.isFinite(e.position.y)&&
+      Number.isFinite(e.position.z)&&
+      Math.hypot(e.position.x-self.x,e.position.y-self.y,e.position.z-self.z)<=18
+    ).slice(0,24)
     const owner=this.core.intent?.data?.playerName||this.lastGuardedPlayer
-    const nearOwner=this.visiblePlayer(owner)?.position
-    const protect=nearOwner?.distanceTo?.(this.bot.entity.position)<=12 ? nearOwner : null
-    return this.p.safety_policy.selectThreat({now:this.clock(),health:this.bot.health,
-      selfPosition:this.bot.entity.position,ownerPosition:protect,
-      lastSelfDamageAt:this.lastSelfDamageAt,hostiles:mobs})
+    const namedOwner=this.visiblePlayer(owner)?.position
+    // Autonomous survival may protect a genuine nearby player even without
+    // a FOLLOW order. Only observed player entities qualify, never a name
+    // from the player list without a synchronized location.
+    const nearbyPlayers=Object.values(this.bot.players||{})
+      .filter(p=>p?.entity?.position&&
+        typeof p.entity.position.distanceTo==='function')
+      .map(p=>p.entity.position)
+      .filter(p=>p.distanceTo(self)<=12)
+      .sort((a,b)=>a.distanceTo(self)-b.distanceTo(self))
+    const protect=namedOwner?.distanceTo?.(self)<=12?namedOwner:
+      nearbyPlayers[0]||null
+    const projectiles=entities.filter(e=>e?.position&&e?.velocity&&
+      ['arrow','spectral_arrow','trident','small_fireball','fireball',
+        'wither_skull','shulker_bullet','thrown_potion'].includes(e?.name)
+    ).slice(0,24)
+    return this.hostileEngagement.select({
+      hostiles:mobs,projectiles,selfPosition:self,ownerPosition:protect,
+      lastSelfDamageAt:this.lastSelfDamageAt,
+      health:this.bot.health,
+      barrierFor:e=>observedHostileBarrier(this.bot,e,{maxDistance:12})
+    })
   }
   status(){
     if(!this.seenSpawn)return '正在等待 Minecraft 角色生成。'
@@ -1143,7 +1169,7 @@ class AliceBedrockRuntime {
     const lastDamageMs=this.lastSelfDamageAt>0?this.clock()-this.lastSelfDamageAt:Infinity
     const tactic=this.p.safety_policy.decideCombatTactic({health:this.bot.health,
       enemyType:t.name,distance:targetDistance,lastDamageMs})
-    const recentHitOutsideMelee=lastDamageMs<=6500&&targetDistance>3.5
+    const recentHitOutsideMelee=(lastDamageMs<=6500||danger?.evidence==='incoming_projectile')&&targetDistance>3.5
     const mobType=String(t.name||'unknown').toLowerCase().replace(/[^a-z0-9_]/g,'').slice(0,30)
     const learned=this.deathExperience.assess(mobType)
     // A repeated unsafe encounter changes the next combat choice, not
