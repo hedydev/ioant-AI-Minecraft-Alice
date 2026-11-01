@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Read current Alice 17879 private bounded BDS mirror refusal reasons without BDS or model commands",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-idle-mirror-reasons-readonly.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "mint_mirror_reasons",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-idle-mirror-reasons-readonly.py",
+      "args": [
+        "--read",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 60
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "mirror_reasons",
+      "file": "alice_idle_mirror_reasons.json",
+      "format": "json"
+    }
+  ]
+}
