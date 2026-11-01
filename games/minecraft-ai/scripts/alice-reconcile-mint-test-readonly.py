@@ -30,7 +30,7 @@ p=subprocess.run([str(app.node),'--test',*tests],cwd=project,
      capture_output=True,text=True,timeout=100,check=False)
 out=p.stdout[-20000:]
 def count(name):
- match=re.search(r'^\\s*[ℹ#]\\s*'+re.escape(name)+r'\\s+(\\d+)\\s*$',out,re.M)
+ match=re.search(r'^\s*[ℹ#]\s*'+re.escape(name)+r'\s+(\d+)\s*$',out,re.M)
  return int(match.group(1)) if match else None
 v={'audit':'ALICE_RECONCILE_REAL_NODE',
    'state':'passed' if p.returncode==0 else 'failed',
@@ -40,7 +40,7 @@ v={'audit':'ALICE_RECONCILE_REAL_NODE',
    'worldModified':False}
 version=subprocess.run([str(app.node),'--version'],capture_output=True,text=True,
                        timeout=4,check=False)
-if version.returncode==0 and re.fullmatch(r'v[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,4}',version.stdout.strip()):
+if version.returncode==0 and re.fullmatch(r'v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,4}',version.stdout.strip()):
  v['nodeVersion']=version.stdout.strip()
 if v['tests'] is None or v['pass'] is None or v['fail'] is None or v['skipped'] is None:
  v['state']='unverified'
