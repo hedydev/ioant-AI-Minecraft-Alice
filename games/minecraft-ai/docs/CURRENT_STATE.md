@@ -1,3 +1,10 @@
+## 2026-11-01 — 原BDS稳定双样本后本地IDLE物理对齐（安全门禁不变）
+
+- 真实`alice_model_navigation_log_live_20261101_cn01`：Alice原17879生命20、IDLE、独立BDS样本14、模型已真实提案一次`scout_safe`，日志35次BDS导航拒绝、最新差1.76格，BDS最近一对样本没有验证位移，不能声称实际移动。更细`alice_model_navigation_axis_fixed_20261101_cp01`：同当前生命`deathRecovery.phase=respawn_verified`、cy=114，独立样本20、最近pair静止，**客户端-BDS差主要X+1.919,Y=0,Z=-0.077格**，日志已37次导航拒绝，模型`scout_safe`仍无法开始路径。这不是眼高减1.62的Y轴错位。
+- 原`respawn_position_mirror.cjs`只允许每重生cycle做一次本地对齐，后续Bedrock客户端物理预测继续漂移时不能再次纠正。新增`verified_idle_position_mirror.cjs`：仅在**当前登录、当前生命、4秒内两份独立BDS样本**且服务器pair位移<=0.1格、Alice `IDLE`、HP>=16、无COMBAT/威胁/FOLLOW/STOP/睡眠/活动job/安全冷却/模型忙、最近未对齐60秒才允许；差值严格>0.75但<=3格；**仅调整本地Client bot.entity物理镜像，清零本地速度/控制，禁止任何Minecraft移动包/传送或服务器位置修改**。0.75格`scoutStartProof`门禁原封不动，真正启程仍必须重新通过完整原安全门禁。
+- 对`main.cjs`的`onFreshIndependentBdsWitness`重新排序：先原有受限重生镜像，再安全空闲对齐，最后才发布private ACK和执行床/SCOUT候选，避免原来在镜像前就判定导航位置不可信。增加Node单元测证明COMBAT、STOP、FOLLOW、危险、低血量、旧生命、单样本、运动中的BDS、>3格差异等全部fail-closed，且不发送游戏命令。
+- **源码改进不等于已经在运行中生效或实机通过位移**：必须Mac/Mint全量单测过关后，用现有唯一Alice-client受控重载；BDS 17879绝不重启/修改世界。重载后等自然的按需MCSManager双样本验收本地对齐 + 真正BDS后验位移；不能直接跨越0.75门禁或伪造路径成功。
+
 ## 2026-11-01 — Alice Ollama 模型服务恢复（原17879/不动BDS）
 
 - 项目OpenClaw上一次handoff revision33，仓库原HEAD `94fb4b61...`；用户要求继续`model_unavailable`和真实自主移动。最先只读`alice_model_preflight_gate_20261101_ca01`：原Alice在线，但当前HP**2**、SURVIVE、独立BDS位置为`prior_life_witness`，安全低血量门禁阻止探索是正确行为，不能降低HP与移动保护。

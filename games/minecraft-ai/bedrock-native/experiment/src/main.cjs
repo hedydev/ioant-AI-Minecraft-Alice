@@ -34,6 +34,7 @@ const {BdsWitnessReader}=require('./bds_witness.cjs')
 const {witnessDemand}=require('./witness_demand.cjs')
 const {createWitnessIdleResume}=require('./witness_idle_resume.cjs')
 const {writeWitnessAck}=require('./witness_ack.cjs')
+const {reconcileVerifiedIdleMirror}=require('./verified_idle_position_mirror.cjs')
 const {attachStableActionbarWitness}=require('./stable_actionbar_witness.cjs')
 const aliceClientInputSync=require('./bedrock_client_input_sync.cjs')
 const {installNavigationPositionGuard}=require('./navigation_position_guard.cjs')
@@ -338,7 +339,29 @@ async function main(args=process.argv.slice(2)){
     runtime,bot,evidence:movementEvidence,log:runtimeLogger
   })
   let mirroredRespawnCycle=0
+  let idleMirrorLastAt=0
   function onFreshIndependentBdsWitness(){
+    // Reconcile local-only physics *before* ACK and any bed/SCOUT decision.
+    // Two current-life stationary BDS samples are required; never move BDS.
+    const recovery=respawnRecovery.get()
+    const r=reconcileRespawnMirror({bot,evidence:movementEvidence,
+      phase:recovery.phase,cycle:recovery.cycles,mirroredCycle:mirroredRespawnCycle})
+    if(r.ok){
+      mirroredRespawnCycle=r.cycle
+      runtime.followGoal=null;runtime.followProgress.reset()
+      runtimeLogger.log('[Alice movement] respawn BDS-verified LOCAL mirror restored:',JSON.stringify({
+        cycle:r.cycle,correctionBlocks:r.distance,bdsTeleport:false,
+        bdsQuerySentByAlice:false}))
+    }else{
+      const idle=reconcileVerifiedIdleMirror({bot,evidence:movementEvidence,
+        runtime,lastMirroredAt:idleMirrorLastAt})
+      if(idle.ok){
+        idleMirrorLastAt=Date.now()
+        runtimeLogger.log('[Alice movement] safe-idle BDS-local mirror:',JSON.stringify({
+          reason:idle.reason,correctionBlocks:idle.distance,
+          bdsTeleport:false,bdsQuerySentByAlice:false}))
+      }
+    }
     // Real-time private receipt: the independent sample was consumed by this
     // Alice process, not merely written by an MCSManager-side query.
     // It never requests another query or extends the four-second proof.
@@ -366,16 +389,6 @@ async function main(args=process.argv.slice(2)){
     const bedMove=runtime.resumeBedApproachOnWitness()
     if(bedMove.state==='started')
       runtimeLogger.log('[Alice home] witnessed short bed approach:',JSON.stringify(bedMove))
-    const recovery=respawnRecovery.get()
-    const r=reconcileRespawnMirror({bot,evidence:movementEvidence,
-      phase:recovery.phase,cycle:recovery.cycles,mirroredCycle:mirroredRespawnCycle})
-    if(r.ok){
-      mirroredRespawnCycle=r.cycle
-      runtime.followGoal=null;runtime.followProgress.reset()
-      runtimeLogger.log('[Alice movement] respawn BDS-verified LOCAL mirror restored:',JSON.stringify({
-        cycle:r.cycle,correctionBlocks:r.distance,bdsTeleport:false,
-        bdsQuerySentByAlice:false}))
-    }
   }
   stableWitness=live?attachStableActionbarWitness(bot._client,{
     evidence:movementEvidence,name:()=>bot.username,
