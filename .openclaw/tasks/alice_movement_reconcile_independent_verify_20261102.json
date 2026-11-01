@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "title": "Independent direct Node test of Codex historical rewind replay on current Alice project",
+  "steps": [
+    {
+      "name": "pure_history",
+      "runtime": "node",
+      "script": "games/minecraft-ai/bedrock-native/experiment/test/movement_prediction_history.test.cjs",
+      "args": [],
+      "timeoutSeconds": 40
+    },
+    {
+      "name": "plugin_contract",
+      "runtime": "node",
+      "script": "games/minecraft-ai/bedrock-native/experiment/test/client_input_reconciliation.test.cjs",
+      "args": [],
+      "timeoutSeconds": 40
+    },
+    {
+      "name": "pinned_physics",
+      "runtime": "node",
+      "script": "games/minecraft-ai/bedrock-native/experiment/test/client_input_tick_sync.test.cjs",
+      "args": [],
+      "timeoutSeconds": 80
+    }
+  ],
+  "artifacts": []
+}
