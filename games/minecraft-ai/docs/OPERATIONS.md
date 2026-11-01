@@ -1,3 +1,9 @@
+## 2026-11-01 — 本地mirror有限拒绝原因诊断：只更换健康IDLE Alice客户端
+
+- 原Alice最新代码 `main.cjs` 增加只有真正被BDS独立见证读取器接纳才触发的mirror拒绝固定原因/有限状态日志，reason变化或>=15秒才写，完全不携带玩家坐标/身份/凭证、不发送BDS命令、不放松门禁。Mac `alice_idle_mirror_reason_mac_regression_20261101_s02` PASS Python296（skip3）；Mint `alice_idle_mirror_reason_mint_regression_20261101_s03` PASS Node24 **751/751**、Mac296，非重启同步PASS（BDS/Alice未重启，世界未修改）。
+- 新唯一`alice-idle-mirror-reason-client-reload-20261101.py` + `.openclaw/tasks/alice_idle_mirror_reason_client_reload_20261101.json` 仅原17879 Alice进程、`alice-mint.py check`明确preflight passed +唯一旧PID、当前原世界同PID fresh状态 `IDLE` HP>=16、autonomous、无工作、安全idleGate时才使用**全新单次私有intent**执行`alice-mint.py restart`。不重启BDS、不改世界、不重放原`alice_verified_idle_mirror_client_reload`旧intent，不在战斗/睡眠/低血量中操作。
+- 日志实际验收需后续自然MCSManager 250ms真实样本，再只读统计固定拒绝原因（至少有两份当前生命4秒内BDS证据时）；若安全预检不允许则放弃此次reload而不强制进程替换。
+
 ## 2026-11-01 — 本地镜像上线后验、MCSManager零进展退避与可观测性
 
 - 原17879 Alice客户端**已真实受控重载新镜像代码**：最早尝试`alice_idle_mirror_guarded_client_reload_20261101_rc01`因Alice处于COMBAT/threat_nearby，内层明确`preflight_blocked,clientRestartAttempted=false`；后续只读`alice_idle_mirror_safety_window_readonly_20261101_re01`确认恢复健康IDLE HP20、food20、无当前任务，`alice_idle_mirror_client_reload_safe_20261101_rf01`内层`state=client_reconnected_17879`、新进程身份心跳/登录全验证，BDS未重启、其它服务器与世界完全未触碰。后续读`alice_idle_mirror_postrestart_gate_20261101_rg01` IDLE HP20、零独立BDS新登录样本；`alice_idle_mirror_postrestart_log_20261101_ri01` 现登录未记录mirror或位移。
