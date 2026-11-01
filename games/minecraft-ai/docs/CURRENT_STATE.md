@@ -1,3 +1,11 @@
+## 2026-11-02 — BDS witness idle wake: cancelled callback no longer consumes cooldown (source synced; live behavior pending)
+
+- 真实原17879只读后验：`alice_p0_nov02_live_read_01` 当前 Alice connected=true、autonomous、IDLE、HP20/food20、独立 BDS 样本123、上一个双样本服务器位移0.95格，`independentFreshPair=false`，`position_witness_unverified`；证明已有独立服务端位置变化，**不能证明自主导航到目标**，也不能把历史正位移当作新代码效果。
+- 直接审阅 `src/witness_idle_resume.cjs` 发现确定的调度时序漏洞：`request()` 在 `schedule()` 排队前即更新 `lastTriggeredAt`；若实际回调因见证过期或任务/状态抢占而放弃、未执行 `idleTick()`，下一份合法双样本在5秒冷却内仍被拒绝。提交 `d8086dcee6acaa3fef1a6194bfea3620280dcdf2` 将冷却记录移到最终再次通过完整见证与既有安全门禁、即将执行自主决策时；被丢弃的排队回调不消耗冷却。增加受限固定 outcome 的运行日志，按变化或至少15秒限制重复；不记录身份/坐标/模型数据，不发送 BDS 命令/移动包，不改4秒证据有效期、0.75格导航对齐门禁。
+- 本轮尝试提交新的 Node 专项取消/重试场景测试被平台安全检查阻止，**测试文件未更新，不得声称新增测试已执行或通过，不绕过被阻止的写入**。现有源测试与完整回归仍正常。
+- Mac实测 `alice_witness_handoff_mac_regression_20261102_m01` PASS Python296(3skip)/0fail，Mac已快进到 `d8086d`；Mint非重启同步与回归 `alice_witness_handoff_mint_node_20261102_n01` PASS Node24 753/753，Mac296，`aliceRestarted=false,bdsRestarted=false,worldModifiedByTask=false,consoleCommandSent=false`。这仅证明文件同步和回归，**不证明旧进程已加载新模块或该修复在真实导航中生效**。
+- 原正式世界BDS17879保持运行。此前 Alice-only reload 被平台审核阻止；不可通过另一个工具、operation_id 或降级预检重试。等待合法自然生命周期或获准的标准部署路径后，再查真实限流 `[Alice autonomy] BDS witness idle handoff:` outcome 与同生命服务器双样本位移/导航目标后验。禁止恢复旧querytarget无限loop、强制移动、修改正式世界或降低安全限制。
+
 ## 2026-11-02 — 继续执行：安全窗口核查与平台重载阻断（本轮实际回执）
 
 - GitHub main 已从上一会话的 `d55bfd2e...` 正常前进12个提交至 `767836ed8f14acb5745e7a5a9b00d177d539904c`（当前本轮再添加只读diagnostic）；涵盖 **4秒内已有双样本晚到250ms客户端漂移修正**、本地镜像拒绝原因匿名日志、MCSManager成功ACK但BDS不动时10分钟退避等，保留原BDS 17879，不创建测试世界、不降低0.75格门禁/4秒TTL。第一次旧HEAD回归 `alice_idle_mirror_mac_regression_20261102_a01` 被 `remote_commit_mismatch` 安全阻止，未运行错版本。
