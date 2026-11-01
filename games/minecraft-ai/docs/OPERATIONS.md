@@ -1,3 +1,11 @@
+## 2026-11-02 — 原17879 BDS有限见证节奏：MCP实机恢复长期预算可持续性
+
+- 问题复现：`alice_timer_live_budget_20261102_s02` 读原Mint真实user systemd + 0600 budget：timer active/enabled，Alice owner/心跳有效、需求true，`used=40/40`，`stalledPairs=0`、`pauseRemaining=0`、最后`cooldown_or_budget`。**根因是原1分钟两条查询很快耗尽整小时40条预算**，不是停止运行或10分钟空转退避。不能删除账本或绕过预算。
+- 已提交`535ce9771414bb3fc62da9ef7c7322880cacfeb0`：每批真实querytarget双样本必须间隔至少180秒，继续保持每批≤2、每小时≤40、原健康心跳、私有ACK、owner/port/world绑定和危险STOP/FOLLOW检查。每小时跨界仅重置本小时`used`，保留previous `lastBatch`与同生命`stalledPairs/pauseUntil`，不允许重置休眠保护来索取更多命令。
+- 新固定只读任务 `.openclaw/tasks/alice_bds_demand_state_readonly_20261102.json`/脚本`alice-bds-demand-state-readonly-20261102.py` 可经 OpenClaw `repository_task` 在现有Mac `workspace_mode=current` 下执行，输出`demand_state`报告（固定布尔、有限计数、没有坐标或秘密，不查询BDS，不重启）。MCP现场 `alice_timer_live_budget_20261102_s02`、同步后`alice_timer_after_sync_live_20261102_s05` 均 PASS。
+- Mac完整 `alice_timer_budget_regression_mac_20261102_s03` Python299（3skip）PASS，Mint非重启 `alice_timer_budget_mint_sync_20261102_s04` Node24 754/754及Mac299 PASS；源已同步到Mint，不重启BDS/Alice，不改世界，不发console命令。
+- 此刻原配额仍`40/40`，**不能立刻获新的合法见证**。等待原系统小时自然重置后新timer自动按180秒间隔运行，再读相同现场报告确认`budgetUsed`合理增长、`stalledPairs`是否出现、4秒双样本是否被Alice ACK、是否产生BDS真实位移。这一方案只解决长期预算断流，**不等于床/任务目标/物理移动已经成功**。不得强制调闹钟、手工清空ledger、手工重试`--once`，更不得复用已被平台安全拦截的client-only reload方案。
+
 ## 2026-11-02 — 已验收的模型SCOUT入场假成功修复（不触发重启）
 
 - 修复 `src/runtime.cjs` 中 Ollama `scout_safe` 提案与 `startJob('EXPLORE')` 不同步：新提交 `44ce213fe976ff824d2fef5c73c0519892cf8727` 在同步拒绝BDS起点时不再将无真实job的提案记录成`model_handled`，而是固定`model_blocked`及`scout_start_position_unverified`或`scout_job_not_admitted`。无额外模型发问/查询/路径/服务器命令；仍遵守4秒双样本和0.75格入场限制。
