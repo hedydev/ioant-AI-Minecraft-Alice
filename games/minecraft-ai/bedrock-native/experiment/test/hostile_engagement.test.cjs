@@ -66,11 +66,15 @@ test('unobserved attacker cannot be attributed to distant zombie after unrelated
  f.advance(400)
  assert.equal(select(f,[m],{lastSelfDamageAt:1200}),null)
 })
-test('damage + reachable adjacent mob is defensive but never claims verified attacker',()=>{
+test('unattributed damage never blames a nearby mob; point-blank contact only allows escape',()=>{
  const f=fixture(),m=mob('zombie',1.5)
+ assert.equal(select(f,[m],{lastSelfDamageAt:900}),null,
+  'damage plus 1.5-block proximity does not identify an attacker')
+ m.position=at(1.0)
  const d=select(f,[m],{lastSelfDamageAt:900})
- assert.equal(d?.evidence,'nearby_recent_hurt')
- assert.equal(d?.urgentAttack,true)
+ assert.equal(d?.evidence,'unattributed_close_damage')
+ assert.equal(d?.type,'SURVIVE')
+ assert.equal(d?.urgentAttack,false)
  const g=fixture()
  assert.equal(select(g,[m],{lastSelfDamageAt:900,barrierFor:()=> 'blocked'}),null)
 })
