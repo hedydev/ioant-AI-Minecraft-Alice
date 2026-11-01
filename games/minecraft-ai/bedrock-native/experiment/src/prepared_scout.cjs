@@ -29,8 +29,10 @@ class PreparedScout{
    this.clear();return false
   }
   this.pending={at:now,epoch,loginAt,lifeEpochAt,dimension,phase,weather,source,eligibleAt,
-    origin:point(position),candidate:{...candidate,target:point(candidate.target),
-      waypoints:candidate.waypoints.map(point)}}
+    origin:point(position),candidate:{
+      ok:true,kind:'observed_voxel_walking_only',key:candidate.key,
+      target:point(candidate.target),waypoints:candidate.waypoints.map(point),
+      distance:candidate.distance,elevationChanges:0,direction:null}}
   return true
  }
  take({position,epoch,loginAt,lifeEpochAt=null,dimension,phase,weather}={}){
