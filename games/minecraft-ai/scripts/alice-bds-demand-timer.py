@@ -188,6 +188,15 @@ def budget_value(now, obj=None):
                      pauseUntil=obj["pauseUntil"])
     return fresh
 
+def budget_allows_batch(now, budget):
+    # Verify the *next complete two-sample proof* fits both the independent
+    # hourly command cap and the sustainable pacing window. No partial pair.
+    return (type(now) in (int,float) and
+            type(budget.get("lastBatch")) in (int,float) and
+            type(budget.get("used")) is int and
+            now-budget["lastBatch"]>=max(MIN_BATCH_SECONDS,SUSTAINED_BATCH_SECONDS) and
+            0<=budget["used"]<=MAX_HOURLY-2)
+
 def consume_budget(now, budget):
     if budget["used"] >= MAX_HOURLY:
         return False
@@ -273,8 +282,7 @@ def run():
         if stalled:
             private_write(BUDGET, b)
             return "stalled_navigation_cooldown"
-        if (now-b["lastBatch"] < max(MIN_BATCH_SECONDS,SUSTAINED_BATCH_SECONDS)
-            or b["used"]+2 > MAX_HOURLY):
+        if not budget_allows_batch(now,b):
             return "cooldown_or_budget"
         b["lastBatch"]=now
         private_write(BUDGET,b)
