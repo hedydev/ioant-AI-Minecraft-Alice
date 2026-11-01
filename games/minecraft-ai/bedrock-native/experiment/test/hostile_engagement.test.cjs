@@ -24,6 +24,16 @@ test('same-close-range creeper without ignition or directed pursuit is not autom
  const f=fixture(),m=mob('creeper',2.5)
  for(let i=0;i<4;i++){assert.equal(select(f,[m]),null);f.advance(300)}
 })
+test('only an actually observed lit creeper fuse makes a stationary creeper urgent',()=>{
+ const f=fixture(),m=mob('creeper',2.5)
+ assert.equal(select(f,[m]),null)
+ m.isIgnited=true
+ const d=select(f,[m])
+ assert.equal(d?.evidence,'observed_creeper_ignition')
+ assert.equal(d?.urgentAttack,true)
+ const g=fixture()
+ assert.equal(select(g,[m],{barrierFor:()=> 'blocked'}),null)
+})
 test('observed directed approach for multiple frames within three blocks is real engagement',()=>{
  const f=fixture(),m=mob('zombie',2.9)
  assert.equal(select(f,[m]),null)
