@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Read-only guarded idle mirror client reload exact safe predicate audit",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-idle-mirror-safe-window-diagnose-20261102.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "audit_live_guard",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-idle-mirror-safe-window-diagnose-20261102.py",
+      "args": [
+        "--inspect",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 155
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "safe_window_flags",
+      "file": "alice_idle_mirror_window.json",
+      "format": "json"
+    }
+  ]
+}
