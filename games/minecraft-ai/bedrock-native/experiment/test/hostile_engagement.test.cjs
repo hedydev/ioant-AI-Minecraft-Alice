@@ -70,6 +70,22 @@ test('mob actually approaching nearby player can trigger GUARD, without follow i
  assert.equal(d?.type,'GUARD')
  assert.equal(d?.target,m)
 })
+test('protect player based on player-to-hostile LOS even if Alice is behind a wall',()=>{
+ const f=fixture(),m=mob('zombie',8),ownerPosition=at(5)
+ const visibleToVictim=(mob,point,role)=>role==='owner'?'clear':'blocked'
+ select(f,[m],{ownerPosition,barrierFor:visibleToVictim})
+ f.advance(300);m.position=at(7.7)
+ select(f,[m],{ownerPosition,barrierFor:visibleToVictim})
+ f.advance(300);m.position=at(7.4)
+ const d=select(f,[m],{ownerPosition,barrierFor:visibleToVictim})
+ assert.equal(d?.type,'GUARD')
+ const g=fixture(),b=mob('zombie',8)
+ select(g,[b],{ownerPosition,barrierFor:()=> 'blocked'})
+ g.advance(300);b.position=at(7.7)
+ select(g,[b],{ownerPosition,barrierFor:()=> 'blocked'})
+ g.advance(300);b.position=at(7.4)
+ assert.equal(select(g,[b],{ownerPosition,barrierFor:()=> 'blocked'}),null)
+})
 test('unobserved attacker cannot be attributed to distant zombie after unrelated damage',()=>{
  const f=fixture(),m=mob('zombie',9)
  select(f,[m])
