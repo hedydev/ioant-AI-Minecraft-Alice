@@ -1,3 +1,11 @@
+## 2026-11-02 — 已验收的模型SCOUT入场假成功修复（不触发重启）
+
+- 修复 `src/runtime.cjs` 中 Ollama `scout_safe` 提案与 `startJob('EXPLORE')` 不同步：新提交 `44ce213fe976ff824d2fef5c73c0519892cf8727` 在同步拒绝BDS起点时不再将无真实job的提案记录成`model_handled`，而是固定`model_blocked`及`scout_start_position_unverified`或`scout_job_not_admitted`。无额外模型发问/查询/路径/服务器命令；仍遵守4秒双样本和0.75格入场限制。
+- 真实回归 `alice_p0_model_admission_mac_20261102_q05` Mac Python296（3skip），`alice_p0_model_admission_mint_20261102_q06` Mint Node24 **754/754**，新独立Node用例在`test/runtime.test.cjs`，所有测试通过。使用原维护脚本的`sync`只同步/测试，不重启Alice或BDS，不修改世界，不发送控制台指令。
+- 最新独立非重启只读 `alice_p0_after_model_sync_readonly_20261102_q07` Alice仍在线，健康IDLE，样本155，4秒双样本目前expired，当时夜间策略WAIT，未证明客户端动态加载新源码。当前代码热加载未经证实，不能用Git HEAD、mtime、外层task PASS替代实机生效证据；禁止重做此前被工具安全检查拒绝的client-only重载。
+- 操作员只读复核可在 Mac 现有 `~/Documents/workspace/ioant-AI-Minecraft-Alice` 运行 `bash games/minecraft-ai/scripts/alice-mac.sh status` 和 `bash games/minecraft-ai/scripts/alice-mac.sh diagnose`；此轮实际上已使用OpenClaw MCP完成，不要求用户执行。后续应在允许的自然生命周期更新后，读取原`model_nav`固定字段和服务端独立双样本，明确区分`model_blocked`/真实job创建/真正BDS位移。
+- 原正式世界17879 BDS不停止、不更换，不恢复旧无限MCSManager轮询，不放宽坐标及危险保护，测试与控制台命令分离。
+
 ## 2026-11-02 — Witness idle wake canceled-event cooldown: code synced, no live restart
 
 - 源码提交 `d8086dcee6acaa3fef1a6194bfea3620280dcdf2`：当独立 BDS 双样本请求已排队、但回调开始前过期或被现有安全工作抢占，原5秒冷却不再被一个未执行的自主决策消耗。只在重新验证4秒双样本与全部既有安全条件后、实际调用 `idleTick()` 前计入冷却。私有有限日志 `[Alice autonomy] BDS witness idle handoff:` 仅含固定 outcome 名称，不含坐标/玩家身份；不会触发额外查询或移动。
