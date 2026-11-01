@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "One bounded real granite4 high-level JSON goal inference through verified SSH bridge, no Minecraft commands",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-ollama-planner-smoke.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "one_model_request",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-ollama-planner-smoke.py",
+      "args": [
+        "--smoke",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 65
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "planner_smoke",
+      "file": "alice_model_planner_smoke.json",
+      "format": "json"
+    }
+  ]
+}
