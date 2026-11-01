@@ -1,3 +1,12 @@
+## 2026-11-02 — P0: Ollama scout_safe 被 BDS 导航门禁拒绝时不再误报 model_handled
+
+- 原17879只读实际MCP回执 `alice_p0_guard_live_20261102_q01`、`alice_p0_pos_live_20261102_q02`、`alice_p0_model_nav_log_20261102_q04`：Alice原世界连接好、健康IDLE HP20 food20，累计BDS独立样本153（另一个时间点151）；本地客户端和BDS差先观察为0.004格，后续模型导航日志又见Z偏移0.954格，说明预测漂移仍会反复。最近模型工具为`scout_safe`，近端匿名日志`modelProposalCount=21`、`navRejectCount=60`、`scoutOutcomeCount=0`、`idleMirrorCount=22`、最后起点拒绝`scout_client_server_position_diverged`差0.8格；这些不是自主目标成功的证据。
+- 源码查出明确错误：`runAutonomousModelStep` 的 `scout_safe` 分支无条件在`startJob('EXPLORE')`返回后报告`handled`，即使`startJob`因为原`scoutStartProof`缺少4秒双样本或客户端偏差>0.75格而同步返回false，没有创建`this.job`。这对应运行中`idleHoldReason=model_handled`但实际上无job的错误解释，会掩盖真正的导航拒绝；不能因此推断模型已执行。
+- 新回归提交`6784990b2ad5a301f697723ac020cb7a90b16357`覆盖模型建议`scout_safe`且BDS入场门禁拒绝、没有job和`goto`时应返回blocked；代码修复`44ce213fe976ff824d2fef5c73c0519892cf8727`只在真正存在当前`自主模型`的EXPLORE job时才返回handled，否则基于**原始相同**`scoutStartProof`给固定拒绝`scout_start_position_unverified`或`scout_job_not_admitted`并返回blocked。**不发送游戏输入、不创建额外job、不降低任意生存或0.75格/4秒门禁**。
+- 实际通过MCP：Mac `alice_p0_model_admission_mac_20261102_q05` PASS Python296(3 skip)；Mint原世界无重启同步与回归`alice_p0_model_admission_mint_20261102_q06` PASS Node24 **754/754**、Mac296、无BDS/Alice重启、console及世界修改。新专项Node测试已合并进754项。
+- 非重启后只读`alice_p0_after_model_sync_readonly_20261102_q07`：原17879在线autonomous IDLE HP20/food20、样本155，最新独立pair位移0且样本过期，当前夜间`WAIT/defer_nonurgent_raw_materials_at_night`。本轮**未证明新模型blocked报告已被当前老进程加载**；后续需要正式允许的自然客户端生命周期更新及真实日志验收。此前平台明确阻断client-only重载，不得换工具/operation_id绕过。
+- 结论：修好了`model_handled`的假阳性，已有更可审计的拒绝原因；真实自主路径仍未完成，底层客户端物理预测和短4秒BDS见证之间的错位仍待下一阶段证明与修复。原正式BDS17879不停止、不切换世界、旧无限querytarget loop禁用。
+
 ## 2026-11-02 — BDS witness idle wake: cancelled callback no longer consumes cooldown (source synced; live behavior pending)
 
 - 真实原17879只读后验：`alice_p0_nov02_live_read_01` 当前 Alice connected=true、autonomous、IDLE、HP20/food20、独立 BDS 样本123、上一个双样本服务器位移0.95格，`independentFreshPair=false`，`position_witness_unverified`；证明已有独立服务端位置变化，**不能证明自主导航到目标**，也不能把历史正位移当作新代码效果。
