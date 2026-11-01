@@ -1,3 +1,12 @@
+## 2026-11-01 — Alice 原17879客户端安全本地坐标对齐上线，自动MCSManager加入滞留退避
+
+- GitHub与Mac原HEAD `d55bfd2e9426f0f791c4cd1b03cc1b83e58ec879`，`src/verified_idle_position_mirror.cjs`只在原Alice`IDLE`、HP>=16、无战斗/敌人/任务/跟随/人类STOP/冷却、同登录与同生命的2份独立BDS见证在4秒内、服务器位置差<=0.1格且客户端偏差严格在(0.75,3]格，才能清空本地Pathfinder目标和按键、将**本地物理预测位置**贴合BDS；不发任何BDS命令、输入、传送或世界修改。60秒本地镜像冷却；后续正常导航仍受原0.75格门禁。
+- 实际`alice_idle_mirror_mac_regression_20261101_ra01` Mac Python**293项/3 skip/0 fail**；`alice_idle_mirror_mint_regression_20261101_rb01` Mint Node24 **750/750**，非重启同步PASS。
+- 单次受控Alice-only重载`alice_idle_mirror_guarded_client_reload_20261101_rc01`明确`preflight_blocked,unsafe_live_state,clientRestartAttempted=false`，因为当时Alice`COMBAT`、`idleGate=threat_nearby`（真实`rd01`证据）。没有强行重启；下次只读`re01`确认健康IDLE无任务后，`alice_idle_mirror_client_reload_safe_20261101_rf01` **client_reconnected_17879**，已验证新PID/心跳/登录，`bdsRestarted=false,otherServersTouched=false,newWorldCreated=false`。本地对齐代码已加载。
+- 新登录首个实机`rg01`/ `ri01`只读：Alice IDLE HP20，因旧样本`prior_login_witness`，当前独立BDS样本=0，**不能声称这次已本地镜像或完成服务器位移**。`alice_idle_mirror_timer_live_audit_20261101_rj01`：用户级新timer active/enabled、旧loop inactive、owner符合，真需求`needs_two_fresh_samples`，但当前小时budgetUsedHour=**39/40**，最近结果`cooldown_or_budget`，合法双样本批次需保留至少2次预算，不能越过40/h上限进行实测。此前同登录曾见serverTravel累计14.18格，但本次当期BDS独立pairTravel=0；这不是该次修复的成功证据。
+- 用户已要求解决而非反复发人工命令。新`alice-bds-demand-timer.py`纯本地状态账本对**3个ACK成功且当期BDS累计里程仍无>=0.25格进展**的批次触发10分钟退避，避免每分钟持续刷`querytarget`却无前进；检测到当期服务器位移>=0.25格或新登录即解除，保留原2/批、40/h、55秒冷却与全部身份/心跳/生命/地图安全门禁。只接受实际ACK`positionGateSatisfied`成功后更新停滞计数，绝不以HTTP命令分派成功冒充新样本或物理移动。
+- **本轮最终还需实机执行退避新脚本回归并在下一次合法双样本后核对新进程`[Alice movement] safe-idle BDS-local mirror`和BDS`independentPairTravelBlocks`；当前没有证据认定Alice已自主走过目标。** 新timer可`systemctl --user disable --now alice-bds-demand.timer`手动停用，但不动正式17879 BDS。
+
 ## 2026-11-01 — 原BDS稳定双样本后本地IDLE物理对齐（安全门禁不变）
 
 - 真实`alice_model_navigation_log_live_20261101_cn01`：Alice原17879生命20、IDLE、独立BDS样本14、模型已真实提案一次`scout_safe`，日志35次BDS导航拒绝、最新差1.76格，BDS最近一对样本没有验证位移，不能声称实际移动。更细`alice_model_navigation_axis_fixed_20261101_cp01`：同当前生命`deathRecovery.phase=respawn_verified`、cy=114，独立样本20、最近pair静止，**客户端-BDS差主要X+1.919,Y=0,Z=-0.077格**，日志已37次导航拒绝，模型`scout_safe`仍无法开始路径。这不是眼高减1.62的Y轴错位。

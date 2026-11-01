@@ -174,6 +174,57 @@ def consume_budget(now, budget):
     private_write(BUDGET, budget)
     return True
 
+# Three independently verified stationary pairs without any corroborated BDS
+# travel are a diagnostic stalemate, not permission to flood querytarget every
+# minute. The existing 40/hour cap remains, and an observed >=0.25-block BDS
+# change immediately clears the cooldown. This ledger is local-only, not proof
+# of physical navigation or a reason to grant a safety bypass.
+STALLED_PAIRS_LIMIT = 3
+STALLED_COOLDOWN_SECONDS = 600
+
+def server_travel(d):
+    e = d.get("movementEvidence") or {}
+    v = e.get("independentTravelBlocks")
+    if type(v) in (int, float) and 0 <= v < 30000000:
+        return round(v, 4)
+    return None
+
+def refresh_stall_state(budget, d, now):
+    login = (d.get("movementEvidence") or {}).get("loginAt")
+    travel = server_travel(d)
+    if type(login) is not int or travel is None:
+        return False
+    # A respawn or new session never inherits an older session's cooldown.
+    if budget.get("trackedLoginAt") != login:
+        budget.update(trackedLoginAt=login, trackedTravel=travel,
+                      stalledPairs=0, pauseUntil=0)
+    else:
+        prev = budget.get("trackedTravel")
+        if type(prev) not in (int, float) or abs(travel - prev) >= .25:
+            budget.update(trackedTravel=travel, stalledPairs=0, pauseUntil=0)
+    return (budget.get("stalledPairs", 0) >= STALLED_PAIRS_LIMIT
+            and now < budget.get("pauseUntil", 0))
+
+def record_verified_stationary_pair(budget, d, now):
+    # Only the actually accepted 250ms Alice ACK may reach this function;
+    # never record a successful pair from a query-dispatched HTTP ack.
+    login = (d.get("movementEvidence") or {}).get("loginAt")
+    travel = server_travel(d)
+    if type(login) is not int or travel is None:
+        return
+    if budget.get("trackedLoginAt") != login:
+        budget.update(trackedLoginAt=login, trackedTravel=travel,
+                      stalledPairs=0, pauseUntil=0)
+    baseline = budget.get("trackedTravel")
+    if type(baseline) not in (int, float) or abs(travel - baseline) >= .25:
+        budget.update(trackedTravel=travel, stalledPairs=0, pauseUntil=0)
+    else:
+        budget["stalledPairs"] = min(
+            STALLED_PAIRS_LIMIT, budget.get("stalledPairs", 0) + 1)
+        if budget["stalledPairs"] >= STALLED_PAIRS_LIMIT:
+            budget["pauseUntil"] = now + STALLED_COOLDOWN_SECONDS
+    private_write(BUDGET, budget)
+
 def run():
     private_root()
     cfg = private_read(OPTIN, 128)
@@ -197,6 +248,10 @@ def run():
         # symlink or unreadable existing ledger must still fail closed.
         b=budget_value(now,private_read(BUDGET,256)) if (
             BUDGET.exists() or BUDGET.is_symlink()) else budget_value(now)
+        stalled = refresh_stall_state(b, d, now)
+        if stalled:
+            private_write(BUDGET, b)
+            return "stalled_navigation_cooldown"
         if now-b["lastBatch"] < MIN_BATCH_SECONDS or b["used"]+2 > MAX_HOURLY:
             return "cooldown_or_budget"
         b["lastBatch"]=now
@@ -227,7 +282,9 @@ def run():
                     seen=row;break
             if seen is None: return "ack_timeout"
             prev=seen["independentSamples"]
-            if seen["positionGateSatisfied"]:return "position_pair_verified"
+            if seen["positionGateSatisfied"]:
+                record_verified_stationary_pair(b, d, time.time())
+                return "position_pair_verified"
         return "pair_not_aligned"
     finally: os.close(fd)
 

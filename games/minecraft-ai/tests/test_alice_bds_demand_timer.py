@@ -36,6 +36,39 @@ class DemandTimerTests(unittest.TestCase):
         self.assertFalse(m.demand_now({**x,"movementEvidence":{
           "loginAt":100,"witnessDemand":{"state":"client_server_diverged",
           "positionGateSatisfied":False}}}))
+    def test_repeated_verified_pairs_without_bds_travel_back_off(self):
+        d={"movementEvidence":{"loginAt":1234,"independentTravelBlocks":0.0}}
+        b=m.budget_value(3601)
+        self.assertFalse(m.refresh_stall_state(b,d,3601))
+        with patch.object(m,"private_write"):
+            for i in range(3):
+                m.record_verified_stationary_pair(b,d,3601+i*60)
+        self.assertEqual(b["stalledPairs"],3)
+        self.assertTrue(m.refresh_stall_state(b,d,4000))
+        self.assertEqual(b["pauseUntil"],3601+2*60+600)
+        self.assertFalse(m.refresh_stall_state(b,d,4400))
+        self.assertEqual(b["used"],0)
+    def test_trusted_server_travel_or_new_login_clears_stall(self):
+        d={"movementEvidence":{"loginAt":1234,"independentTravelBlocks":10.0}}
+        b=m.budget_value(3601)
+        m.refresh_stall_state(b,d,3601)
+        with patch.object(m,"private_write"):
+            for i in range(3):m.record_verified_stationary_pair(b,d,3601+i*60)
+        self.assertTrue(m.refresh_stall_state(b,d,3800))
+        d["movementEvidence"]["independentTravelBlocks"]=10.4
+        self.assertFalse(m.refresh_stall_state(b,d,3800))
+        self.assertEqual(b["stalledPairs"],0)
+        d["movementEvidence"]["loginAt"]=2222
+        self.assertFalse(m.refresh_stall_state(b,d,3801))
+        self.assertEqual(b["trackedLoginAt"],2222)
+    def test_unverified_position_cannot_create_or_clear_stall(self):
+        d={"movementEvidence":{"loginAt":1234}}
+        b=m.budget_value(3601)
+        self.assertFalse(m.refresh_stall_state(b,d,3601))
+        with patch.object(m,"private_write") as wrote:
+            m.record_verified_stationary_pair(b,d,3601)
+            wrote.assert_not_called()
+        self.assertNotIn("stalledPairs",b)
     def test_no_continuous_legacy_loop_or_live_binding_in_selftest(self):
         source=SOURCE.read_text()
         self.assertNotIn('["--loop"]',source)
