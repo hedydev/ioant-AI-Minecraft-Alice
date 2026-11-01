@@ -81,3 +81,11 @@ test('main reconciles on true independent witness before autonomous/bed movement
  assert(mirror>=0&&mirror<ack&&ack<probe&&probe<bed)
  assert.match(part,/idleMirrorLastAt=Date\.now\(\)/)
 })
+
+test('main emits only bounded reason/state when local mirror is deferred, not coords',()=>{
+ const main=fs.readFileSync(path.join(__dirname,'../src/main.cjs'),'utf8')
+ assert.match(main,/safe-idle BDS-local mirror deferred:/)
+ assert.match(main,/idleMirrorLastRejection/)
+ assert.match(main,/t-idleMirrorRejectionLoggedAt>=15000/)
+ assert.match(main,/correctionApplied:false,bdsQuerySentByAlice:false/)
+})

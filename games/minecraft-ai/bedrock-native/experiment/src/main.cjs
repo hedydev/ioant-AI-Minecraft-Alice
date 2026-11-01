@@ -340,6 +340,8 @@ async function main(args=process.argv.slice(2)){
   })
   let mirroredRespawnCycle=0
   let idleMirrorLastAt=0
+  let idleMirrorLastRejection=null
+  let idleMirrorRejectionLoggedAt=0
   function onFreshIndependentBdsWitness(){
     // Reconcile local-only physics *before* ACK and any bed/SCOUT decision.
     // Two current-life stationary BDS samples are required; never move BDS.
@@ -357,9 +359,25 @@ async function main(args=process.argv.slice(2)){
         runtime,lastMirroredAt:idleMirrorLastAt})
       if(idle.ok){
         idleMirrorLastAt=Date.now()
+        idleMirrorLastRejection=null
         runtimeLogger.log('[Alice movement] safe-idle BDS-local mirror:',JSON.stringify({
           reason:idle.reason,correctionBlocks:idle.distance,
           bdsTeleport:false,bdsQuerySentByAlice:false}))
+      }else{
+        // Keep bounded, non-positional evidence of *why* live correction was
+        // refused. This is only a diagnosis, never permission to bypass proof.
+        // Changes in reason are useful across the two-sample 4-second window.
+        const t=Date.now()
+        if(idle.reason!==idleMirrorLastRejection||t-idleMirrorRejectionLoggedAt>=15000){
+          idleMirrorLastRejection=idle.reason
+          idleMirrorRejectionLoggedAt=t
+          const state=runtime.core?.state
+          runtimeLogger.log('[Alice movement] safe-idle BDS-local mirror deferred:',JSON.stringify({
+            reason:idle.reason,
+            state:['IDLE','SURVIVE','COMBAT','FOLLOW','EXPLORE','RECOVER','SLEEP'].includes(state)
+              ?state:'other',
+            correctionApplied:false,bdsQuerySentByAlice:false}))
+        }
       }
     }
     // Real-time private receipt: the independent sample was consumed by this

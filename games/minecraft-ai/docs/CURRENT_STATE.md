@@ -1,3 +1,9 @@
+## 2026-11-01 — Alice verified-idle mirror 未触发：增加限流、非位置化拒绝原因观测
+
+- 当前新登录真实 `alice_idle_mirror_resume_log_20261101_s01`：原17879客户端在线、IDLE、HP20、独立BDS位置累计34、模型提案12且最近是observe；但`idleMirrorCount=0`，最近nav拒绝client-server偏差1.17格，客户端相对BDS的X~0.804/Z~1.409格、最近独立pair位移0；证明高层模型已恢复但原服真实行走尚未成功，不可强制越过0.75格门禁。
+- 新`main.cjs` 只有每个**真的被Alice接收的独立BDS**坐标事件调用本地`reconcileVerifiedIdleMirror`，现在当其拒绝时输出匿名固定reason + 有界core state，reason变化或15秒后才记录一次，禁止记录玩家身份、绝对坐标或命令。成功时仍保留原成功日志。这能区分两次样本不在同一4秒窗口 vs 当前状态非安全IDLE vs 生命/威胁保护等；日志不得作为授权或服务器位移证据。
+- 原4秒双见证、静止pair、<=3格本地修正、HP>=16/无COMBAT/无FOLLOW/无STOP/无工作、60秒冷却、0.75格导航门禁均不改变；无需新增或重启BDS世界/观察者。代码只有经Mac/Mint全量单测后才可用，**运行中Alice必须通过安全受控client-only reload加载**。任何事后模型提案/输入包计数都不能冒充BDS后验移动。
+
 ## 2026-11-01 — 本地镜像上线后验、MCSManager零进展退避与可观测性
 
 - 原17879 Alice客户端**已真实受控重载新镜像代码**：最早尝试`alice_idle_mirror_guarded_client_reload_20261101_rc01`因Alice处于COMBAT/threat_nearby，内层明确`preflight_blocked,clientRestartAttempted=false`；后续只读`alice_idle_mirror_safety_window_readonly_20261101_re01`确认恢复健康IDLE HP20、food20、无当前任务，`alice_idle_mirror_client_reload_safe_20261101_rf01`内层`state=client_reconnected_17879`、新进程身份心跳/登录全验证，BDS未重启、其它服务器与世界完全未触碰。后续读`alice_idle_mirror_postrestart_gate_20261101_rg01` IDLE HP20、零独立BDS新登录样本；`alice_idle_mirror_postrestart_log_20261101_ri01` 现登录未记录mirror或位移。
