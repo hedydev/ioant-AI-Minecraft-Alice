@@ -1,6 +1,6 @@
 ## 2026-11-02 — Qualified coordinate comparison (STAGED)
 
-The owner-bound read-only inspector now withholds distance for stale/cross-life BDS samples, stale/missing/future client timestamps or sample skew>1000ms; it reports explicit fixed reasons and bounded ages. A close-time relative sample does not prove exact tick synchronization. Extended pinned-Physics regressions cover30 seconds stationary after correction and repeated delayed stop/turn corrections. Running-client loading and independent real BDS behavior remain pending; no navigation or query limit was relaxed.
+The owner-bound read-only inspector now withholds distance for stale/cross-life BDS samples, stale/missing/future client timestamps or sample skew>1000ms; it reports explicit fixed reasons and bounded ages. A close-time relative sample does not prove exact tick synchronization. Extended pinned-Physics regressions cover30 seconds stationary after correction and repeated delayed stop/turn corrections. 实际MCP非重启同步通过 Mint Node24 786/786、Mac Python299(skip3)。只读原服新诊断确认101.612秒旧样本返回null及bds_pair_unverified。Running-client loading and independent real BDS behavior remain pending; no navigation or query limit was relaxed.
 
 ## 2026-11-02 — Historical player correction replay (STAGED)
 

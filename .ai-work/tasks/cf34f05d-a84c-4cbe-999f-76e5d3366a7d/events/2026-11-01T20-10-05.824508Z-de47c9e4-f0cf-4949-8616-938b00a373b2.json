@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "event_id": "de47c9e4-f0cf-4949-8616-938b00a373b2",
+  "task_id": "cf34f05d-a84c-4cbe-999f-76e5d3366a7d",
+  "event_type": "validation_recorded",
+  "occurred_at": "2026-11-01T20:10:05.824508Z",
+  "actor": {
+    "actor_type": "ai",
+    "ai_name": "ChatGPT",
+    "ai_session_id": "k4n8v2cs"
+  },
+  "ledger_branch": "main",
+  "development_branch": "main",
+  "observed_commit": "11205596a4763e889e00e5eec2687f686901112b",
+  "message": "Extended pinned-Physics regression and qualified live diagnostic accepted. Client feature telemetry remains absent; normal operator lifecycle is required before independent BDS acceptance.",
+  "changes": {
+    "status": {
+      "from": "awaiting_device_validation",
+      "to": "awaiting_device_validation"
+    },
+    "remaining_work": [
+      "Normal operator client lifecycle loading the staged reconciliation source",
+      "Verify new process telemetry and fresh same-life stationary/authorized movement BDS evidence",
+      "Human acceptance"
+    ]
+  },
+  "evidence": [
+    {
+      "operation_id": "alice_reconcile_extended_mint_20261102_k4n8v2cs_04",
+      "result": "cached true; Node24 786/786, Python299 skip3; no restart/world/console operation",
+      "artifact_sha256": "4683e00bfa4ab71e5ab4f22e0549a149a6fb4e1f82f1faf3f829ad2a91b2d553"
+    },
+    {
+      "operation_id": "alice_reconcile_qualified_read_20261102_k4n8v2cs_05",
+      "result": "cached true; current owner; telemetry absent; BDS age101612ms/skew100425ms -> distance null",
+      "artifact_sha256": "e0ccde24eac7a267d5f7873ede1ace0482bd7814bdb4069f1a92893a0c90cb44"
+    }
+  ],
+  "supersedes_event_id": null
+}

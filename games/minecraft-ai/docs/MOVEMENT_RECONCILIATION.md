@@ -136,3 +136,18 @@ They do not operate or simulate an authoritative BDS server. Live acceptance
 still requires an authorized client lifecycle, fresh independent samples and
 matched stationary/movement observations. Never bypass the prior platform
 reload rejection or lower the original4s/0.75-block gate to obtain a pass.
+
+### Extended regression and live read, 2026-11-02
+
+- Source11205596a4763e889e00e5eec2687f686901112b: actual fixed MCP
+  `alice_reconcile_extended_mint_20261102_k4n8v2cs_04` passed Mint Node24
+  **786/786** and Mac Python299 (skip3); no Alice/BDS restart or world/console operation.
+- `alice_reconcile_qualified_read_20261102_k4n8v2cs_05` read the updated
+  inspector on the current owner: telemetry absent; BDS sample age101612ms,
+  position/sample skew100425ms; `coordinateComparison=bds_pair_unverified`,
+  `clientBdsDistance=null`. This verifies the new read-only diagnostic, not
+  live reconciliation or zero error.
+- Normal lifecycle preflight passed all conditions in read-only operation
+  `alice_reconcile_safe_window_20261102_k4n8v2cs_03`; no restart attempted.
+  A normal operator client lifecycle is still required. Do not evade the
+  previously denied AI reload using another tool, script, intent or operation ID.
