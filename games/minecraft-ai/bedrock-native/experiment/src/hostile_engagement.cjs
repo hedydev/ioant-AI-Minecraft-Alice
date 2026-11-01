@@ -87,7 +87,8 @@ class HostileEngagement {
    const hitAt=near.role==='self'?lastSelfDamageAt:lastOwnerDamageAt
    const recentHit=Number.isSafeInteger(hitAt)&&hitAt>0&&now>=hitAt&&
      now-hitAt<=3000
-   const meleeReachable=barrier!=='blocked'
+   const meleeReachable=barrier==='clear'||
+     (near.distance<=1.2&&recentHit&&barrier!=='blocked')
    if(meleeReachable&&near.distance<=this.meleeRadius&&
       (approaching>=2||recentHit)){
     observed.push({target:mob,role:near.role,distance:near.distance,
@@ -106,7 +107,10 @@ class HostileEngagement {
      likelyShooter(m,projectile)).sort((a,b)=>
        distance(a.position,projectile.position)-
        distance(b.position,projectile.position))
-   if(!possible.length)continue
+   // A trajectory is not an attacker identifier when several plausible
+   // shooters overlap. In that case retain the evidence for evasion only;
+   // do not attack whichever skeleton happens to be closest.
+   if(possible.length!==1)continue
    observed.push({target:possible[0],role:target.role,
      distance:distance(possible[0].position,target.position),
      evidence:'incoming_projectile',urgentAttack:true})
