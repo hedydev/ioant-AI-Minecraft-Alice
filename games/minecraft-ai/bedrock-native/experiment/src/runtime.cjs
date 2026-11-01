@@ -2213,6 +2213,8 @@ class AliceBedrockRuntime {
       // startJob(). Never label a refused BDS start as "model_handled".
       if(this.job?.type!=='EXPLORE'||this.action?.source!=='自主模型'){
         const proof=scoutStartProof(this.bot,this.movementEvidence,this.clock)
+        if(proof.reason==='scout_bds_position_unavailable')
+          this.prepareDeferredScout(candidate,'自主模型')
         this.goalPlanner.reject(proof.ok?'scout_job_not_admitted':'scout_start_position_unverified')
         return 'blocked'
       }
@@ -2683,6 +2685,10 @@ class AliceBedrockRuntime {
           this.startJob('EXPLORE','自主探索',
             signal=>this.boundedScout(candidate,signal),{
               label:'观察新区域寻找材料',announce:false,scoutCandidate:candidate})
+          if(this.job?.type!=='EXPLORE'&&
+             scoutStartProof(this.bot,this.movementEvidence,this.clock).reason===
+               'scout_bds_position_unavailable')
+            this.prepareDeferredScout(candidate,'自主探索')
           return
         }
         if(this.maybeStartEarthwork(terrainWork,candidate,movementFailure))return
@@ -2732,6 +2738,10 @@ class AliceBedrockRuntime {
             this.startJob('EXPLORE','自主探索',
               signal=>this.boundedScout(candidate,signal),{
                 label:'独立探索已验证的短平路',announce:false,scoutCandidate:candidate})
+            if(this.job?.type!=='EXPLORE'&&
+               scoutStartProof(this.bot,this.movementEvidence,this.clock).reason===
+                 'scout_bds_position_unavailable')
+              this.prepareDeferredScout(candidate,'自主探索')
             return
           }
         }
