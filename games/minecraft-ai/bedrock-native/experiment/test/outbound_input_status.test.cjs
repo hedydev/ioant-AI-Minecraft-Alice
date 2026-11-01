@@ -51,3 +51,17 @@ test('oversized or unexpected fields are not persisted in status',()=>{
  assert.equal(summary.updatedAt,5)
  assert.equal(summary.serialized,2)
 })
+test('bounded prediction counters remain readable inside the existing 2KiB audit limit',()=>withDir(root=>{
+ const {KEYS,MAX_BYTES}=require('../src/outbound_input_status.cjs')
+ const summary=Object.fromEntries(KEYS.map(key=>[key,1000000]))
+ summary.kind='queue_only_not_network_or_BDS_proof'
+ summary.syncLastCorrectionReason='correction_context_changed'
+ summary.secret='never persist';summary.history=[{position:{x:1,y:2,z:3}}]
+ new OutboundInputStatus({root}).publish(summary)
+ const bytes=fs.readFileSync(path.join(root,FILENAME))
+ assert(bytes.length<=MAX_BYTES)
+ const stored=JSON.parse(bytes)
+ assert.equal(stored.syncCorrectionReplays,1000000)
+ assert.equal(stored.syncLastCorrectionReason,'correction_context_changed')
+ assert.equal(stored.history,undefined);assert.equal(stored.secret,undefined)
+}))

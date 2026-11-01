@@ -1,3 +1,10 @@
+## 2026-11-02 — Tick-indexed movement reconciliation (source; live acceptance pending)
+
+- The maintained injected input plugin now applies player corrections to their historical input tick and replays subsequent physics-only frames, instead of overwriting the present frame and re-anchoring its clock to an old tick. Mint's installed `bedrock_1.26.51` schema was read-only verified: `delta` and `on_ground`, not `velocity`.
+- New bounded history (default40, hard cap80), historical eye-height conversion, all-axis correction, duplicate/future/previous-life rejection and conservative context invalidation. History miss/replay failure applies explicit immediate authority and stops current navigation; no invented replay. Replay sends no packet or physicsTick/AI event and does not create BDS evidence.
+- Local Node contract/diagnostic tests: 39/39; Mac Python299, skip3, failures0. A real pinned Physics replay regression is added; full Mint Node24 and non-restart sync will be recorded after execution. The current running Alice has not been replaced by this task.
+- Original <=0.75-block / two fresh independent samples /4-second gate, 40/hour witness budget and original17879 BDS/world remain unchanged. Metadata/attribute changes invalidate incompatible history rather than claiming full historical metadata replay. No actual game movement or stationary drift fix is claimed yet. See [MOVEMENT_RECONCILIATION](MOVEMENT_RECONCILIATION.md).
+
 ## 2026-11-02 — P0 真正定位原17879 BDS见证中断：40/40小时预算前置耗尽，已修复持续节奏
 
 - **实际MCP实机审计** `alice_timer_live_budget_20261102_s02`：定时器`timerActive=true,timerEnabled=true`，原Alice`ownerValid=true,heartbeatFresh=true,demandNow=true,optedIn=true`；最近服务结果`cooldown_or_budget`，本小时查询`budgetUsed=40,hourlyLimit=40`，最近batch年龄约886.6秒，`stalledPairs=0,pauseRemainingSeconds=0`，独立样本159、累计服务器行程66.04。**不能把503秒坐标见证过期误判为10分钟stationary防空转状态**：真正制约是40次预算已耗尽。读入只读不发命令。

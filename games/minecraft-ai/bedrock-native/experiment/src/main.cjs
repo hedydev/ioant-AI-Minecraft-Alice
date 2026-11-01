@@ -234,7 +234,9 @@ async function main(args=process.argv.slice(2)){
         .filter(([key])=>['tickMode','emitted','catchupFrames','maxBatchFrames','overruns',
           'skippedTicks','lastBatchFrames','controlsChangedInsideFrame',
           'callbackPositionMutationsPrevented','callbackVelocityMutationsPrevented',
-          'callbackContactMutationsPrevented'].includes(key))
+          'callbackContactMutationsPrevented','correctionReplays','replayedFrames',
+          'correctionFallbacks','correctionsRejected','historyFrames',
+          'lastCorrectionReason'].includes(key))
         .map(([key,value])=>['sync'+key[0].toUpperCase()+key.slice(1),value])),
       analogCompatEnabled:analogCompat.enabled,
       analogCompatCorrected:analogCompat.summary().corrected,

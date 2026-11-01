@@ -1,0 +1,29 @@
+{
+  "schema_version": 2,
+  "task_id": "cf34f05d-a84c-4cbe-999f-76e5d3366a7d",
+  "created_at": "2026-11-01T19:34:58.788369Z",
+  "created_by": {
+    "actor_type": "ai",
+    "ai_name": "ChatGPT",
+    "ai_session_id": "k4n8v2cs"
+  },
+  "ledger_branch": "main",
+  "development_branch": "main",
+  "objective": "Reconcile delayed Bedrock player corrections using bounded tick-indexed physics history without replaying actions",
+  "scope": [
+    "games/minecraft-ai/bedrock-native/experiment",
+    "games/minecraft-ai/docs",
+    "games/minecraft-ai/dashboard/catalog.json"
+  ],
+  "target_ids": [],
+  "acceptance_criteria": [
+    "Delayed correction replays recorded physics without duplicate packets or events",
+    "Actual pinned delta/on_ground schema and lifecycle/context invalidation are tested",
+    "Full Mac Python and Mint Node24 regressions pass",
+    "Source sync is distinguished from loaded runtime and independent BDS acceptance",
+    "Human acceptance follows evidence of live stationary and authorized movement behavior"
+  ],
+  "deduplication_key": "bedrock-player-prediction-reconciliation",
+  "parent_task_id": null,
+  "relations": []
+}

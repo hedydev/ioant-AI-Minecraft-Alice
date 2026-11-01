@@ -129,6 +129,12 @@ function evaluateMovement({core,wire,now}){
    syncCallbackPositionMutationsPrevented:wire?.syncCallbackPositionMutationsPrevented,
    syncCallbackVelocityMutationsPrevented:wire?.syncCallbackVelocityMutationsPrevented,
    syncCallbackContactMutationsPrevented:wire?.syncCallbackContactMutationsPrevented,
+   syncCorrectionReplays:wire?.syncCorrectionReplays,
+   syncReplayedFrames:wire?.syncReplayedFrames,
+   syncCorrectionFallbacks:wire?.syncCorrectionFallbacks,
+   syncCorrectionsRejected:wire?.syncCorrectionsRejected,
+   syncHistoryFrames:wire?.syncHistoryFrames,
+   syncLastCorrectionReason:wire?.syncLastCorrectionReason,
    dataSource:'owner-verified telemetry; independent BDS samples only for BDS verdict'
  }
 }

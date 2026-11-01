@@ -10,7 +10,7 @@ const Vec3=fromRoot('vec3')
 const registry=fromRoot('minecraft-data')('bedrock_1.26.51')
 const plugin=path.resolve(root,'src/bedrock_client_input_sync.cjs')
 const pluginCode=fs.readFileSync(plugin,'utf8')
-function run(delay,{pathfinder=false,flip=false,beginForward=false,die=false,respawn=false}={}){
+function run(delay,{pathfinder=false,flip=false,beginForward=false,die=false,respawn=false,verify}={}){
   let now=100000,timer=null,ticks=0
   const bot=new EventEmitter(),client=new EventEmitter(),packets=[],frames=[]
   bot._client=client;bot.registry=registry;bot.entities={};bot.game={minY:-64,height:384}
@@ -26,7 +26,7 @@ function run(delay,{pathfinder=false,flip=false,beginForward=false,die=false,res
     if(name==='player_auth_input')packets.push({
       tick:String(p.tick),input:[...p.input_data],move:{...p.move_vector},
       raw:{...p.raw_move_vector},analog:{...p.analogue_move_vector},
-      pos:{...p.position},yaw:p.yaw,pitch:p.pitch
+      pos:{...p.position},delta:{...p.delta},yaw:p.yaw,pitch:p.pitch
     })
   }
   const mod={exports:{}}
@@ -56,6 +56,8 @@ function run(delay,{pathfinder=false,flip=false,beginForward=false,die=false,res
   if(die)bot.emit('death')
   if(respawn)bot.emit('spawn')
   now+=delay;if(timer)timer()
+  verify?.({bot,client,packets,frames,getTicks:()=>ticks,
+    advance:ms=>{now+=ms;if(timer)timer()}})
   const result={packets,frames,ticks,localMoved:bot.entity.position.distanceTo(from),
     stats:bot._aliceBedrockInputSync.summary()}
   client.emit('close')
@@ -116,4 +118,25 @@ test('severe 1800ms event-loop stall stops controls and refuses phantom physics 
   assert.equal(r.stats.skippedTicks,36)
   assert.equal(r.ticks,0)
   assert.equal(r.localMoved,0)
+})
+test('real pinned Physics rewinds a delayed correction without duplicate events or packets',()=>{
+  run(400,{beginForward:true,verify:({bot,client,packets,getTicks,advance})=>{
+    const p=packets[2],beforeTicks=getTicks(),beforeCount=packets.length
+    const currentZ=bot.entity.position.z
+    bot.setControlState('forward',false)
+    client.emit('correct_player_move_prediction',{
+      prediction_type:'player',tick:BigInt(p.tick),
+      position:{...p.pos,x:p.pos.x+.1},delta:p.delta,
+      on_ground:p.input.includes('vertical_collision')
+    })
+    assert.equal(getTicks(),beforeTicks)
+    assert.equal(packets.length,beforeCount)
+    assert(Math.abs(bot.entity.position.x-.6)<1e-6)
+    assert(Math.abs(bot.entity.position.z-currentZ)<1e-6)
+    assert.equal(bot._aliceBedrockInputSync.summary().replayedFrames,5)
+    assert.equal(bot._aliceBedrockInputSync.summary().correctionFallbacks,0)
+    assert.equal(bot.controlState.forward,false)
+    advance(50)
+    assert.equal(packets.at(-1).tick,'1009')
+  }})
 })

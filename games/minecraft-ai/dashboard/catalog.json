@@ -1,6 +1,6 @@
 {
   "version": "Bedrock native 1.26.51 / control-center 0.4",
-  "asOf": "2026-11-01",
+  "asOf": "2026-11-02",
   "notice": "2026-11-01 phase5：Mint Node24 718/718 Mac Python269，原17879客户端only安全重连PASS，新证据生命周期拒绝死亡前/旧登录样本。真实BDS见证状态 prior_login_witness，independentSamples0 movingQueued0；正式世界无Script API行为包、Beta实验、专属网络权限；源码/接收器就绪≠服务端独立坐标供源。未动BDS/世界；床5步仍只是只读路线。",
   "statusNames": {
     "observed": "已有实机证据",
@@ -9,6 +9,13 @@
     "pending": "尚未实现"
   },
   "capabilities": [
+    {
+      "name": "Bedrock 历史输入帧纠正与物理回放",
+      "icon": "🔄",
+      "group": "移动与导航",
+      "status": "staged",
+      "detail": "源码接入：纠正历史 tick 后只回放物理，不重发包、不重做 AI/Pathfinder；使用实装 delta/on_ground，默认40帧、上限80帧，生命周期和场景变化清历史。可读取回放/回退/拒绝计数。本地回归通过，当前生产进程加载及独立 BDS 静止/移动验收待完成，原0.75格/4秒双样本门禁保留。"
+    },
     {
       "name": "原世界 BED 5步只读路径候选与HOME自主意图",
       "icon": "🧭",

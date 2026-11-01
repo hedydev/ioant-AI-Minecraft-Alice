@@ -1,3 +1,9 @@
+## 2026-11-02 — Historical player correction replay (STAGED)
+
+- Alice now has bounded input/state history and physics-only rewind/replay for player corrections. Uses the installed 1.26.51 `delta`/`on_ground` schema, applies even sub-half-block position error, and never resets the present clock to a historical correction tick. Replay preserves new intent and generates no duplicated game action or AI callback.
+- Lifecycle, collision-world and pose/attribute discontinuities invalidate history; missing history has an explicit immediate-authority fallback. Optional private audit counters expose replays/fallbacks/rejections without raw coordinates or identity.
+- Local regression is source evidence only. Not yet verified in the running Alice or independently against BDS stationary/moving coordinates; original navigation and survival gates remain required. Details: [MOVEMENT_RECONCILIATION](MOVEMENT_RECONCILIATION.md).
+
 ## 2026-11-01 — Alice Ollama 模型服务恢复（原17879/不动BDS）
 
 - 项目OpenClaw上一次handoff revision33，仓库原HEAD `94fb4b61...`；用户要求继续`model_unavailable`和真实自主移动。最先只读`alice_model_preflight_gate_20261101_ca01`：原Alice在线，但当前HP**2**、SURVIVE、独立BDS位置为`prior_life_witness`，安全低血量门禁阻止探索是正确行为，不能降低HP与移动保护。

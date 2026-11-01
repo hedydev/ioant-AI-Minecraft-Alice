@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "event_id": "fc4b16af-59c6-4daa-acda-20ecf573d449",
+  "task_id": "cf34f05d-a84c-4cbe-999f-76e5d3366a7d",
+  "event_type": "task_created",
+  "occurred_at": "2026-11-01T19:34:58.788369Z",
+  "actor": {
+    "actor_type": "ai",
+    "ai_name": "ChatGPT",
+    "ai_session_id": "k4n8v2cs"
+  },
+  "ledger_branch": "main",
+  "development_branch": "main",
+  "observed_commit": "b259637116f35425bb3c58d1a84532b2330522a7",
+  "message": "Implement tick history and schema-correct delayed reconciliation; live reload is outside this source-validation turn.",
+  "changes": {
+    "status": {
+      "from": null,
+      "to": "in_progress"
+    }
+  },
+  "evidence": [],
+  "supersedes_event_id": null
+}

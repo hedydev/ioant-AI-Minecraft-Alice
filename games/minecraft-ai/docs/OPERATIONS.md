@@ -1,3 +1,9 @@
+## 2026-11-02 — Movement reconciliation deployment boundary
+
+The input plugin now retains bounded historical physics states; see [MOVEMENT_RECONCILIATION](MOVEMENT_RECONCILIATION.md). Reuse the maintained `alice-mac.sh sync` for tracked source copy with backups and full Mint Node24 tests. This does **not** restart Alice, open another Xbox client, query MCSManager, or change BDS/world state. A successful sync is not proof that the running process loaded the module.
+
+Do not replay a previously blocked or consumed client reload. Use only an authorized normal lifecycle through the maintained operator path. After that lifecycle, the existing owner-verified `bedrock-native/experiment/scripts/inspect_movement_sync.cjs` includes replay/fallback/rejection counters from the optional private outbound audit (when input audit is enabled). Counters alone do not establish server movement; fresh independent BDS evidence and current-session provenance remain mandatory. No new query timer, budget increase, forced movement or BDS restart is needed for source regression.
+
 ## 2026-11-02 — 原17879 BDS有限见证节奏：MCP实机恢复长期预算可持续性
 
 - 问题复现：`alice_timer_live_budget_20261102_s02` 读原Mint真实user systemd + 0600 budget：timer active/enabled，Alice owner/心跳有效、需求true，`used=40/40`，`stalledPairs=0`、`pauseRemaining=0`、最后`cooldown_or_budget`。**根因是原1分钟两条查询很快耗尽整小时40条预算**，不是停止运行或10分钟空转退避。不能删除账本或绕过预算。

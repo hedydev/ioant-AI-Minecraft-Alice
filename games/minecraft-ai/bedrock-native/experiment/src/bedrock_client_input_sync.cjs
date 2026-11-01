@@ -5,6 +5,7 @@ const conv = require('mineflayer/lib/conversions')
 const Vec3 = require('vec3')
 const { Physics, PlayerState } = require('prismarine-physics')
 const {capturePhysicalFrame,restorePhysicalFrame}=require('./physics_frame_snapshot.cjs')
+const {MovementPredictionHistory,cloneState,tickId}=require('./movement_prediction_history.cjs')
 
 module.exports = inject
 
@@ -26,22 +27,12 @@ function inject (bot, options={}) {
   let ridingSuspended = false
   let deathPaused = false
 
-  // Bedrock server-authoritative movement uses a rewind buffer (start_game.rewind_history_size, e.g. 40 ticks) and
-  // correlates each player_auth_input to a server tick. An input whose tick is outside that window is dropped, so the
-  // player never moves. Two things make a simple `tick++` per send drift out of the window: the server's tick is not
-  // zero at join (start_game.current_tick), and our send timer does not fire at exactly 20 Hz (event-loop jitter drops
-  // it to ~16 Hz under load), so counting sends falls behind the server's real tick by tens of ticks within seconds.
-  // Instead we anchor to a known (serverTick, wall-clock) pair and derive each input's tick from elapsed real time, and
-  // re-anchor from correct_player_move_prediction.tick (the server's authoritative tick), which keeps us in the window.
-  const toTick = (v) => {
-    if (v == null) return 0n
-    if (typeof v === 'bigint') return v
-    if (typeof v === 'number') return BigInt(Math.floor(v))
-    if (Array.isArray(v)) return (BigInt(v[0] >>> 0) << 32n) | BigInt(v[1] >>> 0) // [high, low]
-    try { return BigInt(v) } catch { return 0n }
-  }
+  // Keep the existing negotiated initial tick mode. Correction ticks identify
+  // historical client inputs; they must NEVER re-anchor the present clock.
+  // Monotonic elapsed time avoids NTP/wall-clock jumps in production.
+  const clock=typeof performance==='object'?()=>performance.now():()=>Date.now()
   let anchorTick = 0n
-  let anchorTime = Date.now()
+  let anchorTime = clock()
   let lastEmittedTick = null
   const MAX_CATCHUP_TICKS=32
   const timeline={version:1,tickMode,emitted:0,batches:0,deathPauses:0,respawnResumes:0,catchupFrames:0,
@@ -49,21 +40,32 @@ function inject (bot, options={}) {
     controlsChangedInsideFrame:0,lastOverrunReason:null,
     callbackPositionMutationsPrevented:0,callbackVelocityMutationsPrevented:0,
     callbackContactMutationsPrevented:0}
-  bot._aliceBedrockInputSync={summary:()=>({...timeline})}
+  const history=new MovementPredictionHistory({simulate:state=>{
+    const next=bot.physics.simulatePlayer(state,world)
+    if(next.fireworkRocketDuration>0){
+      next.fireworkRocketDuration--
+      if(next.onGround)next.fireworkRocketDuration=0
+    }
+    return next
+  }})
+  bot._aliceBedrockInputSync={summary:()=>({...timeline,...history.summary()})}
 
-  const currentTick = () => anchorTick + BigInt(Math.max(0, Math.round((Date.now() - anchorTime) / 50)))
+  const currentTick = () => anchorTick + BigInt(Math.max(0, Math.round((clock() - anchorTime) / 50)))
   bot._client.once('start_game', packet => {
     movementAuthority = packet.movement_authority ?? 'server'
+    history.resize(packet.rewind_history_size)
     if (tickMode==='world_anchor' && packet.current_tick != null) {
-      anchorTick = toTick(packet.current_tick); anchorTime = Date.now()
+      anchorTick = tickId(packet.current_tick)??0n; anchorTime = clock()
     }
   })
   bot._client.on('set_movement_authority', packet => {
+    history.reset('movement_authority_changed')
     movementAuthority = packet.movement_authority
     if (movementAuthority === 'client') stop()
     else if (spawned) start()
   })
   bot.on('death',()=>{
+    history.reset('death',{lifeBoundary:true,floor:lastEmittedTick})
     deathPaused=true;spawned=false;timeline.deathPauses++
     stop();bot.clearControlStates?.()
     if(bot.entity?.velocity){
@@ -72,6 +74,7 @@ function inject (bot, options={}) {
     for(const k of Object.keys(prev))prev[k]=false
   })
   bot.on('spawn', () => {
+    history.reset('spawn',{lifeBoundary:true,floor:lastEmittedTick})
     if(deathPaused)timeline.respawnResumes++
     deathPaused=false;spawned=true
     bot.clearControlStates?.()
@@ -85,8 +88,16 @@ function inject (bot, options={}) {
   // Suspend self-simulation while mounted; the server keeps bot.entity on the vehicle via move_player. On dismount the
   // server has already placed the bot at the exit position (surface, not underground) - clear leftover velocity so the
   // resumed engine continues from there instead of flinging the bot with a stale downward delta.
-  bot.on('mount', () => { ridingSuspended = true; if (bot.entity && bot.entity.velocity) bot.entity.velocity.set(0, 0, 0) })
-  bot.on('dismount', () => { ridingSuspended = false; if (bot.entity && bot.entity.velocity) bot.entity.velocity.set(0, 0, 0) })
+  bot.on('mount', () => { history.reset('mount');ridingSuspended = true; if (bot.entity && bot.entity.velocity) bot.entity.velocity.set(0, 0, 0) })
+  bot.on('dismount', () => { history.reset('dismount');ridingSuspended = false; if (bot.entity && bot.entity.velocity) bot.entity.velocity.set(0, 0, 0) })
+  // The replay engine uses loaded collision data. Do not replay across world
+  // changes, server self-position updates or lifecycle/pose discontinuities.
+  for(const event of ['blockUpdate','chunkColumnLoad','chunkColumnUnload'])
+    bot.on(event,()=>history.reset('collision_world_changed'))
+  bot.on('entityMoved',entity=>{if(entity===bot.entity)history.reset('server_self_position')})
+  bot.on('forcedMove',()=>history.reset('forced_move'))
+  bot._client.on('change_dimension',()=>history.reset('dimension_changed',{
+    lifeBoundary:true,floor:lastEmittedTick}))
   bot._client.once('close', stop)
 
   function start () {
@@ -95,7 +106,7 @@ function inject (bot, options={}) {
       // First simulated player frame begins at 1, at spawn confirmation,
       // not at world LevelCurrentTime observed several seconds before spawn.
       anchorTick=1n
-      anchorTime=Date.now()
+      anchorTime=clock()
       lastEmittedTick=null
       localTickStarted=true
     }
@@ -121,10 +132,9 @@ function inject (bot, options={}) {
   const pendingBlockActions = []
   bot._queueBlockAction = (...entries) => { for (const e of entries) if (e) pendingBlockActions.push(e) }
 
-  // Movement. Bedrock 1.26 is server-authoritative: the client reports its input each tick (a local-frame move_vector
-  // plus input-flag presses) and the server simulates and returns the authoritative position in correct_player_move_
-  // prediction, which we apply. So setControlState only records intent; send() turns it into the move_vector/flags and
-  // the server drives the actual motion. Verified live: forward input walks the bot and the corrections track it.
+  // Controls record intent. The client predicts each input frame; server
+  // corrections refer to those historical frames, not the arrival-time state.
+  // Neither prediction nor an absent correction proves actual BDS movement.
   const controlStateValues = { forward: false, back: false, left: false, right: false, jump: false, sprint: false, sneak: false }
   bot.setControlState = (control, state) => {
     if (!(control in controlStateValues)) throw new Error(`unknown control state: ${control}`)
@@ -243,31 +253,27 @@ function inject (bot, options={}) {
   }
 
   bot._client.on('correct_player_move_prediction', (packet) => {
-    // Re-anchor our tick to the server's authoritative tick so send-rate jitter never drifts us out of the rewind window.
-    if (tickMode==='world_anchor' && packet.tick != null) {
-      anchorTick = toTick(packet.tick); anchorTime = Date.now()
-    }
     const pos = packet.position
-    if (!pos || !bot.entity) return
+    if (!pos || !bot.entity || deathPaused || !spawned || movementAuthority==='client') return
     // While riding, the passenger position is driven from the vehicle (see send()); the standing-eye conversion below
     // does not apply to a seated player and would bury it, so ignore corrections until dismount.
     if (ridingSuspended) return
     // During creative flight we drive the position ourselves; ignore the server's ground-anchored correction so it does
     // not pull the bot back to the floor. (BDS keeps may_fly=false in the ability flags even in creative, so it treats an
     // ascent as an illegal move and would snap it down; a real creative client flies client-side the same way.)
-    if (bot._creativeFlying) { return }
-    // The engine predicts collision, so on valid terrain we track the server and it rarely corrects. When it does (real
-    // divergence: knockback, a mis-predicted edge), take the server position and Y authoritatively and reset velocity.
+    if (bot._creativeFlying) { history.reset('creative_flight');return }
+    if(!ensurePhysicsEntity())return
+    if(bot.physicsEnabled===false)history.reset('physics_disabled')
     const oldPos = new Vec3(bot.entity.position.x, bot.entity.position.y, bot.entity.position.z)
-    const feetY = pos.y - (bot.entity.eyeHeight || 1.62)
-    const drift = Math.hypot(pos.x - bot.entity.position.x, pos.z - bot.entity.position.z)
-    bot.entity.position.y = feetY
-    if (drift > 0.5) {
-      bot.entity.position.x = pos.x
-      bot.entity.position.z = pos.z
-      if (bot.entity.velocity) { bot.entity.velocity.x = 0; bot.entity.velocity.z = 0 }
+    const corrected=history.correct(packet,new PlayerState(bot,bot.controlState),
+      bot.entity.eyeHeight||1.62,lastEmittedTick)
+    if(!corrected.state)return
+    corrected.state.apply(bot)
+    if(corrected.fallback){
+      const frame=capturePhysicalFrame(bot.entity)
+      try{bot.clearControlStates();bot.pathfinder?.stop?.()}
+      finally{restorePhysicalFrame(bot.entity,frame)}
     }
-    if (packet.velocity) bot.entity.velocity = new Vec3(packet.velocity.x || 0, packet.velocity.y || 0, packet.velocity.z || 0)
     bot.emit('move', bot.entity.position)
     // Java fires 'forcedMove' when the server teleports the player; a large correction here (a real server-authoritative
     // move: teleport, knockback, anti-cheat pullback) is that signal. A threshold keeps routine reconciliation from
@@ -326,6 +332,7 @@ function inject (bot, options={}) {
       timeline.skippedTicks+=delta
       timeline.lastOverrunReason='catchup_window_exceeded'
       timeline.lastBatchFrames=0
+      history.reset('catchup_window_exceeded')
       lastEmittedTick=target
       bot.clearControlStates()
       bot.pathfinder?.stop?.()
@@ -348,13 +355,17 @@ function inject (bot, options={}) {
       // One physics step (and its physicsTick callback) for precisely this tick.
       // A control change in callbacks must not retroactively affect packet input.
       if(bot._creativeFlying){
+        history.reset('creative_flight')
         bot.emit('physicsTick');bot.emit('physicTick')
       }else if(bot.physicsEnabled!==false&&!ridingSuspended&&ensurePhysicsEntity()){
-        bot.physics.simulatePlayer(new PlayerState(bot,bot.controlState),world).apply(bot)
+        const state=new PlayerState(bot,bot.controlState),before=cloneState(state)
+        bot.physics.simulatePlayer(state,world).apply(bot)
         if(bot.fireworkRocketDuration>0){
           bot.fireworkRocketDuration--
           if(bot.entity.onGround)bot.fireworkRocketDuration=0
         }
+        state.fireworkRocketDuration=bot.fireworkRocketDuration
+        history.record(tick,before,state,bot.entity.eyeHeight||1.62)
         // Capture the FINAL applied physics state BEFORE Pathfinder's
         // physicsTick callback. The pinned Pathfinder fullStop() can snap
         // x/z to block centre and zero vx/vz during that callback. Such
@@ -370,10 +381,13 @@ function inject (bot, options={}) {
           if(corrected.contactMutated)timeline.callbackContactMutationsPrevented++
         }
       }else if(ridingSuspended&&bot.vehicle?.position){
+        history.reset('vehicle_frame')
         bot.entity.position.set(bot.vehicle.position.x,bot.vehicle.position.y,bot.vehicle.position.z)
         if(bot.entity.velocity)bot.entity.velocity.set(0,0,0)
         if(Array.isArray(flags))flags.push('client_predicted_vehicle')
         else flags.client_predicted_vehicle=true
+      }else{
+        history.reset('physics_disabled')
       }
       if(bot.controlState.forward!==prev.forward||
          bot.controlState.back!==prev.back||bot.controlState.left!==prev.left||

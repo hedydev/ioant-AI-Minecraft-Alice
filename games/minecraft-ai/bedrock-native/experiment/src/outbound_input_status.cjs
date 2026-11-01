@@ -20,6 +20,8 @@ const KEYS=Object.freeze([
   'syncSkippedTicks','syncLastBatchFrames','syncControlsChangedInsideFrame',
   'syncCallbackPositionMutationsPrevented','syncCallbackVelocityMutationsPrevented',
   'syncCallbackContactMutationsPrevented',
+  'syncCorrectionReplays','syncReplayedFrames','syncCorrectionFallbacks',
+  'syncCorrectionsRejected','syncHistoryFrames','syncLastCorrectionReason',
   'transportHookAttached','transportHookState',
   'transportCalls','transportLast10s','transportThrows',
   'lastTransportAgeMs','pendingPacketBuffers','corrections',
@@ -70,4 +72,4 @@ class OutboundInputStatus {
     }
   }
 }
-module.exports={OutboundInputStatus,compact,FILENAME,KEYS}
+module.exports={OutboundInputStatus,compact,FILENAME,KEYS,MAX_BYTES}

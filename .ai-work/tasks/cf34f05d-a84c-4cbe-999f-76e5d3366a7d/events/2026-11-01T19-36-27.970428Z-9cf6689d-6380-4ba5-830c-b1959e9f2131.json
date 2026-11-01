@@ -1,0 +1,33 @@
+{
+  "schema_version": 2,
+  "event_id": "9cf6689d-6380-4ba5-830c-b1959e9f2131",
+  "task_id": "cf34f05d-a84c-4cbe-999f-76e5d3366a7d",
+  "event_type": "validation_recorded",
+  "occurred_at": "2026-11-01T19:36:27.970428Z",
+  "actor": {
+    "actor_type": "ai",
+    "ai_name": "ChatGPT",
+    "ai_session_id": "k4n8v2cs"
+  },
+  "ledger_branch": "main",
+  "development_branch": "main",
+  "observed_commit": null,
+  "message": "Local model-free correction, plugin and diagnostic contracts passed; full Mac Python regression passed. Mint real dependency regression and live loading remain unverified.",
+  "changes": {
+    "status": {
+      "from": "in_progress",
+      "to": "awaiting_automated_validation"
+    }
+  },
+  "evidence": [
+    {
+      "kind": "test",
+      "result": "Node39/39; Mac Python299, skipped3, failures0"
+    },
+    {
+      "kind": "source_schema",
+      "result": "Installed Mint bedrock_1.26.51 correction fields delta,on_ground,prediction_type,tick read-only verified"
+    }
+  ],
+  "supersedes_event_id": null
+}
