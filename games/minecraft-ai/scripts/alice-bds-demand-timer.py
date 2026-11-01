@@ -26,6 +26,10 @@ SERVICE = "alice-bds-demand.service"
 TIMER = "alice-bds-demand.timer"
 MAX_HOURLY = 40
 MIN_BATCH_SECONDS = 55
+# Two authorized commands per admitted pair. Spread the existing 40/hour
+# cap across one hour; otherwise the old 60s timer exhausted it in ~20m
+# and left Alice without independent position proof for ~40m.
+SUSTAINED_BATCH_SECONDS = 180
 
 def private_root():
     st = ROOT.lstat()
@@ -159,13 +163,30 @@ def ack(s, d):
 
 def budget_value(now, obj=None):
     hour = int(now//3600)
-    if not isinstance(obj,dict) or obj.get("hour") != hour:
+    if not isinstance(obj,dict):
         return {"version":1,"hour":hour,"used":0,"lastBatch":0}
     if (obj.get("version")!=1 or type(obj.get("used")) is not int or
         not 0<=obj["used"]<=MAX_HOURLY or
-        type(obj.get("lastBatch")) not in (int,float)):
+        type(obj.get("lastBatch")) not in (int,float) or
+        not 0<=obj["lastBatch"]<=now):
         raise ValueError("invalid_budget")
-    return obj
+    if obj.get("hour")==hour:
+        return obj
+    # Crossing an hourly budget boundary resets only the query count.
+    # Preserve the last-batch pacing and same-life 10-minute stall cooldown;
+    # resetting either here could flood queries at midnight/hour rollover.
+    fresh={"version":1,"hour":hour,"used":0,"lastBatch":obj["lastBatch"]}
+    if (type(obj.get("trackedLoginAt")) is int and obj["trackedLoginAt"]>0
+        and type(obj.get("trackedTravel")) in (int,float)
+        and 0<=obj["trackedTravel"]<30000000
+        and type(obj.get("stalledPairs")) is int and 0<=obj["stalledPairs"]<=3
+        and type(obj.get("pauseUntil")) in (int,float)
+        and obj["pauseUntil"]>=0):
+        fresh.update(trackedLoginAt=obj["trackedLoginAt"],
+                     trackedTravel=obj["trackedTravel"],
+                     stalledPairs=obj["stalledPairs"],
+                     pauseUntil=obj["pauseUntil"])
+    return fresh
 
 def consume_budget(now, budget):
     if budget["used"] >= MAX_HOURLY:
@@ -252,7 +273,8 @@ def run():
         if stalled:
             private_write(BUDGET, b)
             return "stalled_navigation_cooldown"
-        if now-b["lastBatch"] < MIN_BATCH_SECONDS or b["used"]+2 > MAX_HOURLY:
+        if (now-b["lastBatch"] < max(MIN_BATCH_SECONDS,SUSTAINED_BATCH_SECONDS)
+            or b["used"]+2 > MAX_HOURLY):
             return "cooldown_or_budget"
         b["lastBatch"]=now
         private_write(BUDGET,b)
@@ -345,7 +367,7 @@ def selftest():
       "movementEvidence":{"loginAt":1000,"awaitingVerifiedRespawn":False,
       "witnessDemand":{"state":"needs_two_fresh_samples","positionGateSatisfied":False}}})
     assert not demand_now({"state":"IDLE"})
-    assert MAX_HOURLY==40 and MIN_BATCH_SECONDS>=55
+    assert MAX_HOURLY==40 and MIN_BATCH_SECONDS>=55 and SUSTAINED_BATCH_SECONDS>=180
     print("ALICE_BDS_DEMAND_TIMER_SELFTEST_PASS")
 
 if __name__=="__main__":
