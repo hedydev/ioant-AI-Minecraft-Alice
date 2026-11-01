@@ -90,14 +90,19 @@ class HostileEngagement {
    const meleeReachable=barrier==='clear'||
      (near.distance<=1.2&&recentHit&&barrier!=='blocked')
    const closeContactAfterHit=recentHit&&near.distance<=1.2
+   // A positively observed lit fuse is an attack wind-up, unlike merely
+   // having a creeper nearby. This requires a real adapter-provided flag.
+   const ignited=mob.name==='creeper'&&
+     (mob.isIgnited===true||mob.ignited===true)
    if(meleeReachable&&near.distance<=this.meleeRadius&&
-      (approaching>=2||closeContactAfterHit)){
+      (approaching>=2||closeContactAfterHit||ignited)){
     // A health drop does not identify an attacker. At point-blank range
     // evade defensively, but NEVER authorize a counterattack on proximity.
-    const unidentified=approaching<2&&closeContactAfterHit
+    const unidentified=!ignited&&approaching<2&&closeContactAfterHit
     observed.push({target:mob,role:near.role,distance:near.distance,
-      evidence:unidentified?'unattributed_close_damage':'directed_close_approach',
-      urgentAttack:approaching>=2&&recentHit})
+      evidence:ignited?'observed_creeper_ignition':unidentified?
+        'unattributed_close_damage':'directed_close_approach',
+      urgentAttack:ignited||approaching>=2&&recentHit})
    }
   }
   // Projectile motion must predict a hit on Alice or an escorted player.
@@ -123,6 +128,7 @@ class HostileEngagement {
   // nearest corroborated hostile, never an unrelated closer passive mob.
   observed.sort((a,b)=>{
    const score=x=>x.evidence==='incoming_projectile'?3:
+     x.evidence==='observed_creeper_ignition'?3:
      x.evidence==='directed_close_approach'?2:1
    return score(b)-score(a)||a.distance-b.distance
   })
