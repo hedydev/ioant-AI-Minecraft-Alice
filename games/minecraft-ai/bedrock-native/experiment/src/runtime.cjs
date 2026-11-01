@@ -27,6 +27,7 @@ const {ExplorationProgress}=require('./exploration_progress.cjs')
 const {observedNaturalTree,selectResourceStep}=require('./resource_opportunity.cjs')
 const {probeFlatInput,selectFailedFlatStep}=require('./direct_flat_step.cjs')
 const {scoutStartProof}=require('./scout_start_proof.cjs')
+const {PreparedScout,equalPath}=require('./prepared_scout.cjs')
 const {navigationHoldReason,startupTerrainObserved}=require('./autonomy_readiness.cjs')
 const {surveyVoxelActions,selectSafeWalkingCandidate}=require('./voxel_actions.cjs')
 const {pickVerticalStep,assessEarthwork,serverPositionProof,executeEarthwork}=require('./terrain_adaptation.cjs')
@@ -115,6 +116,7 @@ class AliceBedrockRuntime {
     this.lastHumanAt=clock()-policies.autonomy_policy.AUTONOMY_GRACE_MS
     this.nextIdleAt=clock();this.idleBusy=false;this.startupDecisionQueued=false
     this.navigationHold=null
+    this.preparedScout=new PreparedScout({clock})
     this.startupObservationPending=this.requireBdsAlignedExplore
     this.followGoal=null;this.followSource=null;this.pendingWood=new Map()
     this.lastFollowEnd=null
@@ -358,6 +360,91 @@ class AliceBedrockRuntime {
         serverMovementVerified:false,attempted:false}))
     }
   }
+  // A saved intent is only a plan. It cannot query BDS, emit physics input,
+  // create a navigation task or prolong the original 4-second proof window.
+  prepareDeferredScout(candidate,source='自主探索'){
+    const observation=this.movementEvidence?.get?.()
+    const env=environment(this.bot)
+    const accepted=this.preparedScout.prepare(candidate,{
+      source,position:this.bot.entity?.position,epoch:this.epoch,
+      loginAt:observation?.loginAt,lifeEpochAt:observation?.lifeEpochAt??null,
+      dimension:this.bot.game?.dimension,phase:env.phase,weather:env.weather,
+      eligibleAt:Math.max(0,this.nextIdleAt)
+    })
+    if(accepted)this.log.log('[Alice autonomy] read-only scout staged:',
+      JSON.stringify({reason:'waiting_for_new_independent_bds_pair',movementAuthorized:false}))
+    return accepted
+  }
+  prepareAutonomousScoutPreview(goal,wood){
+    if(!this.requireBdsAlignedExplore||this.preparedScout.has()||
+       !['LEARN_WEAPON','COLLECT_WOOD','OBSERVE'].includes(goal)||
+       goal==='LEARN_WEAPON'&&wood>=2||
+       !this.ready()||this.core.state!=='IDLE'||this.goalPlanner.stoppedByHuman||
+       this.core.hasFollowIntent()||this.safetyBusy||this.threat()||
+       this.bot.isSleeping||this.bot.health<16||this.verticalWatch.active())return false
+    const env=environment(this.bot)
+    if(env.safeToExplore!==true||env.phase!=='day'||env.weather!=='clear')return false
+    // Reuse the same bounded voxel scanner and all-WALK choice as normal
+    // autonomy. No fresh BDS proof is needed for this read-only preview.
+    const voxel=surveyVoxelActions(this.bot,{radius:4,maxNodes:96,maxReads:640})
+    const selected=selectSafeWalkingCandidate(voxel,{
+      hostiles:Object.values(this.bot.entities||{})
+        .filter(e=>HOSTILES.has(e?.name)&&e.position).map(e=>e.position),
+      blocked:new Set([...this.failureMemory.activeRoutes(),
+        ...this.explorationProgress.excluded()]),visited:this.scoutVisited,
+      origin:this.bot.entity?.position})
+    return this.prepareDeferredScout(selected.candidate,'自主探索')
+  }
+  resumePreparedScoutOnWitness(){
+    if(!this.preparedScout.has())return {state:'none'}
+    // A single newly accepted sample cannot consume the pending intent.
+    const proof=scoutStartProof(this.bot,this.movementEvidence,this.clock)
+    if(!proof.ok){
+      if(proof.reason==='scout_client_server_position_diverged')
+        this.preparedScout.clear()
+      return {state:'blocked',reason:proof.reason}
+    }
+    if(!this.requireBdsAlignedExplore||!this.ready()||this.closed||
+       this.core.state!=='IDLE'||this.idleBusy||this.job||this.safetyBusy||
+       this.bot.isSleeping||this.threat()||this.bot.health<16||
+       this.verticalWatch.active()||this.goalPlanner.stoppedByHuman||
+       this.core.hasFollowIntent()||
+       this.liveBehavior.settings.agentMode!=='autonomous'||
+       this.liveBehavior.settings.autonomyEnabled!==true||
+       this.clock()-this.lastHumanAt<this.p.autonomy_policy.AUTONOMY_GRACE_MS||
+       this.lastSafetyAt>0&&this.clock()-this.lastSafetyAt<THREAT_CLEAR_MS){
+      this.preparedScout.clear()
+      return {state:'blocked',reason:'survival_or_human_priority'}
+    }
+    const env=environment(this.bot),owner=this.movementEvidence?.get?.()
+    const saved=this.preparedScout.take({
+      position:this.bot.entity?.position,epoch:this.epoch,
+      loginAt:owner?.loginAt,lifeEpochAt:owner?.lifeEpochAt??null,
+      dimension:this.bot.game?.dimension,phase:env.phase,weather:env.weather
+    })
+    if(!saved.ok)return {state:'blocked',reason:saved.reason}
+    if(env.safeToExplore!==true||env.phase!=='day'||env.weather!=='clear')
+      return {state:'blocked',reason:'environment_no_longer_safe'}
+    const voxel=surveyVoxelActions(this.bot,{radius:4,maxNodes:96,maxReads:640})
+    const chosen=selectSafeWalkingCandidate(voxel,{
+      hostiles:Object.values(this.bot.entities||{})
+        .filter(e=>HOSTILES.has(e?.name)&&e.position).map(e=>e.position),
+      blocked:new Set([...this.failureMemory.activeRoutes(),
+        ...this.explorationProgress.excluded()]),visited:this.scoutVisited,
+      origin:this.bot.entity?.position})
+    if(!equalPath(chosen.candidate,saved.candidate))
+      return {state:'blocked',reason:'staged_route_changed'}
+    // No new navigation mechanism. This original startJob rechecks the
+    // independent BDS proof and preemption, then boundedScout rechecks
+    // terrain, pathfinder and danger before sending any input.
+    const started=this.startJob('EXPLORE',saved.source,
+      signal=>this.boundedScout(saved.candidate,signal),{
+        label:'自主生存：观察已验证的短平路',announce:false,
+        scoutCandidate:saved.candidate})
+    return started===true&&this.job?.type==='EXPLORE'?
+      {state:'started',reason:'fresh_bds_pair_admitted'}:
+      {state:'blocked',reason:'original_job_gate_rejected'}
+  }
   configureMovement(){
     if(!this.bot.pathfinder||!this.api?.Movements)throw Error('Verified Bedrock pathfinder API required')
     const moves=new this.api.Movements(this.bot)
@@ -387,6 +474,7 @@ class AliceBedrockRuntime {
     this.cancelActive(reason);this.plannerAbort?.abort();this.log.log('[Alice Bedrock] controllers stopped:',reason)
   }
   cancelActive(reason='cancel') {
+    this.preparedScout.clear()
     this.stopDirectFollow(reason)
     this.epoch++
     this.plannerAbort?.abort();this.plannerAbort=null
@@ -706,6 +794,7 @@ class AliceBedrockRuntime {
       return this.say('目前附近有危险或生命值过低，先暂停行动。')
     if(this.bot.isSleeping)return this.say('我还在睡觉，暂不行动。')
     if(this.job)return this.say('上一项工作尚未停止，稍后重试。')
+    this.preparedScout.clear()
     const abort=new AbortController(),id=++this.epoch
     const jobSite=this.bot.entity?.position?.clone?.()||this.bot.entity?.position
     this.lastIdleHold=null
@@ -2284,6 +2373,9 @@ class AliceBedrockRuntime {
         this.holdNavigation(proof)
         // Do not repeatedly rescan the same tree or ask the model to solve
         // a missing position witness. Inventory-only craft remains eligible.
+        // The absence of materials must not prevent READ-ONLY planning.
+        // Neither this preview nor a saved candidate authorizes any movement.
+        this.prepareAutonomousScoutPreview(goalPlan,goalWood)
         if(goalWood<2)return
       }
     }
