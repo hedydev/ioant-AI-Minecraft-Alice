@@ -57,6 +57,17 @@ class PreparedScout{
   return valid?{ok:true,source:p.source,candidate:p.candidate}:
    {ok:false,reason:'prepared_scout_context_changed'}
  }
- has(){return this.pending!==null}
+ has(){
+  // An expired preview must not monopolize future safe route selection.
+  // Clearing it is bookkeeping only; never extends any BDS witness.
+  if(!this.pending)return false
+  const now=this.clock()
+  if(!Number.isSafeInteger(now)||now<this.pending.at||
+     now-this.pending.at>TTL_MS){
+    this.clear()
+    return false
+  }
+  return true
+ }
 }
 module.exports={PreparedScout,flatCandidate,equalPath,TTL_MS}
