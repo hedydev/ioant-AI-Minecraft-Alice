@@ -1206,7 +1206,9 @@ class AliceBedrockRuntime {
         const defenseGate=stationaryDefense({
           retreat:r,bot:this.bot,target:t,hostiles:HOSTILES,
           ready:this.ready(),now:this.clock(),movementEvidence:this.movementEvidence})
-        if(!defenseGate.ok)return
+        // Unattributed recent damage allows cautious escape, not retaliation
+        // against a mob merely occupying the same block or nearby space.
+        if(!defenseGate.ok||danger.evidence==='unattributed_close_damage')return
         const key=attackKey(t),previous=key!=null?this.attackBackoff.get(key):null
         if(this.clock()-this.lastCombatAt<1250||
            (previous&&this.clock()<previous.nextAt))return
