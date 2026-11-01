@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Build loopback-only Mac Ollama to Mint SSH reverse tunnel LaunchAgent and verify /api/tags from Mint",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-ollama-ssh-bridge.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "install_bridge",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-ollama-ssh-bridge.py",
+      "args": [
+        "--install",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 130
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "bridge_install",
+      "file": "alice_ollama_ssh_bridge.json",
+      "format": "json"
+    }
+  ]
+}
