@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Read existing original-world Alice model high-level proposal and BDS navigation rejections without raw logs or game commands",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-model-navigation-log-readonly.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "bounded_model_navigation_log",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-model-navigation-log-readonly.py",
+      "args": [
+        "--read",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 60
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "model_nav",
+      "file": "alice_model_navigation_log.json",
+      "format": "json"
+    }
+  ]
+}
