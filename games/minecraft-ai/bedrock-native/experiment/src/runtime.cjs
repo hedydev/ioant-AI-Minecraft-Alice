@@ -586,7 +586,11 @@ class AliceBedrockRuntime {
       hostiles:mobs,projectiles,selfPosition:self,ownerPosition:protect,
       lastSelfDamageAt:this.lastSelfDamageAt,
       health:this.bot.health,
-      barrierFor:e=>observedHostileBarrier(this.bot,e,{maxDistance:12})
+      barrierFor:(mob,point,role)=>role==='owner'?
+        observedHostileBarrier({
+          entity:{position:point},blockAt:p=>this.bot.blockAt(p)
+        },mob,{maxDistance:12}):
+        observedHostileBarrier(this.bot,mob,{maxDistance:12})
     })
   }
   status(){
@@ -1172,7 +1176,9 @@ class AliceBedrockRuntime {
     const lastDamageMs=this.lastSelfDamageAt>0?this.clock()-this.lastSelfDamageAt:Infinity
     const tactic=this.p.safety_policy.decideCombatTactic({health:this.bot.health,
       enemyType:t.name,distance:targetDistance,lastDamageMs})
-    const recentHitOutsideMelee=(lastDamageMs<=6500||danger?.evidence==='incoming_projectile')&&targetDistance>3.5
+    const recentHitOutsideMelee=
+      lastDamageMs<=6500&&targetDistance>3.5||
+      danger?.evidence==='incoming_projectile'&&targetDistance>3
     const mobType=String(t.name||'unknown').toLowerCase().replace(/[^a-z0-9_]/g,'').slice(0,30)
     const learned=this.deathExperience.assess(mobType)
     // A repeated unsafe encounter changes the next combat choice, not
@@ -1239,6 +1245,9 @@ class AliceBedrockRuntime {
           nextAttemptAfterMs:delay,serverMovementVerified:false}))
       }).catch(e=>this.log.warn('[Alice safety] retreat:',e.message)).finally(()=>{this.safetyBusy=false})
     }else{
+      // GUARD can identify a threat to another player through a doorway,
+      // but Alice must not swing if SHE is too far away or blocked.
+      if(targetDistance>3||observedHostileBarrier(this.bot,t)!=='clear')return
       // An attack cooldown must never suppress a newly urgent retreat.
       if(this.clock()-this.lastCombatAt<1250)return
       const key=attackKey(t)
