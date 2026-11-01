@@ -82,8 +82,9 @@ test('projectile must actually be flying toward Alice for a ranged threat',()=>{
  assert.equal(select(f,[s],{projectiles:[arrow(5,1)]}),null)
 })
 test('incoming arrow aimed at nearby player protects player without attributing passive zombies',()=>{
- const f=fixture(),z=mob('zombie',5,64,0,1),s=mob('skeleton',9,64,0,2)
- const d=select(f,[z,s],{ownerPosition:at(5),projectiles:[arrow(7)]})
+ const f=fixture(),z=mob('zombie',5,64,0,1),s=mob('skeleton',9,64,3,2)
+ const d=select(f,[z,s],{ownerPosition:at(5,64,3),
+   projectiles:[{name:'arrow',position:at(7,65.2,3),velocity:at(-1,0,0)}]})
  assert.equal(d?.type,'GUARD')
  assert.equal(d?.target,s)
 })
