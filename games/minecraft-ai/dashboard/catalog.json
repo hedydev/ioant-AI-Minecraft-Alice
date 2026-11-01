@@ -14,7 +14,7 @@
       "icon": "🔄",
       "group": "移动与导航",
       "status": "staged",
-      "detail": "源码接入：纠正历史 tick 后只回放物理，不重发包、不重做 AI/Pathfinder；使用实装 delta/on_ground，默认40帧、上限80帧，生命周期和场景变化清历史。可读取回放/回退/拒绝计数。本地回归通过，当前生产进程加载及独立 BDS 静止/移动验收待完成，原0.75格/4秒双样本门禁保留。"
+      "detail": "源码已同步Mint：历史tick纠正后只回放物理，不重发包、不重做AI/Pathfinder；实装delta/on_ground，默认40帧/上限80帧，生命周期/场景变化清历史。实际MCP全量Node24 777/777、Mac Python299(skip3)通过，无Alice/BDS重启或世界修改。当前生产进程加载及独立BDS静止/移动验收待完成，原0.75格/4秒双样本门禁保留。"
     },
     {
       "name": "原世界 BED 5步只读路径候选与HOME自主意图",

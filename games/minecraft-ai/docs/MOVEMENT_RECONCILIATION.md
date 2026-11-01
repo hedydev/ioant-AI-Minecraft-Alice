@@ -96,3 +96,14 @@ forced movement is part of this test change.
 
 Source/unit/regression acceptance is distinct from a running-process version
 check and independent BDS/game acceptance. See CURRENT_STATE for actual results.
+
+## Recorded source acceptance
+
+- Source commit: `618aad3230dc079ca6921d1af5a0fbc9f99c9356`.
+- Actual fixed MCP operation: `alice_predict_reconcile_mint_20261102_k4n8v2cs_01`, `cached=true`, `state=passed`.
+- Mint Node24 **777/777**, no failures/skips; Mac Python299, skipped3, no failures.
+- The declared `mint_sync` report was read through project_report; SHA-256
+  `1997d2e04804f1ce86b53c501af634687684fe27abf282edc75258bbe03d37fc`.
+- No model inference/Worker; Alice/BDS not restarted, no console command or world write.
+- Source is synchronized to Mint disk. The current process was not replaced,
+  so module loading, stationary drift and real BDS navigation remain pending.

@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "event_id": "643587d5-76e4-4d73-b3f5-a37b947e82fa",
+  "task_id": "cf34f05d-a84c-4cbe-999f-76e5d3366a7d",
+  "event_type": "validation_recorded",
+  "occurred_at": "2026-11-01T19:39:12.106684Z",
+  "actor": {
+    "actor_type": "ai",
+    "ai_name": "ChatGPT",
+    "ai_session_id": "k4n8v2cs"
+  },
+  "ledger_branch": "main",
+  "development_branch": "main",
+  "observed_commit": "618aad3230dc079ca6921d1af5a0fbc9f99c9356",
+  "message": "Pinned source synced through the deterministic MCP runner; real Mint Node24 777/777 and Mac Python299 (skip3) passed. Running client was not reloaded; independent live acceptance remains pending.",
+  "changes": {
+    "status": {
+      "from": "awaiting_automated_validation",
+      "to": "awaiting_device_validation"
+    },
+    "remaining_work": [
+      "Authorized normal client lifecycle loading the new source",
+      "Independent current-life BDS stationary stability and bounded navigation acceptance",
+      "Human acceptance after matching live evidence"
+    ]
+  },
+  "evidence": [
+    {
+      "kind": "mcp_receipt",
+      "operation_id": "alice_predict_reconcile_mint_20261102_k4n8v2cs_01",
+      "state": "passed",
+      "cached": true,
+      "modelInferenceInvoked": false,
+      "actualCommit": "618aad3230dc079ca6921d1af5a0fbc9f99c9356"
+    },
+    {
+      "kind": "artifact",
+      "artifact_id": "mint_sync",
+      "sha256": "1997d2e04804f1ce86b53c501af634687684fe27abf282edc75258bbe03d37fc",
+      "result": "Node24 777/777; Python299 skip3; no client/BDS restart, world write or console command"
+    }
+  ],
+  "supersedes_event_id": null
+}

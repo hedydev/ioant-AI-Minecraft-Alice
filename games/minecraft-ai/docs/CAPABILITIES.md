@@ -2,7 +2,7 @@
 
 - Alice now has bounded input/state history and physics-only rewind/replay for player corrections. Uses the installed 1.26.51 `delta`/`on_ground` schema, applies even sub-half-block position error, and never resets the present clock to a historical correction tick. Replay preserves new intent and generates no duplicated game action or AI callback.
 - Lifecycle, collision-world and pose/attribute discontinuities invalidate history; missing history has an explicit immediate-authority fallback. Optional private audit counters expose replays/fallbacks/rejections without raw coordinates or identity.
-- Local regression is source evidence only. Not yet verified in the running Alice or independently against BDS stationary/moving coordinates; original navigation and survival gates remain required. Details: [MOVEMENT_RECONCILIATION](MOVEMENT_RECONCILIATION.md).
+- Model-free MCP `alice_predict_reconcile_mint_20261102_k4n8v2cs_01` synced source `618aad3230dc079ca6921d1af5a0fbc9f99c9356` and passed Mint Node24 **777/777**, Mac Python299 (skip3); no Alice/BDS restart, world write or console command. This is source/regression evidence only. Not yet verified in the running Alice or independently against BDS stationary/moving coordinates; original navigation and survival gates remain required. Details: [MOVEMENT_RECONCILIATION](MOVEMENT_RECONCILIATION.md).
 
 ## 2026-11-01 — Alice Ollama 模型服务恢复（原17879/不动BDS）
 
