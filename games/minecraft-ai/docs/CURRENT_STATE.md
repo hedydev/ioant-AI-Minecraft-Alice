@@ -1,3 +1,11 @@
+## 2026-11-02 — Bedrock战斗威胁证据化（源码已提交，未实机加载）
+
+- 用户明确：**怪物在附近甚至1–2格不能自动视为战斗**。近战3格是已观察攻击意图后的物理接触范围，而非距离触发器；要求观察怪物是否朝Alice或真实附近玩家持续逼近、相应目标与怪物间的可见/可达性、有无实际近战伤害，以及远程箭矢是否正在朝目标射来。围墙/玻璃隔开、静止不追击、只是经过均不应打断自主生存和FOLLOW。
+- 实查旧`games/minecraft-ai/runtime/alice_modules/safety_policy.js`的`selectThreat`仍以 `closest.distance<3.5`、creeper<8、owner<4 作为战斗依据。新版 Bedrock `src/runtime.cjs::threat()` 已**不再调用旧距离策略**，转入`src/hostile_engagement.cjs`：按同一服务端entity ID跨≥180ms两段观察逼近方向，3格内且来自受害者（Alice或玩家）方向的`observedHostileBarrier`视线clear才构成近战威胁；远程必须有实际朝Alice/玩家飞来的可计算弹射物轨迹并唯一关联到真实射手；仅观察到已点燃苦力怕为紧急信号，不因8格距离推断起爆。
+- 减少伤害误归因：Alice掉血但来源不明不向最近怪物归罪；仅<=1.2格直接接触可以`SURVIVE`撤退，禁止在撤退失败后因该信号进行反击；正常射手攻击超过3格优先脱险而不是远距离空挥武器。GUARD的攻击者视线以**真实被保护玩家**为起点，但Alice自己实施近战必须重新核对自身到目标<=3格且有clear LOS；不会隔墙挥武器。死亡/重生/停止重置怪物追击观测历史。
+- 新增`test/hostile_engagement.test.cjs`16个逻辑场景：近处静止、苦力怕未点燃/点燃、持续追击、被墙遮挡/未知视线、路过远离、朝玩家冲来、玩家与Alice分别处于不同隔墙区域、非明确伤害误归因、弹射物、唯一射手和多射手歧义等。GitHub真实模块在独立JS V8逻辑执行16/16；从真实`runtime.cjs`抽取`threat()`与真实`hostile_engagement`、`escort_threat`模块作隔离检查6/6，4份源码JS语法解析通过。**不是Mint Node24完整测试、也不是原17879游戏实战验收；运行中的Alice尚未确认加载新代码**。
+- GitHub详细说明`games/minecraft-ai/docs/COMBAT_ENGAGEMENT.md`。Mac工作区仍落后于远端main，之前同步遭到平台安全阻断，不更换执行路径绕过；保留原17879、Alice世界、独立BDS安全证据与既有安全限制。
+
 ## 2026-11-02 — 自主生存新鲜BDS见证事件预规划（源码改进，尚未实机加载）
 
 - 追查自主生存 IDLE：`runtime.runIdleDecision` 在 `navigationHold` 缺少独立BDS双样本时调用 `holdNavigation`，若 `goalWood<2` 立即 `return`；木头数只影响可否做背包合成，本不应阻止 READ-ONLY 路线预备。独立位置证明4秒有效，实际MCSManager合法查询成对180秒间隔，规划/5s tick与之错位，导致 `scout_bds_position_unavailable`，不是静止同步尚不能0.00。
