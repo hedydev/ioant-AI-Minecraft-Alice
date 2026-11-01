@@ -405,7 +405,9 @@ class AliceBedrockRuntime {
       return {state:'blocked',reason:proof.reason}
     }
     if(!this.requireBdsAlignedExplore||!this.ready()||this.closed||
-       this.core.state!=='IDLE'||this.idleBusy||this.job||this.safetyBusy||
+       // idleBusy may mean an in-flight slow LLM suggestion; a successful
+       // guarded startJob advances epoch and makes that stale reply invalid.
+       this.core.state!=='IDLE'||this.job||this.safetyBusy||
        this.bot.isSleeping||this.threat()||this.bot.health<16||
        this.verticalWatch.active()||this.goalPlanner.stoppedByHuman||
        this.core.hasFollowIntent()||
