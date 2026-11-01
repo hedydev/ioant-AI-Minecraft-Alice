@@ -437,11 +437,11 @@ class AliceBedrockRuntime {
     // No new navigation mechanism. This original startJob rechecks the
     // independent BDS proof and preemption, then boundedScout rechecks
     // terrain, pathfinder and danger before sending any input.
-    const started=this.startJob('EXPLORE',saved.source,
+    this.startJob('EXPLORE',saved.source,
       signal=>this.boundedScout(saved.candidate,signal),{
         label:'自主生存：观察已验证的短平路',announce:false,
         scoutCandidate:saved.candidate})
-    return started===true&&this.job?.type==='EXPLORE'?
+    return this.job?.type==='EXPLORE'&&this.action?.source===saved.source?
       {state:'started',reason:'fresh_bds_pair_admitted'}:
       {state:'blocked',reason:'original_job_gate_rejected'}
   }
