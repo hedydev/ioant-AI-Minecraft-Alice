@@ -1,3 +1,10 @@
+## 2026-11-02 — Operator loaded the new client; bounded live evidence capture
+
+- User executed the maintained client-only restart: oldPID1384063 -> newPID1862683, initially process_started_game_login_not_yet_verified. We did not repeat the restart. Actual MCP `alice_reconcile_post_operator_load_20261102_k4n8v2cs_06` now verifies current-owner replay telemetry present, historyFrames40, fallback1; this is real running-feature evidence, not Git/mtime inference.
+- `alice_reconcile_post_operator_gate_20261102_k4n8v2cs_07`: original17879 connected/sessionEstablished, autonomous IDLE HP20/food20, no job, two independent new-login samples but already expired. `alice_reconcile_post_operator_witness_20261102_k4n8v2cs_08`: demand and timer/opt-in active, budget10/40, lastBatchAge62.4s, stationary pause0. No extra BDS query or process operation was submitted.
+- Added a finite210-second observer that reads only existing current-owner status/audit files every250ms, deduplicates up to six fresh sample windows and exports relative distances/counters, no coordinates/account data. Stops on process/session/owner problems. It does not query BDS, trigger inputs/models, alter cadence or authorize navigation. A completed observation is not an automatic synchronization pass; actual qualified distances and server displacement must be reviewed.
+- Local five observer regressions and wrapper self-test pass; full Mint regression and actual finite observation remain to be recorded. Source/core physics is unchanged by this observer. Continue capturing natural legitimate samples rather than reloading again or expanding query budget.
+
 ## 2026-11-02 — Fresh coordinate comparison and extended replay acceptance
 
 - Actual read-only `alice_reconcile_runtime_20261102_k4n8v2cs_02`: current owner verified, replay telemetry absent, no fresh BDS pair; old snapshot subtraction was2.78 blocks. This is not a qualified real-time error or new algorithm acceptance. `alice_reconcile_safe_window_20261102_k4n8v2cs_03` independently reports all normal client-reload safety predicates true, restartAttempted=false. No client/BDS process was changed.

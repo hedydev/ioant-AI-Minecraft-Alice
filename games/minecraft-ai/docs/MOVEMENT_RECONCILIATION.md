@@ -151,3 +151,18 @@ reload rejection or lower the original4s/0.75-block gate to obtain a pass.
   `alice_reconcile_safe_window_20261102_k4n8v2cs_03`; no restart attempted.
   A normal operator client lifecycle is still required. Do not evade the
   previously denied AI reload using another tool, script, intent or operation ID.
+
+## Finite current-owner observation
+
+The user's normal client-only lifecycle now yields current-owner replay
+telemetry (MCP06) and a connected healthy original17879 session (MCP07).
+This resolves the unloaded-process blocker but is not coordinate acceptance.
+The finite observation task reads existing status/wire files locally every250ms
+for at most210s, keeping one verified PID/birth-token and up to six qualified
+sample windows. It sends no BDS query/input and never changes timer or safety.
+
+Review window min/max distance, idle/input flags, BDS displacement and replay
+counters. These are close-time samples, not exact tick equality or attribution
+of server motion to Alice. A successful script exit, loaded telemetry or lack
+of fresh evidence must never be reported as convergence. Original stationary
+backoff and40/h/180s budget remain mandatory.
