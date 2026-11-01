@@ -2672,7 +2672,7 @@ test('returned navigation rejection records a dependency hold instead of a faile
 })
 
 
-test('recent damage activates 10-block Bedrock threat memory and evade-retreat tactic',async()=>{
+test('recent un-attributed damage does not turn an unrelated distant mob into a combat target',async()=>{
  let now=100000
  const f=fixture(()=>now),e=new AliceBedrockRuntime({...f,policies:await policies()})
  e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
@@ -2680,20 +2680,18 @@ test('recent damage activates 10-block Bedrock threat memory and evade-retreat t
  f.bot.health=20;e.noteHealth()
  const zombie={id:18,name:'zombie',position:vec(9,64,0)}
  f.bot.entities[18]=zombie
- assert.equal(e.threat(),null,'distant mobs without recent damage are not an emergency')
+ assert.equal(e.threat(),null)
  now+=100
  f.bot.health=18;e.noteHealth()
  assert.equal(e.lastSelfDamageAt,now)
- assert.equal(e.threat()?.target,zombie,'recent self-damage extends detection to 10 blocks')
+ assert.equal(e.threat(),null,'damage has no authenticated attacker ID, so do not blame a distant zombie')
  let retreats=0,attacks=0
- f.operator.retreatFrom=async()=>{retreats++;return {ok:false,reason:'retreat_no_verified_corridor',
-   attempted:false,serverMovementVerified:false}}
+ f.operator.retreatFrom=async()=>{retreats++;return {ok:false}}
  f.operator.attackOnce=async()=>{attacks++;return {ok:false}}
  e.safetyTick()
  await new Promise(setImmediate)
- assert.equal(retreats,1,'EVADE_COUNTER must actually enter the retreat branch')
- assert.equal(attacks,0,'do not attack just because self was hit')
- assert(f.calls.some(x=>x[1]==='[Alice safety] retreat not independently confirmed:'))
+ assert.equal(retreats,0,'unknown attacker must not trigger a mob-specific counterattack')
+ assert.equal(attacks,0)
  e.stop()
 })
 test('no recent damage and distant mob does not trigger spurious Bedrock retreat',async()=>{
