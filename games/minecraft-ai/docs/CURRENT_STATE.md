@@ -1,3 +1,12 @@
+## 2026-11-02 — 自主生存新鲜BDS见证事件预规划（源码改进，尚未实机加载）
+
+- 追查自主生存 IDLE：`runtime.runIdleDecision` 在 `navigationHold` 缺少独立BDS双样本时调用 `holdNavigation`，若 `goalWood<2` 立即 `return`；木头数只影响可否做背包合成，本不应阻止 READ-ONLY 路线预备。独立位置证明4秒有效，实际MCSManager合法查询成对180秒间隔，规划/5s tick与之错位，导致 `scout_bds_position_unavailable`，不是静止同步尚不能0.00。
+- GitHub/main已提交 `src/prepared_scout.cjs`：只缓存单一已观测、平坦WALK路线（最多8格、8个waypoint，240秒TTL；不写世界/不移动/不查询/不改独立样本时间）。当hold且不足木头时也允许只读体素扫描预规划；模型提出`scout_safe`后见证过期同样可缓存。
+- `runtime.resumePreparedScoutOnWitness` 仅由 `main.onFreshIndependentBdsWitness` 在原有bed/spawnpoint高优先级检查之后调度，使用真实双样本4秒/客户端-BDS<=0.75格的`scoutStartProof`，重新核验同login/life/epoch、0.30格原点、维度、昼夜/晴天、STOP/FOLLOW、健康威胁、HOME、背包目标、运动冷却、同路径地形/敌人，之后才通过原`startJob + boundedScout`行动。先检查仅一个样本时不会丢弃预案；失效计划只能丢弃，不续签见证。
+- 优化慢Ollama竞态：见证事件可在`idleBusy`等待模型期间执行已核验路线，旧异步模型结果因`epoch`变更失效且不得覆盖正在运行任务状态；`cancelActive`清空预案。不变更BDS quota40/h/180s、4s/0.75格、原世界17879，不强制移动/换世界/重启服务。
+- 已完成源码级检查：变更JS V8语法编译通过，实际新测试文件11/11在独立JS装载/模拟`node:test`断言环境通过；实际运行时见证处理方法抽取隔离测试10/10通过。**不是Mint Node24/真实依赖完整回归；原Alice进程尚未证明加载新提交，真实移动BDS终点仍未验收**。Mac曾有`repository_sync`被平台安全阻断，不换其他工具/operation ID绕过。下一步需要获准的正常Git同步/完整Node24测试/进程生命周期与新独立BDS终点证据。
+- 相关 issue <https://github.com/hedydev/ioant-AI-Minecraft-Alice/issues/1>；详细安全模型与验证过程见 `docs/MOVEMENT_RECONCILIATION.md`。
+
 ## 2026-11-02 — Activity guard loaded; two fresh stationary windows accepted
 
 - User performed a second maintained client-only normal lifecycle: PID1862683 ->1924898. Actual MCP `alice_reconcile_guard_loaded_20261102_k4n8v2cs_16` verifies current-owner `activityGuardVersion=1`, two correction reconciliations/13 replayed frames, one fallback and40 history frames. MCP17 confirms original17879 connected/sessionEstablished, HP20 food20. The latest runtime patch is loaded; no further reload is required for the current source.
