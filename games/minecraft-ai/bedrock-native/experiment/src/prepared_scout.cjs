@@ -14,7 +14,12 @@ function flatCandidate(candidate){
   candidate.waypoints.every(p=>finite(p)&&['x','y','z'].every(k=>Number.isSafeInteger(p[k])))&&
   ['x','y','z'].every(k=>Number.isSafeInteger(candidate.target[k]))&&
   candidate.key===[candidate.target.x,candidate.target.y,candidate.target.z].join(',')&&
-  ['x','y','z'].every(k=>candidate.waypoints.at(-1)[k]===candidate.target[k])
+  ['x','y','z'].every(k=>candidate.waypoints.at(-1)[k]===candidate.target[k])&&
+  candidate.waypoints.every((p,i)=>i===0||
+    p.y===candidate.waypoints[i-1].y&&
+    Math.abs(p.x-candidate.waypoints[i-1].x)<=1&&
+    Math.abs(p.z-candidate.waypoints[i-1].z)<=1&&
+    (p.x!==candidate.waypoints[i-1].x||p.z!==candidate.waypoints[i-1].z))
 }
 const equalPath=(a,b)=>flatCandidate(a)&&flatCandidate(b)&&
  a.key===b.key&&['x','y','z'].every(k=>a.target[k]===b.target[k])&&
