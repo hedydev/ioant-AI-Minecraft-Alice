@@ -20,15 +20,15 @@ const equalPath=(a,b)=>flatCandidate(a)&&flatCandidate(b)&&
 class PreparedScout{
  constructor({clock=Date.now}={}){this.clock=clock;this.pending=null}
  clear(){this.pending=null}
- prepare(candidate,{position,epoch,loginAt,lifeEpochAt=null,dimension,phase,weather,source}={}){
+ prepare(candidate,{position,epoch,loginAt,lifeEpochAt=null,dimension,phase,weather,source,eligibleAt=0}={}){
   const now=this.clock()
   if(!flatCandidate(candidate)||!finite(position)||
     !Number.isSafeInteger(now)||!Number.isSafeInteger(loginAt)||loginAt<=0||
-    !Number.isSafeInteger(epoch)||!['自主模型','自主探索'].includes(source)||
+    !Number.isSafeInteger(epoch)||!Number.isSafeInteger(eligibleAt)||eligibleAt<0||!['自主模型','自主探索'].includes(source)||
     typeof dimension!=='string'||!dimension||phase!=='day'||weather!=='clear'){
    this.clear();return false
   }
-  this.pending={at:now,epoch,loginAt,lifeEpochAt,dimension,phase,weather,source,
+  this.pending={at:now,epoch,loginAt,lifeEpochAt,dimension,phase,weather,source,eligibleAt,
     origin:point(position),candidate:{...candidate,target:point(candidate.target),
       waypoints:candidate.waypoints.map(point)}}
   return true
@@ -38,7 +38,7 @@ class PreparedScout{
   if(!p)return {ok:false,reason:'no_prepared_scout'}
   const now=this.clock()
   const valid=Number.isSafeInteger(now)&&now>=p.at&&now-p.at<=TTL_MS&&
-   Number.isSafeInteger(epoch)&&epoch===p.epoch&&
+   now>=p.eligibleAt&&Number.isSafeInteger(epoch)&&epoch===p.epoch&&
    loginAt===p.loginAt&&lifeEpochAt===p.lifeEpochAt&&
    dimension===p.dimension&&phase===p.phase&&weather===p.weather&&
    finite(position)&&Math.hypot(position.x-p.origin.x,
