@@ -427,6 +427,20 @@ class AliceBedrockRuntime {
     if(!saved.ok)return {state:'blocked',reason:saved.reason}
     if(env.safeToExplore!==true||env.phase!=='day'||env.weather!=='clear')
       return {state:'blocked',reason:'environment_no_longer_safe'}
+    // An old daytime plan cannot supersede newer inventory, resource,
+    // HOME, or movement-failure decisions even when the position is aligned.
+    if(this.failureMemory.blocked('motion',this.bot.entity.position)||
+       this.lastHomeAgenda?.objective==='return_home'&&env.tick>=8500)
+      return {state:'blocked',reason:'autonomous_priority_or_motion_hold'}
+    const inventory=this.ops.inventory()||[]
+    const wood=inventory.filter(i=>WOOD_LOGS.has(i.name)||i.name.endsWith('_planks'))
+      .reduce((n,i)=>n+i.count,0)
+    const hasWeapon=inventory.some(i=>i.name.endsWith('_sword')||i.name.endsWith('_axe'))
+    const goal=this.p.autonomy_policy.decideIdleWork({
+      hasUsableWeapon:hasWeapon,woodResources:wood})
+    if(!['LEARN_WEAPON','COLLECT_WOOD','OBSERVE'].includes(goal)||
+       goal==='LEARN_WEAPON'&&wood>=2)
+      return {state:'blocked',reason:'autonomous_goal_changed'}
     const voxel=surveyVoxelActions(this.bot,{radius:4,maxNodes:96,maxReads:640})
     const chosen=selectSafeWalkingCandidate(voxel,{
       hostiles:Object.values(this.bot.entities||{})
