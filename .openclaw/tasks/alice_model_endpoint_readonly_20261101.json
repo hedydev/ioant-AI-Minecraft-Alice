@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Only inspect real Alice model config, GET Ollama /api/tags and bounded failure counts (no inference or BDS operations)",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-model-endpoint-readonly.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "real_endpoint_readonly",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-model-endpoint-readonly.py",
+      "args": [
+        "--inspect",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 80
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "model_endpoint",
+      "file": "alice_model_endpoint.json",
+      "format": "json"
+    }
+  ]
+}
