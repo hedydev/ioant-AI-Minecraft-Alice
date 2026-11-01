@@ -9,9 +9,12 @@ const routeKey=k=>typeof k==='string'&&/^-?\d+,-?\d+,-?\d+$/.test(k)
 function flatCandidate(candidate){
  return candidate?.ok===true&&candidate.kind==='observed_voxel_walking_only'&&
   routeKey(candidate.key)&&finite(candidate.target)&&
-  Number.isFinite(candidate.distance)&&candidate.distance>0&&candidate.distance<=8&&
-  Array.isArray(candidate.waypoints)&&candidate.waypoints.length>=1&&
-  candidate.waypoints.length<=8&&candidate.waypoints.every(finite)
+  Number.isSafeInteger(candidate.distance)&&candidate.distance>0&&candidate.distance<=8&&
+  Array.isArray(candidate.waypoints)&&candidate.waypoints.length===candidate.distance&&
+  candidate.waypoints.every(p=>finite(p)&&['x','y','z'].every(k=>Number.isSafeInteger(p[k])))&&
+  ['x','y','z'].every(k=>Number.isSafeInteger(candidate.target[k]))&&
+  candidate.key===[candidate.target.x,candidate.target.y,candidate.target.z].join(',')&&
+  ['x','y','z'].every(k=>candidate.waypoints.at(-1)[k]===candidate.target[k])
 }
 const equalPath=(a,b)=>flatCandidate(a)&&flatCandidate(b)&&
  a.key===b.key&&['x','y','z'].every(k=>a.target[k]===b.target[k])&&
