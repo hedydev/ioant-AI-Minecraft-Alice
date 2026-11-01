@@ -1,3 +1,13 @@
+## 2026-11-02 — P0 真正定位原17879 BDS见证中断：40/40小时预算前置耗尽，已修复持续节奏
+
+- **实际MCP实机审计** `alice_timer_live_budget_20261102_s02`：定时器`timerActive=true,timerEnabled=true`，原Alice`ownerValid=true,heartbeatFresh=true,demandNow=true,optedIn=true`；最近服务结果`cooldown_or_budget`，本小时查询`budgetUsed=40,hourlyLimit=40`，最近batch年龄约886.6秒，`stalledPairs=0,pauseRemainingSeconds=0`，独立样本159、累计服务器行程66.04。**不能把503秒坐标见证过期误判为10分钟stationary防空转状态**：真正制约是40次预算已耗尽。读入只读不发命令。
+- 原策略设置`OnUnitActiveSec=60s`、每批2次、40次/小时，导致可能在约20分钟内耗尽整小时配额，随后40分钟缺少新位置证明。源代码`scripts/alice-bds-demand-timer.py`引入`SUSTAINED_BATCH_SECONDS=180`，在每批2次、≤40次/小时、原最低55秒和原全部owner/respawn/STOP/FOLLOW/安全门禁之上保持**至少180秒**的可持续查询间隔。新增`budget_allows_batch`纯判断，禁止部分配对、主动补刷、额外授权或扩大查询预算。
+- 同时修复`budget_value`跨小时重置时不当遗失lastBatch时间和同生命10分钟stationary暂停账本；小时变更只清空`used`，沿用可信旧query间隔和有限stall字段。源代码提交`19576da881dc78051536baa9777e41b824b52d5d`、纯判断提交`d50df1bd2ebd812fd163813e2f88dfbaa7ae100d`、三项专项回归`535ce9771414bb3fc62da9ef7c7322880cacfeb0`。
+- 新增本地已提交只读审计脚本`games/minecraft-ai/scripts/alice-bds-demand-state-readonly-20261102.py`及`.openclaw/tasks/alice_bds_demand_state_readonly_20261102.json`，仅校验固定原世界owner、timer opt-in、私有budget及系统日志限定结果，输出固定字段不泄漏坐标、身份、凭证，不调用MCSManager/发送游戏命令；审计的真实执行回执已成功。
+- **实测Mac回归** `alice_timer_budget_regression_mac_20261102_s03` Python299（3跳过，0失败）；**Mint非重启同步** `alice_timer_budget_mint_sync_20261102_s04` PASS Node24 **754/754**，Mac299，`aliceRestarted=false,bdsRestarted=false,worldModifiedByTask=false,consoleCommandSent=false`，原世界17879不触碰。
+- 同步后实机只读`alice_timer_after_sync_live_20261102_s05`：同一旧小时仍`budgetUsed=40`，timer active、需求存在，最近服务拒绝仍为`cooldown_or_budget`（符合不绕过安全预算的预期），此时lastBatchAgeSeconds约1145.5、stationary pause0。**没有实时重新获得4秒双样本或证明自主移动完成**；新的持续查询节奏需待后续合法小时重置及timer实际触发后观察。当前运行中Alice客户端是否加载前几次源码修复也仍需独立核验；不能绕过此前被平台安全审核阻止的client-only重载。
+- 这轮是真正修改并同步了Mint上的自动见证提供者，非只读诊断或只写文档。现有40/h上限、命令白名单、原世界绑定、生命和导航安全门禁全部保留。若未来需要更高频的无命令位置反馈，应单独研究BDS原生可靠位置事件源，不能擅自提升querytarget预算。
+
 ## 2026-11-02 — P0: Ollama scout_safe 被 BDS 导航门禁拒绝时不再误报 model_handled
 
 - 原17879只读实际MCP回执 `alice_p0_guard_live_20261102_q01`、`alice_p0_pos_live_20261102_q02`、`alice_p0_model_nav_log_20261102_q04`：Alice原世界连接好、健康IDLE HP20 food20，累计BDS独立样本153（另一个时间点151）；本地客户端和BDS差先观察为0.004格，后续模型导航日志又见Z偏移0.954格，说明预测漂移仍会反复。最近模型工具为`scout_safe`，近端匿名日志`modelProposalCount=21`、`navRejectCount=60`、`scoutOutcomeCount=0`、`idleMirrorCount=22`、最后起点拒绝`scout_client_server_position_diverged`差0.8格；这些不是自主目标成功的证据。
