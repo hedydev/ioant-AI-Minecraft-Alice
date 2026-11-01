@@ -1,3 +1,10 @@
+## 2026-11-02 — Witness idle wake canceled-event cooldown: code synced, no live restart
+
+- 源码提交 `d8086dcee6acaa3fef1a6194bfea3620280dcdf2`：当独立 BDS 双样本请求已排队、但回调开始前过期或被现有安全工作抢占，原5秒冷却不再被一个未执行的自主决策消耗。只在重新验证4秒双样本与全部既有安全条件后、实际调用 `idleTick()` 前计入冷却。私有有限日志 `[Alice autonomy] BDS witness idle handoff:` 仅含固定 outcome 名称，不含坐标/玩家身份；不会触发额外查询或移动。
+- 原有入口实测回执：Mac `alice_witness_handoff_mac_regression_20261102_m01` Python296 (3 skip)/0 fail；Mint `alice_witness_handoff_mint_node_20261102_n01` Node24 753/753 + Mac296 PASS。同步任务只调用已维护 `alice-mac.sh sync`，`aliceRestarted=false`, `bdsRestarted=false`, `worldModifiedByTask=false`, `consoleCommandSent=false`。新增针对性测试文件写入遭平台安全拦截，未落库、未计入测试数。
+- 若需复核，Mac 原有工作目录执行 `bash games/minecraft-ai/scripts/alice-mac.sh status`、`bash games/minecraft-ai/scripts/alice-mac.sh diagnose`；只读审计不等于实时 Alice 加载新模块。不得用 `runtimeSourceLoadedAfterSync` 的文件时间推测作为动态加载证据。
+- 真实17879世界不停止、不重启、不切换。此前安全重载操作被执行平台安全检查阻断；不可更换工具/脚本/ID绕过。只能等待标准安全的自然客户端更新或另行获准的正常部署流程，再只读检查本次新 outcome 日志、有效独立双样本和服务器真实位移。原无限 querytarget loop 继续禁用；4秒/0.75格和所有生存防护不变。
+
 ## 2026-11-02 — 继续执行：安全窗口核查与平台重载阻断（本轮实际回执）
 
 - GitHub main 已从上一会话的 `d55bfd2e...` 正常前进12个提交至 `767836ed8f14acb5745e7a5a9b00d177d539904c`（当前本轮再添加只读diagnostic）；涵盖 **4秒内已有双样本晚到250ms客户端漂移修正**、本地镜像拒绝原因匿名日志、MCSManager成功ACK但BDS不动时10分钟退避等，保留原BDS 17879，不创建测试世界、不降低0.75格门禁/4秒TTL。第一次旧HEAD回归 `alice_idle_mirror_mac_regression_20261102_a01` 被 `remote_commit_mismatch` 安全阻止，未运行错版本。
