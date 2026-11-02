@@ -8,9 +8,9 @@ function fixture({unknown=false,noPath=false}={}){
   blockAt(p){
    const x=Math.floor(p.x),z=Math.floor(p.z),y=Math.floor(p.y)
    if(unknown&&z===2)return null
-   if(x!==0||z<0||z>5)return {name:'stone_bricks',boundingBox:'block'}
-   return y===64?{name:'oak_planks',boundingBox:'block'}:
-     {name:'air',boundingBox:'empty'}
+   if(x!==0||z<0||z>5)return {name:'stone_bricks',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}
+   return y===64?{name:'oak_planks',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}:
+     {name:'air',boundingBox:'empty',shapes:[]}
   },
   pathfinder:{setMovements(m){events.push(['moves',m])},
    async goto(g){events.push(['goto',g.x,g.y,g.z]);if(noPath)throw Error('No path to the goal!')
@@ -26,16 +26,22 @@ function fixture({unknown=false,noPath=false}={}){
 }
 const GoalNear=class{constructor(x,y,z){Object.assign(this,{x,y,z})}}
 const Movements=class{constructor(){this.openable=new Set()}}
-const config={GoalNear,Movements,configureMoves:()=>{},clock:()=>100000}
-test('four observed flat indoor steps are eligible, but do not open a door',async()=>{
+const witness={get:()=>({independentSource:'bds_querytarget',
+ independentSamples:3,independentAt:99980,independentPreviousAt:99950,
+ independentLatestFeet:{x:.5,y:65,z:.5},loginAt:90000,lifeEpochAt:null})}
+const config={GoalNear,Movements,configureMoves:()=>{},clock:()=>100000,
+ movementEvidence:witness}
+test('four-step proposal sends only ONE swept WALK and waits for new BDS pair',async()=>{
  const f=fixture()
  const gate=validateApproach(f.bot,f.door)
  assert.equal(gate.ok,true)
  const result=await approachDoor(f.bot,f.door,config)
- assert.equal(result.ok,true)
- assert.equal(result.reason,'approach_local_only_server_unverified')
+ assert.equal(result.ok,false)
+ assert.equal(result.reason,'approach_first_cell_awaits_independent_bds_pair')
+ assert.equal(result.remainingSteps,3)
+ assert.deepEqual(result.witnessStart.target,{x:0,y:65,z:1})
  assert.equal(result.serverMovementVerified,false)
- assert.equal(f.events.filter(e=>e[0]==='goto').length,4)
+ assert.equal(f.events.filter(e=>e[0]==='goto').length,1)
  assert.equal(f.events.some(e=>e[0]==='activate'||e[0]==='dig'),false)
  assert.equal(f.events.at(-1)[0],'stop')
 })
@@ -73,14 +79,26 @@ test('unbounded, vertical or broken sequences are rejected',()=>{
   waypoints:[[0,65,1],[0,65,2],[0,65,3],[0,65,4],[0,65,5],[0,65,6],[0,65,7]]}}
  assert.equal(validateApproach(f.bot,tooLong).ok,false)
 })
-test('recent Bedrock movement evidence may confirm endpoint without inferring it',async()=>{
+test('packet-level movement does not authorize next cell or claim BDS arrival',async()=>{
  const f=fixture()
- const evidence={checkpoint:()=>({events:2}),progress:()=>({confirmed:true,reason:'server_position_changed'}),
-   get:()=>({lastAt:99999,latestFeet:{x:.5,y:65,z:4.5}})}
- const r=await approachDoor(f.bot,f.door,{...config,movementEvidence:evidence})
- assert.equal(r.ok,true)
- assert.equal(r.serverMovementVerified,true)
- assert.equal(r.reason,'approach_server_confirmed')
+ const r=await approachDoor(f.bot,f.door,config)
+ assert.equal(r.ok,false)
+ assert.equal(r.serverMovementVerified,false)
+ assert.equal(r.reason,'approach_first_cell_awaits_independent_bds_pair')
+ assert.equal(f.events.filter(x=>x[0]==='goto').length,1)
+})
+test('door approach rejects stale BDS or blocked player-width corridor before input',async()=>{
+ const a=fixture()
+ const denied=await approachDoor(a.bot,a.door,{...config,movementEvidence:null})
+ assert.equal(denied.reason,'scout_bds_position_unavailable')
+ assert.equal(a.events.filter(x=>x[0]==='goto').length,0)
+ const b=fixture()
+ const original=b.bot.blockAt
+ b.bot.blockAt=p=>Math.floor(p.x)===0&&Math.floor(p.z)===1&&Math.floor(p.y)===66?
+   {name:'cobblestone',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}:original(p)
+ const collision=await approachDoor(b.bot,b.door,config)
+ assert.equal(collision.attempted,false)
+ assert.equal(b.events.filter(x=>x[0]==='goto').length,0)
 })
 
 test('typed threat guard identifies the exact reason after first attempted waypoint',async()=>{
