@@ -2404,6 +2404,10 @@ class AliceBedrockRuntime {
   }
   async runIdleDecision(){
     this.refreshBehavior()
+    // Explicit bed requests own the optional autonomous plan while awaiting
+    // independently witnessed one-cell steps. STOP/FOLLOW/safety can still
+    // preempt; equipment and urgent food run via maintenanceTick.
+    if(this.pendingBedRequest)return
     if(!this.liveBehavior.settings.autonomyEnabled)return
     if(this.liveBehavior.settings.agentMode==='companion'||this.goalPlanner.stoppedByHuman)return
     if(!this.ready()||this.bot.isSleeping||this.job||this.safetyBusy||this.threat()||this.bot.health<14||this.core.hasFollowIntent()||
