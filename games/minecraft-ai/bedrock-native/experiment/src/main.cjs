@@ -305,6 +305,13 @@ async function main(args=process.argv.slice(2)){
         homeBase:runtime.homeBase.summary(),homeAgenda:runtime.lastHomeAgenda,
         bedApproach:runtime.lastBedApproach,
         bedApproachAction:runtime.lastBedApproachAction,
+        bedRequest:runtime.pendingBedRequest?{
+          action:runtime.pendingBedRequest.action,
+          stage:runtime.pendingBedRequest.stage,
+          steps:runtime.pendingBedRequest.steps,
+          expiresAt:runtime.pendingBedRequest.expiresAt,
+          bed:runtime.pendingBedRequest.position,
+          serverMovementVerified:false}:null,
         // Compact read-only escape survey; status heartbeat is capped at 4 KiB.
         escapeSurvey:runtime.lastEscapeSurvey,
         voxelNavigation:runtime.lastVoxelNavigation}
