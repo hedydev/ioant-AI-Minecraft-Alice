@@ -1682,7 +1682,7 @@ class AliceBedrockRuntime {
       target:first}
     this.lastBedApproachAction={status:'starting',reason:'fresh_bds_one_cell_admitted',
       attempted:false,serverMovementVerified:false,at:now}
-    const accepted=this.startJob('EXPLORE',source,async signal=>{
+    this.startJob('EXPLORE',source,async signal=>{
       let timer=null,abortHandler=null
       let result={ok:false,reason:'bed_one_cell_bds_endpoint_unconfirmed',
         attempted:false,serverMovementVerified:false}
@@ -1775,7 +1775,9 @@ class AliceBedrockRuntime {
       }
     },{label:jump?.ok?'接近床：一次完整方块跳跃':'接近床：一格安全步行',
       announce:false})
-    if(!accepted){
+    // startJob intentionally returns void on success. Read the actual
+    // guarded owner and source, not its undefined return value.
+    if(this.job?.type!=='EXPLORE'||this.action?.source!==source){
       if(this.pendingBedStep===oneStep)this.pendingBedStep=null
       this.lastBedApproachAction={status:'blocked',reason:'bed_step_start_denied',
         attempted:false,serverMovementVerified:false,at:now}
