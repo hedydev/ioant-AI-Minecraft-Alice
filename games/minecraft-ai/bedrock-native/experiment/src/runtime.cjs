@@ -17,6 +17,7 @@ const {HomeBedMemory,selectAdjacentBed,useBedForSpawn}=require('./bed_spawnpoint
 const {verifyBedStep}=require('./bed_step_witness.cjs')
 const {verifyDoorCrossing}=require('./door_crossing_witness.cjs')
 const {selectDirectionalBedStep}=require('./bed_directional_step.cjs')
+const {candidateOneBlockJump,performOneBlockJump}=require('./one_block_jump.cjs')
 const {requestBed,resumeBed,cancelBed}=require('./bed_task_service.cjs')
 const {HomeBaseMemory,homeAgenda}=require('./home_base.cjs')
 const {planNightReposition,nightConditions}=require('./night_survival.cjs')
@@ -1644,9 +1645,13 @@ class AliceBedrockRuntime {
           Math.abs(w[2]-path.waypoints[i-1][2])===1:true))
     const directional=!pathFlat&&explicitBed?
       selectDirectionalBedStep(this.bot,bedPosition):null
-    if(!pathFlat&&!directional?.ok)
-      return fail(directional?.reason||'verified_flat_bed_corridor_unavailable')
-    const a=pathFlat?path.waypoints[0]:directional.first
+    const jump=!pathFlat&&!directional?.ok&&explicitBed?
+      candidateOneBlockJump(this.bot,{toward:{x:bedPosition.x+.5,
+        y:bedPosition.y,z:bedPosition.z+.5}}):null
+    if(!pathFlat&&!directional?.ok&&!jump?.ok)
+      return fail(jump?.reason||directional?.reason||'verified_bed_corridor_unavailable')
+    const a=pathFlat?path.waypoints[0]:directional?.ok?
+      directional.first:[jump.target.x,jump.target.y,jump.target.z]
     const first={x:a?.[0],y:a?.[1],z:a?.[2]}
     const at={x:Math.floor(here.x),y:Math.floor(here.y),z:Math.floor(here.z)}
     const occupiedNext=Object.values(this.bot.entities||{}).some(e=>
@@ -1658,9 +1663,12 @@ class AliceBedrockRuntime {
     // First use the safest possible stair-free horizontal adjacent cell;
     // never ask A* to traverse the remaining 4+ unverified cells in one go.
     if(![first.x,first.y,first.z].every(Number.isSafeInteger)||
-       first.y!==at.y||Math.abs(first.x-at.x)+Math.abs(first.z-at.z)!==1||
-       !this.bot.pathfinder?.goto||!this.bot.pathfinder?.setMovements||
-       !this.api?.GoalNear||!this.api?.Movements)
+       first.y!==at.y+(jump?.ok?1:0)||
+       Math.abs(first.x-at.x)+Math.abs(first.z-at.z)!==1||
+       (jump?.ok?typeof this.bot.setControlState!=='function'||
+         typeof this.bot.lookAt!=='function':
+         !this.bot.pathfinder?.goto||!this.bot.pathfinder?.setMovements||
+         !this.api?.GoalNear||!this.api?.Movements))
       return fail('first_cell_not_flat_or_navigation_unavailable')
     this.nextBedApproachStepAt=now+75000
     const initial=this.movementEvidence?.get?.()
@@ -1688,9 +1696,15 @@ class AliceBedrockRuntime {
            this.bot.entity?.onGround!==true)
           return {...result,reason:proof.ok?'bed_one_cell_safety_preempted':proof.reason}
         const fresh=surveyEscape(this.bot,{radius:7,maxNodes:100,bedPositions:selected})
-        const stillSafe=directional?
-          selectDirectionalBedStep(this.bot,bedPosition).first?.join(',')===a.join(','):
-          fresh.bedApproach?.waypoints?.[0]?.join(',')===a.join(',')
+        const refreshedJump=jump?.ok?candidateOneBlockJump(this.bot,
+          {toward:{x:bedPosition.x+.5,y:bedPosition.y,z:bedPosition.z+.5}}):null
+        const stillSafe=jump?.ok?
+          refreshedJump?.ok&&[
+            refreshedJump.target.x,refreshedJump.target.y,
+            refreshedJump.target.z].join(',')===a.join(','):
+          directional?.ok?
+            selectDirectionalBedStep(this.bot,bedPosition).first?.join(',')===a.join(','):
+            fresh.bedApproach?.waypoints?.[0]?.join(',')===a.join(',')
         if(Object.values(this.bot.entities||{}).some(e=>
           HOSTILES.has(e?.name)&&e.position&&
           [e.position.x,e.position.y,e.position.z].every(Number.isFinite)&&
@@ -1699,6 +1713,28 @@ class AliceBedrockRuntime {
           return {...result,reason:'hostile_occupies_next_bed_step'}
         if(!stillSafe)
           return {...result,reason:'bed_first_cell_changed'}
+        if(jump?.ok){
+          // Exactly one verified geometry candidate can receive bounded jump
+          // input. No local physics result grants further movement; wait for
+          // a completely new independent BDS pair at the raised landing.
+          oneStep.startedAt=this.clock()
+          this.pendingBedStep=oneStep
+          const physical=await performOneBlockJump(this.bot,jump,{
+            signal,
+            safe:()=>this.job?.signal===signal&&
+              scoutStartProof(this.bot,this.movementEvidence,this.clock).ok&&
+              !this.threat()&&!this.core.hasFollowIntent()&&
+              !this.goalPlanner.stoppedByHuman&&
+              !this.safetyBusy&&this.bot.health>=16
+          })
+          result={ok:false,attempted:physical.attempted===true,
+            serverMovementVerified:false,
+            reason:physical.attempted?
+              'bed_jump_waiting_for_new_independent_endpoint':physical.reason}
+          if(!physical.attempted&&this.pendingBedStep===oneStep)
+            this.pendingBedStep=null
+          return result
+        }
         const movements=new this.api.Movements(this.bot)
         this.p.terrain_policy.cautiousPathOptions(movements)
         movements.canDig=false;movements.canOpenDoors=false
@@ -1737,7 +1773,8 @@ class AliceBedrockRuntime {
           serverMovementVerified:result.serverMovementVerified===true,
           at:this.clock()}
       }
-    },{label:'接近观察到的床：一格安全步行',announce:false})
+    },{label:jump?.ok?'接近床：一次完整方块跳跃':'接近床：一格安全步行',
+      announce:false})
     if(!accepted){
       if(this.pendingBedStep===oneStep)this.pendingBedStep=null
       this.lastBedApproachAction={status:'blocked',reason:'bed_step_start_denied',
