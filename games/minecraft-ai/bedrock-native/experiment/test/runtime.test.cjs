@@ -3229,3 +3229,17 @@ test('model scout refused at BDS start remains blocked rather than reported hand
  assert.equal(f.calls.filter(x=>x[0]==='goto').length,0)
  e.stop()
 })
+
+test('Minecraft Chinese bed and sleep commands are explicit typed tasks, not Ollama guesses',()=>{
+ const {recognize,parseTask}=require('../src/runtime.cjs')
+ for(const raw of ['Alice 睡觉','Alice，去睡觉','艾丽丝 上床睡觉']){
+  const recognized=recognize(raw)
+  assert.equal(parseTask(recognized).type,'SLEEP',raw)
+ }
+ for(const raw of ['Alice 设置重生点','Alice，设置重置点']){
+  assert.equal(parseTask(recognize(raw)).type,'SET_SPAWNPOINT',raw)
+ }
+ assert.equal(parseTask(recognize('Alice 起床')).type,'WAKE')
+ assert.equal(parseTask(recognize('Alice 停止')).type,'STOP')
+ assert.equal(parseTask('睡觉').type,'SLEEP')
+})
