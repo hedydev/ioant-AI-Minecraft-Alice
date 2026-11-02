@@ -16,18 +16,18 @@ test('only independent post-input pair proves one-step server endpoint',()=>{
  assert.equal(o.travelledBlocks,1)
 })
 test('one sample or stale/pre-input pair never proves endpoint',()=>{
- for(const other of [
-   {...observation,independentSamples:5},
-   {...observation,independentPreviousAt:19999},
-   {...observation,independentAt:20500,independentPreviousAt:20100}
+ for(const [other,now] of [
+   [{...observation,independentSamples:5},20700],
+   [{...observation,independentPreviousAt:19999},20700],
+   [observation,25001]
  ]) {
-   const at=other===null?20700:other.independentAt===20500?24001:20700
-   const o=verifyScoutStep(start,other,local,at)
+   const o=verifyScoutStep(start,other,local,now)
    assert.equal(o.ok,false)
+   assert.equal(o.reason,'scout_step_new_independent_pair_missing')
  }
  const single={...observation,independentSamples:5}
- assert.equal(verifyScoutStep(start,single,20700).reason,'scout_step_new_independent_pair_missing')
- assert.equal(verifyScoutStep(start,{...observation,independentPreviousAt:19999},20700).ok,false)
+ assert.equal(verifyScoutStep(start,single,local,20700).reason,
+   'scout_step_new_independent_pair_missing')
 })
 test('no cross-session or cross-life reuse',()=>{
  for(const obs of [{...observation,loginAt:9999},{...observation,lifeEpochAt:11111},
