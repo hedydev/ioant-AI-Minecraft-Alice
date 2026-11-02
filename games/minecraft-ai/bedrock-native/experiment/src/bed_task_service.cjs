@@ -83,10 +83,18 @@ function requestBed(r,action,source,report=null){
  const positions=observedBedPositions(r)
  const choice=selectAdjacentBed(r.bot,positions,{radius:16})
  let bedPosition=choice.bed?.position||null,needsApproach=false
+ let obstacleReason=null
  if(!bedPosition&&choice.reason==='bed_needs_verified_approach'){
   try{
    const survey=surveyEscape(r.bot,{radius:7,maxNodes:100,bedPositions:positions})
    r.lastBedApproach=survey?.bedApproach||null
+   if(survey?.doorCandidates?.length){
+    r.lastEscapeSurvey=survey
+    obstacleReason='bed_route_requires_door'
+   }else if(survey?.verticalObstacles?.length){
+    r.lastEscapeSurvey=survey
+    obstacleReason='bed_route_requires_shape_navigation'
+   }
    const plan=r.lastBedApproach
    if(flatBedRoute(plan,r.bot.entity?.position)){
     bedPosition={x:plan.bed[0],y:plan.bed[1],z:plan.bed[2]}
@@ -114,7 +122,10 @@ function requestBed(r,action,source,report=null){
    }
   }
  }
- if(!bedPosition)return reply('rejected',choice.reason,message({reason:choice.reason}))
+ if(!bedPosition){
+  const reason=obstacleReason||choice.reason
+  return reply('rejected',reason,message({reason}))
+ }
  const now=r.clock(),ev=r.movementEvidence?.get?.()
  const p={action,source,report,at:now,expiresAt:now+TIMEOUT,
    globalExpiresAt:now+1200000,steps:0,
