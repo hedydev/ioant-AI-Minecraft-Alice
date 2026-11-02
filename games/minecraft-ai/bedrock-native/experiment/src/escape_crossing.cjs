@@ -23,17 +23,26 @@ function clearDoorway(bot,a,d,beyond){
       !fullSupport(at(bot,d[0],d[1]-1,d[2]))||
       !fullSupport(at(bot,beyond[0],beyond[1]-1,beyond[2])))
      return 'crossing_full_floor_unverified'
+   const lower=at(bot,d[0],d[1],d[2])
+   const upper=at(bot,d[0],d[1]+1,d[2])
+   const low=observedDoorBits(lower),high=observedDoorBits(upper)
+   // An open 2-high door can lead immediately into a staircase made of
+   // FULL cubic blocks. This is not flat crossing; recognize the raised
+   // landing rather than endlessly probing it as an unexplained wall.
+   const raised=fullSupport(at(bot,beyond[0],beyond[1],beyond[2]))&&
+     [1,2,3].every(dy=>knownAir(at(bot,beyond[0],beyond[1]+dy,beyond[2])))&&
+     knownAir(at(bot,a[0],a[1]+2,a[2]))&&
+     low.open===true&&low.upper===false&&high.upper===true
+   if(raised)return 'crossing_raised_full_block_landing_requires_jump'
    if(!knownAir(at(bot,a[0],a[1],a[2]))||
       !knownAir(at(bot,a[0],a[1]+1,a[2]))||
       !knownAir(at(bot,beyond[0],beyond[1],beyond[2]))||
       !knownAir(at(bot,beyond[0],beyond[1]+1,beyond[2])))
      return 'crossing_opposite_side_blocked_or_unknown'
-   const lower=at(bot,d[0],d[1],d[2]),upper=at(bot,d[0],d[1]+1,d[2])
    const lowerName=String(lower?.name||'').replace(/^minecraft:/,'')
    const upperName=String(upper?.name||'').replace(/^minecraft:/,'')
    if(!DOOR.test(lowerName)||!DOOR.test(upperName)||lowerName!==upperName)
      return 'crossing_complete_door_unverified'
-   const low=observedDoorBits(lower),high=observedDoorBits(upper)
    if(low.upper!==false||low.open!==true||high.upper!==true)
      return 'crossing_open_door_state_unverified'
    return null
