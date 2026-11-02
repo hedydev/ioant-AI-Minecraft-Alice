@@ -448,6 +448,9 @@ class ConsoleCommandBridgeTests(unittest.TestCase):
         self.assertEqual(control.parse_command({'text':'制作木剑'}),{'action':'craft_sword'})
         self.assertEqual(control.parse_command({'text':'吃东西'}),{'action':'eat'})
         self.assertEqual(control.parse_command({'text':'安全试走'}),{'action':'probe_step'})
+        self.assertEqual(control.parse_command({'text':'睡觉'}),{'action':'sleep'})
+        self.assertEqual(control.parse_command({'text':'设置重生点'}),{'action':'set_spawnpoint'})
+        self.assertEqual(control.parse_command({'text':'设置重置点'}),{'action':'set_spawnpoint'})
         self.assertEqual(control.parse_command({'text':'跟随 ../../root'})['reason'],'unsupported_command')
         self.assertEqual(control.parse_command({'text':'/op Steve'})['status'],'rejected')
         with self.assertRaises(ValueError):
