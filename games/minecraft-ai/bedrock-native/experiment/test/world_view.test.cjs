@@ -2,7 +2,7 @@
 const test=require('node:test'),assert=require('node:assert/strict')
 const {mkdtempSync,readFileSync,lstatSync,symlinkSync,rmSync}=require('node:fs')
 const os=require('node:os'),path=require('node:path')
-const {snapshot,ViewRecorder,ViewPublisher,RADIUS,BELOW,ABOVE}=require('../src/world_view.cjs')
+const {snapshot,ViewRecorder,ViewPublisher,RADIUS,BELOW,ABOVE,MAX_BYTES}=require('../src/world_view.cjs')
 const pos=(x,y,z)=>({x,y,z,offset(a,b,c){return pos(x+a,y+b,z+c)}})
 function fixture(){
  let reads=0
@@ -123,4 +123,46 @@ test('radius fifteen produces a bounded 31-by-31 scene and private snapshot unde
     'full solid-world snapshot must fit the producer and SSH read-only transport')
   const writer=new ViewPublisher({root:path.join(os.tmpdir(),'alice-view-large-not-written'),log:{warn(){}}})
   assert.equal(typeof writer.publish,'function')
+})
+
+test('collision witness captures observed roof, torch and both real door bits without movement',()=>{
+ const bot={entity:{position:pos(.5,65,.5),onGround:true},
+  game:{dimension:'overworld'},entities:{},
+  blockAt(p){
+   const x=Math.floor(p.x),y=Math.floor(p.y),z=Math.floor(p.z)
+   if(x===-3&&z===-4&&(y===65||y===66))return {
+    name:'spruce_door',boundingBox:'block',shapes:[[0,0,0,.1875,1,1]],
+    getProperties:()=>({open_bit:1,upper_block_bit:y===66?1:0})}
+   if(x===0&&z===0&&y===66)return {name:'torch',boundingBox:'empty',shapes:[]}
+   if(y===67)return {name:'cobblestone',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}
+   if(y===64)return {name:'stone',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}
+   return {name:'air',boundingBox:'empty',shapes:[]}
+  }}
+ const view=snapshot(bot,{connected:true,now:()=>120000})
+ const probe=view.collisionSurvey
+ assert.equal(probe.radius,7)
+ assert.equal(probe.cells.length,15*15*6)
+ assert.equal(probe.unknown,0)
+ const at=(x,y,z)=>probe.cells.find(q=>q[0]===x&&q[1]===y&&q[2]===z)
+ assert.equal(probe.shapes[at(0,1,0)[4]].boundingBox,'empty')
+ assert.equal(probe.shapes[at(0,2,0)[4]].boundingBox,'block')
+ assert.equal(at(-3,0,-4)[5],true)
+ assert.equal(at(-3,0,-4)[6],false)
+ assert.equal(at(-3,1,-4)[6],true)
+ assert.equal(probe.shapes[at(-3,0,-4)[4]].shapes[0][3],.1875)
+ assert.equal(view.collisionSurvey.source,'client_chunk_cache_not_bds')
+ assert(Buffer.byteLength(JSON.stringify(view))<=MAX_BYTES)
+})
+test('unknown and malformed collision shapes are explicitly unverified',()=>{
+ const {bot}=fixture()
+ const before=bot.blockAt
+ bot.blockAt=p=>{
+  if(Math.floor(p.x)===10&&Math.floor(p.y)===65&&Math.floor(p.z)===20)
+   return {name:'stone',boundingBox:'block',shapes:[[0,0,0,2,1,1]]}
+  return before(p)
+ }
+ const view=snapshot(bot,{connected:true,now:()=>1000})
+ const center=view.collisionSurvey.cells.find(a=>a[0]===0&&a[1]===0&&a[2]===0)
+ assert.equal(view.collisionSurvey.shapes[center[4]].shapes,null)
+ assert.equal(view.collisionSurvey.unknown,1)
 })
