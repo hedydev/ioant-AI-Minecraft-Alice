@@ -5,7 +5,7 @@ const vec=(x,y,z)=>({x,y,z,
   offset(a,b,c){return vec(x+a,y+b,z+c)},
   distanceTo(p){return Math.hypot(x-p.x,y-p.y,z-p.z)}})
 const bedPosition=vec(3,65,0)
-function world({walled=false}={}){
+function world({walled=false,doorway=false}={}){
  let now=100000,proof=false,stepCalls=0,interactions=0
  const bed={name:'red_bed',position:bedPosition}
  const bot={game:{dimension:'overworld'},
@@ -15,6 +15,8 @@ function world({walled=false}={}){
   blockAt:p=>{
    const x=Math.floor(p.x),y=Math.floor(p.y),z=Math.floor(p.z)
    if(x===3&&y===65&&z===0)return bed
+   if(doorway&&x===1&&z===0&&(y===65||y===66))
+    return {name:'spruce_door',boundingBox:'block',position:vec(x,y,z)}
    if(y===64)return {name:'stone',boundingBox:'block',position:vec(x,y,z)}
    if(walled&&y===65&&x>=1&&x<=2&&Math.abs(z)<=7)
     return {name:'stone',boundingBox:'block',position:vec(x,y,z)}
@@ -96,4 +98,13 @@ test('solid wall makes bed route read-only and rejects a direct step',()=>{
  assert.equal(reply.status,'rejected')
  assert.equal(f.steps(),0)
  assert.equal(f.interactions(),0)
+})
+
+test('a detected wooden exit door is reported, not silently walked through',()=>{
+ const f=world({doorway:true})
+ const reply=requestBed(f.r,'sleep','控制台')
+ assert.equal(reply.status,'rejected')
+ assert.equal(reply.reason,'bed_route_requires_door')
+ assert.equal(f.steps(),0)
+ assert(f.r.lastEscapeSurvey?.doorCandidates?.length>0)
 })
