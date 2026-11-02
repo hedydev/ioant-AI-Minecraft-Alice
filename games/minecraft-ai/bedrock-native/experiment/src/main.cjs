@@ -401,6 +401,15 @@ async function main(args=process.argv.slice(2)){
     const probe=resumeArmedProbe(runtime)
     if(probe.state==='started'||probe.state==='rejected')
       runtimeLogger.log('[Alice probe] BDS-triggered operator probe:',JSON.stringify(probe))
+    // Explicit player/localhost sleep & respawn requests outrank optional
+    // autonomous bed work. A newly accepted BDS witness admits only the
+    // requested already-adjacent bed, with original 4s/0.75 gates intact.
+    const requestedBed=runtime.resumeBedRequestOnWitness()
+    if(requestedBed.state==='started'){
+      runtimeLogger.log('[Alice bed] explicit witnessed bed interaction:',
+        JSON.stringify({reason:requestedBed.reason}))
+      return
+    }
     // Never query BDS continuously. An operator-approved, fresh, witnessed
     // position pair can immediately unlock an already-adjacent bed interaction.
     const bedCheck=runtime.spawnpointTick({freshBdsWitness:true}).catch(err=>
