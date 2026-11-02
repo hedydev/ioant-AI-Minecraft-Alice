@@ -16,6 +16,7 @@ const {ObservedBeds}=require('./observed_beds.cjs')
 const {HomeBedMemory,selectAdjacentBed,useBedForSpawn}=require('./bed_spawnpoint.cjs')
 const {verifyBedStep}=require('./bed_step_witness.cjs')
 const {verifyDoorCrossing}=require('./door_crossing_witness.cjs')
+const {planRaisedDoorThreshold,performRaisedDoorThreshold,verifyRaisedDoorThreshold}=require('./raised_door_threshold.cjs')
 const {selectDirectionalBedStep}=require('./bed_directional_step.cjs')
 const {candidateOneBlockJump,performOneBlockJump}=require('./one_block_jump.cjs')
 const {requestBed,resumeBed,cancelBed}=require('./bed_task_service.cjs')
@@ -2142,7 +2143,7 @@ class AliceBedrockRuntime {
             approach:{position:approach,steps:0,waypoints:[],
               routeComplete:true,elevationChanges:0,serverVerified:false}}
           const geometry=validateCrossing(this.bot,door)
-          if(!geometry.ok){
+          if(!geometry.ok&&geometry.reason!=='crossing_raised_full_block_landing_requires_jump'){
             this.log.log('[Alice exploration] scout door passage:',
               JSON.stringify({reason:geometry.reason,attempted:false,
                 failedWaypoint:doorway,doorOpenObserved,
@@ -2235,8 +2236,12 @@ class AliceBedrockRuntime {
     if(!current)return fail('passage_door_not_in_fresh_survey')
     if(current.approach?.steps!==0)
       return fail('door_approach_requires_separate_bds_verified_steps')
-    const geometry=validateCrossing(this.bot,current)
-    if(!geometry.ok)return fail(geometry.reason)
+    const crossing=validateCrossing(this.bot,current)
+    const threshold=!crossing.ok&&
+      crossing.reason==='crossing_raised_full_block_landing_requires_jump'?
+      planRaisedDoorThreshold(this.bot,current):null
+    const geometry=crossing.ok?crossing:threshold
+    if(!geometry?.ok)return fail(threshold?.reason||crossing.reason)
     const independent=this.movementEvidence?.get?.()
     const first=independent?.independentLatestFeet
     if(!first||![first.x,first.y,first.z].every(Number.isFinite)||
@@ -2245,6 +2250,7 @@ class AliceBedrockRuntime {
       return fail('door_crossing_bds_start_not_at_near_side')
     const startAt=this.clock()
     const receipt={
+      kind:threshold?.ok?'raised_threshold':'full_crossing',
       epoch:this.epoch,createdAt:startAt,startedAt:startAt,
       door:geometry.door.slice(),from:geometry.from.slice(),
       beyond:geometry.beyond.slice(),
@@ -2255,10 +2261,12 @@ class AliceBedrockRuntime {
     }
     // The physical executor can observe packet movement, but may NEVER
     // turn packet observation into independent BDS passage acceptance.
-    const outcome=await crossDoor(this.bot,current,{
-      signal,movementEvidence:this.movementEvidence,clock:this.clock,
-      safe:()=>this.escapeApproachGuard(signal)
-    })
+    const outcome=threshold?.ok?
+      await performRaisedDoorThreshold(this.bot,current,{
+        signal,safe:()=>this.escapeApproachGuard(signal)}):
+      await crossDoor(this.bot,current,{
+        signal,movementEvidence:this.movementEvidence,clock:this.clock,
+        safe:()=>this.escapeApproachGuard(signal)})
     if(signal?.aborted||this.closed||this.epoch!==receipt.epoch)
       return {...outcome,ok:false,serverMovementVerified:false,
         roomExitVerified:false,reason:'door_crossing_job_preempted'}
@@ -2270,7 +2278,9 @@ class AliceBedrockRuntime {
       this.pendingDoorCrossing=receipt
       return {...outcome,ok:false,serverMovementVerified:false,
         roomExitVerified:false,
-        reason:'door_crossing_waiting_for_post_input_independent_bds'}
+        reason:receipt.kind==='raised_threshold'?
+          'door_threshold_waiting_for_post_input_independent_bds':
+          'door_crossing_waiting_for_post_input_independent_bds'}
     }
     return {...outcome,ok:false,serverMovementVerified:false,
       roomExitVerified:false}
@@ -2288,15 +2298,22 @@ class AliceBedrockRuntime {
       return {state:'rejected',reason:'door_crossing_context_or_deadline_invalid',
         serverMovementVerified:false,roomExitVerified:false}
     }
-    const verdict=verifyDoorCrossing(p,this.movementEvidence?.get?.(),
-      this.bot.entity?.position,now)
-    if(verdict.reason==='door_crossing_post_input_pair_missing')
+    const verdict=p.kind==='raised_threshold'?
+      verifyRaisedDoorThreshold(p,this.movementEvidence?.get?.(),
+        this.bot.entity?.position,now):
+      verifyDoorCrossing(p,this.movementEvidence?.get?.(),
+        this.bot.entity?.position,now)
+    if(verdict.reason==='door_crossing_post_input_pair_missing'||
+       verdict.reason==='threshold_post_input_pair_missing')
       return {state:'waiting',reason:verdict.reason,
         serverMovementVerified:false,roomExitVerified:false}
     this.pendingDoorCrossing=null
     this.lastEscapePassageAction={
-      reason:verdict.reason,status:verdict.ok?'independent_bds_verified':'unverified',
+      reason:verdict.reason,status:verdict.ok?
+        (p.kind==='raised_threshold'?'threshold_only_bds_verified':
+          'independent_bds_verified'):'unverified',
       attempted:true,door:p.door,at:now,beyond:p.beyond,
+      movementKind:p.kind,thresholdVerified:verdict.thresholdVerified===true,
       serverMovementVerified:verdict.ok,roomExitVerified:false
     }
     if(this.lastEscapeSurvey)
@@ -2309,6 +2326,7 @@ class AliceBedrockRuntime {
     this.log.log('[Alice exploration] independent BDS door endpoint:',
       JSON.stringify(this.lastEscapePassageAction))
     return {state:verdict.ok?'verified':'rejected',reason:verdict.reason,
+      movementKind:p.kind,thresholdVerified:verdict.thresholdVerified===true,
       serverMovementVerified:verdict.ok,roomExitVerified:false}
   }
   recordEscapePassage(door,outcome){

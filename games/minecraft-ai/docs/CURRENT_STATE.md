@@ -2048,3 +2048,7 @@ User clarified wood is just an example. Ultimate goal: understand arbitrary Mine
 **Validation:** GitHub source and CommonJS syntax verified. Isolate-mocked memory initialization/restart/alias persistence PASS; V8 parser and optional planner allowlist PASS; simulated Bedrock two-log acquisition with observed count PASS. Added regression tests learning_persistence.test.cjs, item_knowledge.test.cjs, generic_gather.test.cjs, planner_generic.test.cjs, runtime.test.cjs. Full user Mint Node24 npm test, in-world item collection, model connectivity and Minecraft gameplay are still UNVERIFIED.
 
 **Next stage:** chat → intent → server registry/recipe/drops/source graph → safe specialized skill selection (mining, smelting, farming, mobs, trade, containers) → executed inventory/world proof → durable indexed memory → model reuses trusted learned strategies. Learning does not authorize arbitrary or destructive moves.
+
+## 2026-11-02 — Raised wooden-door threshold (source-stage only)
+- Added `raised_door_threshold.cjs` and runtime bridging: only a bounded single-cell entry into observed OPEN door followed by an independent BDS door-cell double witness; the stage explicitly does not claim outside/room-exit or jump success.
+- `one_block_jump.cjs` may now plan a single full-block ascent from a proven open-door cell with collision-lane clearance. Separate independent BDS start and endpoint gates remain mandatory. Node24 full Mint suite, deployment and real 17879 door/step acceptance not yet executed.

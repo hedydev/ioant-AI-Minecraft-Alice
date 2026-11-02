@@ -4,6 +4,9 @@
 // provides independent Bedrock server movement proof.
 const {knownAir}=require('./scout_routes.cjs')
 const {fullSupport}=require('./escape_survey.cjs')
+const {observedDoorBits}=require('./escape_door_action.cjs')
+const {planOpenDoorLane}=require('./door_lane.cjs')
+const WOOD_DOOR=/^(oak|spruce|birch|jungle|acacia|dark_oak|mangrove|cherry|bamboo|crimson|warped|pale_oak|wooden)_door$/
 const finite=p=>p&&[p.x,p.y,p.z].every(Number.isFinite)
 const normal=p=>String(p?.name||'').replace(/^minecraft:/,'')
 const special=p=>/(?:_stairs|_slab|_trapdoor|_door|ladder|scaffolding|water|lava|fire|cactus)/.test(normal(p))
@@ -22,14 +25,26 @@ function candidateOneBlockJump(bot,{toward=null}={}){
  }
  // The start cell needs solid support and three known-clear blocks of
  // vertical jump clearance, not just normal 2-block walking clearance.
+ const origin=read(root.x,root.y,root.z),upper=read(root.x,root.y+1,root.z)
+ const lowBits=observedDoorBits(origin),upBits=observedDoorBits(upper)
+ const openDoorOrigin=WOOD_DOOR.test(normal(origin))&&
+   normal(origin)===normal(upper)&&
+   lowBits.open===true&&lowBits.upper===false&&upBits.upper===true
  if(!fullSupport(read(root.x,root.y-1,root.z))||
-    ![0,1,2,3].every(d=>knownAir(read(root.x,root.y+d,root.z))))
+    !(openDoorOrigin?[2,3].every(d=>knownAir(read(root.x,root.y+d,root.z))):
+      [0,1,2,3].every(d=>knownAir(read(root.x,root.y+d,root.z)))))
    return fail('jump_origin_support_or_headroom_unverified')
  const steps=[]
  for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){
   const x=root.x+dx,y=root.y,z=root.z+dz
   const block=read(x,y,z)
   if(special(block)||!fullSupport(block))continue
+  if(openDoorOrigin){
+   const lane=planOpenDoorLane(bot,{door:[root.x,root.y,root.z],
+     from:[root.x-dx,root.y,root.z-dz]})
+   if(!lane.ok||pos[lane.axis]<lane.validMin+.003||
+      pos[lane.axis]>lane.validMax-.003)continue
+  }
   // The top of the raised block becomes the new floor; two-block body
   // clearance plus extra rise headroom are required.
   if(![1,2,3].every(d=>knownAir(read(x,y+d,z))))continue
