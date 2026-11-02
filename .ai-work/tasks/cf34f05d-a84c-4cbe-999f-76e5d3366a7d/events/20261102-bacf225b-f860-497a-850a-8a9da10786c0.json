@@ -1,0 +1,30 @@
+{
+  "schema_version": 2,
+  "event_id": "bacf225b-f860-497a-850a-8a9da10786c0",
+  "task_id": "cf34f05d-a84c-4cbe-999f-76e5d3366a7d",
+  "event_type": "validation_recorded",
+  "occurred_at": "2026-11-02T04:30:48.056462Z",
+  "actor": {
+    "actor_type": "ai",
+    "ai_name": "ChatGPT",
+    "ai_session_id": "k4n8v2cs"
+  },
+  "ledger_branch": "main",
+  "development_branch": "main",
+  "observed_commit": "6e5cd79a28b695bc57de88d196d07c9a9c052074",
+  "message": "Actual read-only MCP a1-a5 reconciled rev56 report with current-life journal. Latest a5 proves30 handoffs,9 prepared starts and9 divergence rejections after a local waypoint, latest1 node/.94 estimate. Isolated per-waypoint admission against unchanged pre-input baseline. Diagnostic false-negative label/tail coverage corrected, not a gameplay fix. Full Python306(skip3), parser7, Node8 pass; moving endpoint acceptance still pending.",
+  "changes": {
+    "remaining_work": [
+      "Design/implement admitted-segment to post-input independent-BDS endpoint handoff without weakening original proof constraints",
+      "Provenance review of legacy mixed-source scout confirmation",
+      "Authorized runtime validation and human acceptance"
+    ]
+  },
+  "evidence": [
+    {
+      "kind": "document",
+      "path": "games/minecraft-ai/docs/COORDINATE_EVIDENCE_REVIEW_20261102.md"
+    }
+  ],
+  "supersedes_event_id": null
+}

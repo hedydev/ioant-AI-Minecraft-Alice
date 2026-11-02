@@ -1,3 +1,7 @@
+## 2026-11-02 — Root boundary: repeated waypoint admission uses the old independent baseline
+
+Actual current-life journal MCP a5 now proves9 divergence failures AFTER a locally completed waypoint; latest completed1 local node/.94 estimated blocks, then navigation_scout_client_server_position_diverged. There were30 witness handoffs and9 prepared starts, so evidence did reach navigation. Per-waypoint goto/setGoal rechecks the original independent baseline, which is not refreshed during an ordinary route under the180s provider cadence. This isolates a route/proof handoff failure boundary, not proof that BDS accepted every local step. The earlier guard correctly prevents old-sample pullback; do not undo it. No game runtime was changed this turn; motion/independent endpoints remain unaccepted. Updated diagnostics are committed and real-MCP tested; full Mac Python306(skip3), parser7, Node diagnostic8 pass. See COORDINATE_EVIDENCE_REVIEW_20261102.md.
+
 ## 2026-11-02 — Rev56 coordinate report needs separate gate interpretation
 
 Actual cached MCP receipts confirm PID2472609 loaded activityGuardVersion1. In835 reads, seven valid fresh BDS-pair readings failed only the observer’s stricter1000ms time-skew filter; zero close-time windows does not prove the4s navigation gate never passed. Separate same-session ACK reports gate=true. The historical1.21 rejection is real, but later65.899s-old subtraction is not a current error. Movement remains unaccepted.

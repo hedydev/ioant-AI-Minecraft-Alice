@@ -1,3 +1,7 @@
+## 2026-11-02 — Current-life witness/route diagnostics observed
+
+The maintained existing-log task now uses the current-life timestamped private journal as primary evidence with an explicit source field. Actual a5 captured30 handoffs,9 prepared route starts and9 post-waypoint divergence rejections; old nonexistent endpoint-outcome log labels are corrected. These are diagnostic/control-flow observations, not new movement abilities or independent endpoint acceptance. Game runtime, proof thresholds and query cadence are unchanged. See COORDINATE_EVIDENCE_REVIEW_20261102.md.
+
 ## 2026-11-02 — Distinguish navigation proof from close-time observation
 
 The4s/.75 navigation gate and stricter1s diagnostic comparison are separate. Actual rev56 includes fresh-pair/time-skew readings plus an aligned ACK, so zero observed close-time windows is not evidence that navigation proof never existed. New bounded read-only existing-log summaries expose fixed handoff, mirror-deferral and prepared-route admission counts; actual runtime readback is pending. No new game capability or moving synchronization acceptance. See [review](COORDINATE_EVIDENCE_REVIEW_20261102.md).
