@@ -180,7 +180,8 @@ class AliceBedrockRuntime {
     this.lastEscapeDoorAttemptKey=null
     this.lastEscapeApproachAt=Number.NEGATIVE_INFINITY;this.lastEscapeApproachKey=null
     this.lastEscapeApproachRetryAt=Number.NEGATIVE_INFINITY
-    this.lastEscapePassageAction=null;this.pendingDoorCrossing=null;this.verifiedRaisedThreshold=null;this.pendingScoutStep=null;this.lastEscapePassageAttemptKey=null
+    this.lastEscapePassageAction=null;this.pendingDoorCrossing=null;this.verifiedRaisedThreshold=null;this.pendingScoutStep=null;
+    this.pendingDoorApproachStep=null;this.lastEscapePassageAttemptKey=null
     this.lastEscapePassageRetryAt=Number.NEGATIVE_INFINITY
     this.driveJournal=new SelfDriveJournal({clock,log})
     this.followProgress=new FollowProgress({safeRadius:this.liveBehavior.settings.followDistance})
@@ -508,6 +509,7 @@ class AliceBedrockRuntime {
   cancelActive(reason='cancel') {
     this.pendingDoorCrossing=null
     this.verifiedRaisedThreshold=null
+    this.pendingDoorApproachStep=null
     this.pendingBedStep=null
     this.pendingScoutStep=null
     cancelBed(this,'bed_request_cancelled')
@@ -1826,6 +1828,7 @@ class AliceBedrockRuntime {
        this.clock()-this.lastHumanAt<this.p.autonomy_policy.AUTONOMY_GRACE_MS)
       return hold('autonomous_bed_human_or_mode_priority')
     if(this.pendingBedRequest||this.pendingBedStep||this.pendingScoutStep||
+       this.pendingDoorApproachStep||
        this.pendingDoorCrossing||this.job||this.maintenanceBusy||
        this.safetyBusy||this.threat()||this.core.hasFollowIntent()||
        this.bot.isSleeping||this.closed||!this.ready()||
@@ -2035,6 +2038,38 @@ class AliceBedrockRuntime {
       return result
     },{label:selected.action==='PLACE_BRIDGE'?'安全填补一处小坑':'清除一块天然土层',announce:false})
     return true
+  }
+  // One observed doorway WALK never implies its entire approach is complete.
+  // A different, independently accepted BDS pair must prove the previous
+  // cell before another route is admitted. Missing/old data stays pending.
+  settlePendingDoorApproachOnWitness(){
+    const step=this.pendingDoorApproachStep
+    if(!step)return {state:'none'}
+    const now=this.clock()
+    if(this.closed||step.epoch!==this.epoch||now<step.startedAt||
+       now-step.startedAt>240000){
+      this.pendingDoorApproachStep=null
+      return {state:'rejected',reason:'door_approach_epoch_or_deadline_changed'}
+    }
+    const out=verifyScoutStep(step,this.movementEvidence?.get?.(),
+      this.bot.entity?.position,now)
+    if(out.reason==='scout_step_new_independent_pair_missing')
+      return {state:'waiting',reason:'door_approach_new_independent_pair_missing'}
+    this.pendingDoorApproachStep=null
+    const verified=out.ok===true
+    this.lastEscapeDoorAction={
+      reason:verified?'door_approach_one_cell_server_verified':out.reason,
+      attempted:true,openObserved:false,door:step.door,
+      at:now,steps:1,serverMovementVerified:verified
+    }
+    this.lastEscapeSurveyAt=Number.NEGATIVE_INFINITY
+    this.lastEscapeApproachRetryAt=verified?now:now+180000
+    this.nextIdleAt=Math.min(this.nextIdleAt,verified?now+1000:now+180000)
+    this.log.log('[Alice exploration] door first-cell BDS endpoint:',
+      JSON.stringify({reason:this.lastEscapeDoorAction.reason,
+        serverMovementVerified:verified,remainingCellsUnverified:true}))
+    return {state:verified?'verified':'rejected',
+      reason:this.lastEscapeDoorAction.reason,serverMovementVerified:verified}
   }
   settlePendingScoutStepOnWitness(){
     const step=this.pendingScoutStep
@@ -2806,6 +2841,16 @@ class AliceBedrockRuntime {
     // independently witnessed one-cell steps. STOP/FOLLOW/safety can still
     // preempt; equipment and urgent food run via maintenanceTick.
     if(this.pendingBedRequest)return
+    if(this.pendingDoorApproachStep){
+      if(this.clock()-this.pendingDoorApproachStep.startedAt<=240000)return
+      this.pendingDoorApproachStep=null
+      this.lastEscapeDoorAction={reason:'door_approach_independent_timeout',
+        attempted:true,openObserved:false,serverMovementVerified:false,at:this.clock()}
+      this.lastEscapeApproachRetryAt=this.clock()+180000
+      this.lastEscapeSurveyAt=Number.NEGATIVE_INFINITY
+      this.log.log('[Alice exploration] doorway first-cell witness expired:',
+        JSON.stringify({reason:'door_approach_independent_timeout',serverMovementVerified:false}))
+    }
     if(this.pendingScoutStep){
       if(this.clock()-this.pendingScoutStep.startedAt<=240000)return
       const step=this.pendingScoutStep
@@ -3324,6 +3369,15 @@ class AliceBedrockRuntime {
                   movementEvidence:this.movementEvidence,clock:this.clock,
                   safe:()=>this.escapeApproachGuard(signal)
                 })
+                if(!signal.aborted&&outcome.attempted===true&&
+                    outcome.reason==='approach_first_cell_awaits_independent_bds_pair'&&
+                    outcome.witnessStart&&Number.isSafeInteger(outcome.startedAt)&&
+                    !this.pendingDoorApproachStep){
+                  this.pendingDoorApproachStep={
+                    ...outcome.witnessStart,startedAt:outcome.startedAt,
+                    door:door.position.slice(),epoch:this.epoch
+                  }
+                }
                 // Threat/STOP preemption can abort the task without a normal
                 // result log; it must still bound the next automatic attempt.
                 if(signal.aborted){
