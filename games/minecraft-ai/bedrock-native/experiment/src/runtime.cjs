@@ -15,6 +15,7 @@ const {evaluateShelter,placeShelterBlock}=require('./night_shelter.cjs')
 const {ObservedBeds}=require('./observed_beds.cjs')
 const {HomeBedMemory,selectAdjacentBed,useBedForSpawn}=require('./bed_spawnpoint.cjs')
 const {verifyBedStep}=require('./bed_step_witness.cjs')
+const {verifyDoorCrossing}=require('./door_crossing_witness.cjs')
 const {selectDirectionalBedStep}=require('./bed_directional_step.cjs')
 const {requestBed,resumeBed,cancelBed}=require('./bed_task_service.cjs')
 const {HomeBaseMemory,homeAgenda}=require('./home_base.cjs')
@@ -174,7 +175,7 @@ class AliceBedrockRuntime {
     this.lastEscapeDoorAttemptKey=null
     this.lastEscapeApproachAt=Number.NEGATIVE_INFINITY;this.lastEscapeApproachKey=null
     this.lastEscapeApproachRetryAt=Number.NEGATIVE_INFINITY
-    this.lastEscapePassageAction=null;this.lastEscapePassageAttemptKey=null
+    this.lastEscapePassageAction=null;this.pendingDoorCrossing=null;this.lastEscapePassageAttemptKey=null
     this.lastEscapePassageRetryAt=Number.NEGATIVE_INFINITY
     this.driveJournal=new SelfDriveJournal({clock,log})
     this.followProgress=new FollowProgress({safeRadius:this.liveBehavior.settings.followDistance})
@@ -500,6 +501,7 @@ class AliceBedrockRuntime {
     this.cancelActive(reason);this.plannerAbort?.abort();this.log.log('[Alice Bedrock] controllers stopped:',reason)
   }
   cancelActive(reason='cancel') {
+    this.pendingDoorCrossing=null
     this.pendingBedStep=null
     cancelBed(this,'bed_request_cancelled')
     this.preparedScout.clear()
@@ -2179,49 +2181,101 @@ class AliceBedrockRuntime {
       this.log.log('[Alice autonomy] world-aware decision:',JSON.stringify(entry))
     }
   }
+  // A full doorway crossing is attempted only when Alice ALREADY stands
+  // at its observed near-side cell and the original 4s/0.75m independent
+  // BDS admission proof is currently valid. Do not chain a hidden A* leg.
   async crossObservedDoor(door,signal){
-    const find=()=>{
-      const fresh=surveyEscape(this.bot,{radius:6,maxNodes:160})
-      return fresh.doorCandidates.find(candidate=>
-        candidate.position?.join(',')===door.position?.join(','))||null
+    const fail=reason=>({ok:false,reason,attempted:false,
+      serverMovementVerified:false,roomExitVerified:false})
+    if(this.pendingDoorCrossing)return fail('door_previous_crossing_bds_pending')
+    if(signal?.aborted||this.closed)return fail('door_crossing_cancelled')
+    const proof=scoutStartProof(this.bot,this.movementEvidence,this.clock)
+    if(!proof.ok)return fail(proof.reason)
+    const fresh=surveyEscape(this.bot,{radius:6,maxNodes:160})
+    const current=fresh.doorCandidates.find(candidate=>
+      candidate.position?.join(',')===door?.position?.join(','))
+    if(!current)return fail('passage_door_not_in_fresh_survey')
+    if(current.approach?.steps!==0)
+      return fail('door_approach_requires_separate_bds_verified_steps')
+    const geometry=validateCrossing(this.bot,current)
+    if(!geometry.ok)return fail(geometry.reason)
+    const independent=this.movementEvidence?.get?.()
+    const first=independent?.independentLatestFeet
+    if(!first||![first.x,first.y,first.z].every(Number.isFinite)||
+       Math.hypot(first.x-geometry.from[0]-.5,
+         first.y-geometry.from[1],first.z-geometry.from[2]-.5)>1.05)
+      return fail('door_crossing_bds_start_not_at_near_side')
+    const startAt=this.clock()
+    const receipt={
+      epoch:this.epoch,createdAt:startAt,startedAt:startAt,
+      door:geometry.door.slice(),from:geometry.from.slice(),
+      beyond:geometry.beyond.slice(),
+      initialBdsFeet:{x:first.x,y:first.y,z:first.z},
+      independentSamples:independent.independentSamples,
+      loginAt:independent.loginAt??null,
+      lifeEpochAt:independent.lifeEpochAt??null
     }
-    let current=find()
-    if(!current)return {ok:false,reason:'passage_door_not_in_fresh_survey',attempted:false,
-      serverMovementVerified:false}
-    // Do not attempt even a short approach if the observed opened door
-    // leads to a blocked/unknown cell or lacks a verifiable upper half.
-    const passage=validatePassageGeometry(this.bot,current)
-    if(!passage.ok)return {...passage,attempted:false,serverMovementVerified:false}
-    // The 1–2 safe cells that were previously skipped for door interaction
-    // still require real navigation before crossing, not a distance guess.
-    if(current.approach?.steps>0){
-      if(current.approach.steps>2)
-        return {ok:false,reason:'passage_approach_exceeds_short_recovery',attempted:false,
-          serverMovementVerified:false}
-      const moved=await approachDoor(this.bot,current,{
-        signal,GoalNear:this.api?.GoalNear,Movements:this.api?.Movements,
-        configureMoves:m=>this.p.terrain_policy.cautiousPathOptions(m),
-        movementEvidence:this.movementEvidence,clock:this.clock,
-        safe:()=>this.escapeApproachGuard(signal)
-      })
-      if(!moved.ok)return {ok:false,reason:'passage_approach:'+moved.reason,
-        attempted:moved.attempted===true,serverMovementVerified:false}
-      current=find()
-      if(!current)return {ok:false,reason:'passage_door_missing_after_approach',
-        attempted:true,serverMovementVerified:false}
-    }
-    return crossDoor(this.bot,current,{
-      signal,GoalNear:this.api?.GoalNear,Movements:this.api?.Movements,
-      configureMoves:m=>this.p.terrain_policy.cautiousPathOptions(m),
-      movementEvidence:this.movementEvidence,clock:this.clock,
+    // The physical executor can observe packet movement, but may NEVER
+    // turn packet observation into independent BDS passage acceptance.
+    const outcome=await crossDoor(this.bot,current,{
+      signal,movementEvidence:this.movementEvidence,clock:this.clock,
       safe:()=>this.escapeApproachGuard(signal)
     })
+    if(signal?.aborted||this.closed||this.epoch!==receipt.epoch)
+      return {...outcome,ok:false,serverMovementVerified:false,
+        roomExitVerified:false,reason:'door_crossing_job_preempted'}
+    if(outcome.attempted===true){
+      this.pendingDoorCrossing=receipt
+      return {...outcome,ok:false,serverMovementVerified:false,
+        roomExitVerified:false,
+        reason:'door_crossing_waiting_for_post_input_independent_bds'}
+    }
+    return {...outcome,ok:false,serverMovementVerified:false,
+      roomExitVerified:false}
+  }
+  // Only an accepted post-input independent BDS pair may settle crossing.
+  // A verified "other side" coordinate does NOT imply outside/safe HOME.
+  settlePendingDoorCrossingOnWitness(){
+    const p=this.pendingDoorCrossing
+    if(!p)return {state:'none'}
+    const now=this.clock()
+    if(this.closed||this.epoch!==p.epoch||
+       this.bot.game?.dimension!=='overworld'||
+       now<p.createdAt||now-p.createdAt>240000){
+      this.pendingDoorCrossing=null
+      return {state:'rejected',reason:'door_crossing_context_or_deadline_invalid',
+        serverMovementVerified:false,roomExitVerified:false}
+    }
+    const verdict=verifyDoorCrossing(p,this.movementEvidence?.get?.(),
+      this.bot.entity?.position,now)
+    if(verdict.reason==='door_crossing_post_input_pair_missing')
+      return {state:'waiting',reason:verdict.reason,
+        serverMovementVerified:false,roomExitVerified:false}
+    this.pendingDoorCrossing=null
+    this.lastEscapePassageAction={
+      reason:verdict.reason,status:verdict.ok?'independent_bds_verified':'unverified',
+      attempted:true,door:p.door,at:now,beyond:p.beyond,
+      serverMovementVerified:verdict.ok,roomExitVerified:false
+    }
+    if(this.lastEscapeSurvey)
+      this.lastEscapeSurvey.passageAction=this.lastEscapePassageAction
+    this.lastEscapePassageRetryAt=now+(verdict.ok?600000:120000)
+    if(verdict.ok){
+      this.lastEscapeSurveyAt=Number.NEGATIVE_INFINITY
+      this.nextIdleAt=now+15000
+    }
+    this.log.log('[Alice exploration] independent BDS door endpoint:',
+      JSON.stringify(this.lastEscapePassageAction))
+    return {state:verdict.ok?'verified':'rejected',reason:verdict.reason,
+      serverMovementVerified:verdict.ok,roomExitVerified:false}
   }
   recordEscapePassage(door,outcome){
     this.lastEscapePassageAction={
-      reason:outcome.reason,attempted:outcome.attempted===true,
+      reason:outcome.reason,status:this.pendingDoorCrossing?
+        'awaiting_independent_bds':'unverified',
+      attempted:outcome.attempted===true,
       door:door.position,at:this.clock(),beyond:outcome.beyond||null,
-      serverMovementVerified:outcome.serverMovementVerified===true,
+      serverMovementVerified:false,
       roomExitVerified:false
     }
     if(this.lastEscapeSurvey)this.lastEscapeSurvey.passageAction=this.lastEscapePassageAction
@@ -2417,6 +2471,19 @@ class AliceBedrockRuntime {
   }
   async runIdleDecision(){
     this.refreshBehavior()
+    // A door crossing may be visible locally long before the next BDS
+    // query. Never open/cross again on client prediction alone.
+    if(this.pendingDoorCrossing){
+      if(this.clock()-this.pendingDoorCrossing.startedAt>240000){
+        const p=this.pendingDoorCrossing
+        this.pendingDoorCrossing=null
+        this.lastEscapePassageAction={reason:'door_crossing_independent_bds_timeout',
+          status:'unverified',door:p.door,beyond:p.beyond,
+          at:this.clock(),attempted:true,serverMovementVerified:false,
+          roomExitVerified:false}
+        this.lastEscapePassageRetryAt=this.clock()+120000
+      }else return
+    }
     // Explicit bed requests own the optional autonomous plan while awaiting
     // independently witnessed one-cell steps. STOP/FOLLOW/safety can still
     // preempt; equipment and urgent food run via maintenanceTick.
