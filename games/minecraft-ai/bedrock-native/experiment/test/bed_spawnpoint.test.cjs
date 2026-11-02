@@ -27,6 +27,7 @@ test('loaded bed at 15 blocks is still observed for a bounded one-step approach'
  bot.entity.position={x:0.5,y:64,z:0.5,
    offset(a,b,c){return {x:this.x+a,y:this.y+b,z:this.z+c}}}
  const far={x:15,y:64,z:0}
+ bot.blockAt=()=>({name:'red_bed',position:far})
  const selected=selectAdjacentBed(bot,[far],{radius:16})
  assert.equal(selected.bed,null)
  assert.equal(selected.reason,'bed_needs_verified_approach')
