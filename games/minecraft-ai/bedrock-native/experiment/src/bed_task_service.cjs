@@ -6,6 +6,7 @@ const {scoutStartProof}=require('./scout_start_proof.cjs')
 const {environment}=require('./world_routine.cjs')
 const {surveyEscape}=require('./escape_survey.cjs')
 const {selectDirectionalBedStep}=require('./bed_directional_step.cjs')
+const {candidateOneBlockJump}=require('./one_block_jump.cjs')
 const {outcome,message}=require('./bed_request_outcome.cjs')
 const TIMEOUT=240000
 const TYPES=new Set(['sleep','set_spawnpoint'])
@@ -111,11 +112,18 @@ function requestBed(r,action,source,report=null){
      Math.hypot(b.x-r.bot.entity.position.x,b.z-r.bot.entity.position.z))
    for(const bed of sorted){
     const next=selectDirectionalBedStep(r.bot,bed)
-    if(next.ok){
+    const rise=next.ok?null:candidateOneBlockJump(r.bot,{
+      toward:{x:bed.x+.5,y:bed.y,z:bed.z+.5}})
+    if(next.ok||rise?.ok){
      bedPosition={x:bed.x,y:bed.y,z:bed.z}
      needsApproach=true
-     r.lastBedApproach={status:'observed_single_flat_bedward_cell',
-       bed:[bed.x,bed.y,bed.z],waypoints:[next.first],
+     const jump=rise?.ok===true
+     const waypoint=jump?
+       [rise.target.x,rise.target.y,rise.target.z]:next.first
+     r.lastBedApproach={status:jump?'observed_one_block_jump_bedward':
+       'observed_single_flat_bedward_cell',
+       bed:[bed.x,bed.y,bed.z],waypoints:[waypoint],
+       action:jump?'JUMP_UP':'WALK',
        steps:1,routeComplete:false,permitted:false,serverVerified:false}
      break
     }
