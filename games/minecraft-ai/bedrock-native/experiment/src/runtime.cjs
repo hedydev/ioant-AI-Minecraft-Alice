@@ -1720,7 +1720,7 @@ class AliceBedrockRuntime {
       this.observedBeds.observe(this.bot)
     this.observeHomeTick()
     if(!this.ready()||this.bot.isSleeping||this.job||this.safetyBusy||
-       this.maintenanceBusy||this.pendingBedRequest)return
+       this.maintenanceBusy)return
     // Passive equipment maintenance is inventory-only. It is allowed in the
     // SURVIVE/low-health hold when no emergency action currently owns Alice;
     // otherwise threat_nearby + health<14 would permanently prevent using
@@ -1761,7 +1761,8 @@ class AliceBedrockRuntime {
       const closest=here?known.reduce((d,p)=>Math.min(d,Math.hypot(
         p.x+.5-here.x,p.y-here.y,p.z+.5-here.z)),Infinity):Infinity
       const adjacent=Number.isFinite(closest)&&closest<=2.4
-      const blocked=this.safetyBusy||this.job||this.core.hasFollowIntent()
+      const blocked=this.safetyBusy||this.job||this.core.hasFollowIntent()||
+        !!this.pendingBedRequest
       // At low health, never initiate a long walk to a bed. A bed already
       // within 2.4 blocks can be interacted with without any path movement.
       const travelOK=adjacent||this.bot.health>=14
@@ -1819,6 +1820,10 @@ class AliceBedrockRuntime {
         return
       }
     }
+    // Explicit bed intent may wait for the next naturally available BDS pair.
+    // Keep passive equipment and emergency food possible, but do not begin
+    // unrelated optional work while an accepted bed request owns the plan.
+    if(this.pendingBedRequest)return
     // All remaining non-equipment work remains blocked by any nearby danger.
     if(foodDanger||this.safetyBusy||this.job)return
     if(health<14)return
