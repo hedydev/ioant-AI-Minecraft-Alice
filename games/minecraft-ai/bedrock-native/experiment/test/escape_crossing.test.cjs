@@ -5,7 +5,8 @@ const vec=(x,y,z)=>({x,y,z,offset(a,b,c){return vec(x+a,y+b,z+c)}})
 const Door={kind:'wooden_door',permitted:false,position:[0,65,1],
  approach:{position:[0,65,0],routeComplete:true,elevationChanges:0,
  steps:0,waypoints:[],serverVerified:false}}
-function room({floor=true,outside=true,upper=true,open=true,move=true}={}){
+function room({floor=true,outside=true,upper=true,open=true,move=true,
+ raisedBeyond=false}={}){
  const events=[]
  let forward=false
  const bot={
@@ -13,6 +14,8 @@ function room({floor=true,outside=true,upper=true,open=true,move=true}={}){
   blockAt(p){
    const x=Math.floor(p.x),y=Math.floor(p.y),z=Math.floor(p.z)
    if(x!==0||z<0||z>2)return {name:'stone_bricks',boundingBox:'block'}
+   if(raisedBeyond&&z===2&&y===65)
+     return {name:'stone',boundingBox:'block'}
    if(y===64)return {name:(z===2&&!floor)?'air':'oak_planks',
       boundingBox:(z===2&&!floor)?'empty':'block'}
    if(z===1&&y===65)return {name:'oak_door',boundingBox:'block',
@@ -70,6 +73,16 @@ test('missing or unsafe outside, unknown upper half, closed door all deny moveme
   assert.equal(r.attempted,false)
   assert.equal(f.events.length,0)
  }
+})
+test('two-high open wooden door immediately before a full-block staircase reports a JUMP requirement without moving',async()=>{
+ const f=room({raisedBeyond:true})
+ const geometry=validatePassageGeometry(f.bot,Door)
+ assert.equal(geometry.ok,false)
+ assert.equal(geometry.reason,'crossing_raised_full_block_landing_requires_jump')
+ const attempt=await crossDoor(f.bot,Door,options(f))
+ assert.equal(attempt.attempted,false)
+ assert.equal(attempt.serverMovementVerified,false)
+ assert(!f.events.some(e=>e[0]==='control'))
 })
 test('wrong side or unverified ground cannot trigger input',()=>{
  const f=room()
