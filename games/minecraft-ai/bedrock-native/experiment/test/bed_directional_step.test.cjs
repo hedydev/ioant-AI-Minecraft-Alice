@@ -9,7 +9,7 @@ function world({obstacle=null}={}){
    const x=Math.floor(p.x),y=Math.floor(p.y),z=Math.floor(p.z)
    if(obstacle&&x===1&&y===65&&z===0)
      return {name:obstacle,boundingBox:'block'}
-   if(y===64)return {name:'stone',boundingBox:'block'}
+   if(y===64)return {name:'stone',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}
    return {name:'air',boundingBox:'empty'}
   }}
  return bot
@@ -49,4 +49,36 @@ test('one-cell search never invents a distant or unloaded bed destination',()=>{
  const bot=world()
  assert.equal(selectDirectionalBedStep(bot,{x:40,y:65,z:0}).ok,false)
  assert.equal(selectDirectionalBedStep(bot,{x:NaN,y:65,z:0}).ok,false)
+})
+
+test('non-colliding wall torch beneath low roof does not veto one flat WALK',()=>{
+ const bot=world(),original=bot.blockAt
+ bot.blockAt=p=>{
+  const x=Math.floor(p.x),y=Math.floor(p.y),z=Math.floor(p.z)
+  if(y===67&&x===0&&[-1,0].includes(z))
+    return {name:'cobblestone',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}
+  if(y===66&&x===0&&[-1,0].includes(z))
+    return {name:'torch',boundingBox:'empty',shapes:[]}
+  return original(p)
+ }
+ const r=selectDirectionalBedStep(bot,{x:0,y:65,z:-14})
+ assert.equal(r.ok,true)
+ assert.deepEqual(r.first,[0,65,-1])
+ assert.equal(r.serverVerified,false)
+})
+
+test('unknown torch collision geometry and truly solid head block both fail closed',()=>{
+ for(const head of [
+  {name:'torch',boundingBox:'block'},
+  {name:'stone',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}
+ ]){
+  const bot=world(),original=bot.blockAt
+  bot.blockAt=p=>{
+   const x=Math.floor(p.x),y=Math.floor(p.y),z=Math.floor(p.z)
+   if(x===0&&[-1,0].includes(z)&&y===66)return head
+   return original(p)
+  }
+  const r=selectDirectionalBedStep(bot,{x:0,y:65,z:-14})
+  assert.equal(r.ok,false)
+ }
 })
