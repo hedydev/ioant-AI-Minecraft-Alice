@@ -1719,7 +1719,7 @@ class AliceBedrockRuntime {
       this.observedBeds.observe(this.bot)
     this.observeHomeTick()
     if(!this.ready()||this.bot.isSleeping||this.job||this.safetyBusy||
-       this.maintenanceBusy)return
+       this.maintenanceBusy||this.pendingBedRequest)return
     // Passive equipment maintenance is inventory-only. It is allowed in the
     // SURVIVE/low-health hold when no emergency action currently owns Alice;
     // otherwise threat_nearby + health<14 would permanently prevent using
@@ -1776,7 +1776,9 @@ class AliceBedrockRuntime {
          !this.failureMemory.blocked('sleep',this.bot.entity.position)){
         this.nextSleepAt=this.clock()+120000
         this.startJob('RECOVER','自主生存',
-          signal=>this.ops.sleepNearby({signal,radius:12,avoidBed,knownPositions:known}),
+          signal=>this.ops.sleepNearby({signal,radius:12,avoidBed,knownPositions:known,
+            requireBdsProof:this.requireBdsAlignedExplore,
+            forbidNavigation:this.requireBdsAlignedExplore,clock:this.clock}),
           {label:'利用已发现的安全床位睡觉',announce:false})
         return
       }
