@@ -20,8 +20,7 @@ function at(bot,x,y,z){
 function clearDoorway(bot,a,d,beyond){
  try{
    if(!fullSupport(at(bot,a[0],a[1]-1,a[2]))||
-      !fullSupport(at(bot,d[0],d[1]-1,d[2]))||
-      !fullSupport(at(bot,beyond[0],beyond[1]-1,beyond[2])))
+      !fullSupport(at(bot,d[0],d[1]-1,d[2])))
      return 'crossing_full_floor_unverified'
    const lower=at(bot,d[0],d[1],d[2])
    const upper=at(bot,d[0],d[1]+1,d[2])
@@ -34,6 +33,10 @@ function clearDoorway(bot,a,d,beyond){
      knownAir(at(bot,a[0],a[1]+2,a[2]))&&
      low.open===true&&low.upper===false&&high.upper===true
    if(raised)return 'crossing_raised_full_block_landing_requires_jump'
+   // A raised full cube itself is the stair support. Only a FLAT
+   // crossing requires a separate lower floor on the far side.
+   if(!fullSupport(at(bot,beyond[0],beyond[1]-1,beyond[2])))
+     return 'crossing_full_floor_unverified'
    if(!knownAir(at(bot,a[0],a[1],a[2]))||
       !knownAir(at(bot,a[0],a[1]+1,a[2]))||
       !knownAir(at(bot,beyond[0],beyond[1],beyond[2]))||
