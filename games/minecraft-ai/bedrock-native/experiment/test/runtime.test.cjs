@@ -938,7 +938,11 @@ test('blocked Alice autonomously opens one nearby observed door without digging 
 
 test('indoor WAIT approaches a four-cell doorway without opening or mining until resurvey',async()=>{
  let now=100000,activations=0,digs=0
- const f=fixture(()=>now),e=new AliceBedrockRuntime({...f,policies:await policies()})
+ let evidenceState={independentSource:'bds_querytarget',independentSamples:3,
+  independentAt:99980,independentPreviousAt:99950,loginAt:90000,lifeEpochAt:null,
+  independentLatestFeet:{x:.5,y:65,z:.5}}
+ const movementEvidence={get:()=>evidenceState}
+ const f=fixture(()=>now),e=new AliceBedrockRuntime({...f,policies:await policies(),movementEvidence})
  f.bot.entity.position=vec(.5,65,.5);f.bot.entity.onGround=true
  f.bot.time={timeOfDay:13000}
  f.api.GoalNear=class{constructor(x,y,z){this.x=x;this.y=y;this.z=z}}
@@ -954,9 +958,9 @@ test('indoor WAIT approaches a four-cell doorway without opening or mining until
    if(x===0&&z===5&&y===65)return {name:'oak_door',boundingBox:'block',
      getProperties:()=>({open_bit:0,upper_block_bit:0})}
    if(x===0&&z>=0&&z<=4)return y===64?
-     {name:'oak_planks',boundingBox:'block'}:
-     {name:'air',boundingBox:'empty'}
-   return {name:'stone_bricks',boundingBox:'block'}
+     {name:'oak_planks',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}:
+     {name:'air',boundingBox:'empty',shapes:[]}
+   return {name:'stone_bricks',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}
  }
  e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
  e.lastHumanAt=0;e.nextIdleAt=0
@@ -964,8 +968,20 @@ test('indoor WAIT approaches a four-cell doorway without opening or mining until
  await e.idleTick()
  assert.equal(e.lastEscapeSurvey?.door?.approach?.steps,4)
  for(let i=0;i<15&&!e.lastEscapeDoorAction;i++)await new Promise(r=>setImmediate(r))
- assert.equal(f.calls.filter(x=>x[0]==='goto').length,4)
- assert.equal(e.lastEscapeDoorAction?.reason,'approach_local_only_server_unverified')
+ assert.equal(f.calls.filter(x=>x[0]==='goto').length,1)
+ assert.equal(e.lastEscapeDoorAction?.reason,'approach_first_cell_awaits_independent_bds_pair')
+ assert.equal(e.pendingDoorApproachStep?.target.z,1)
+ // Local A* completion is still not proof; only TWO new post-input BDS
+ // timestamps in the SAME session can admit the next cell.
+ assert.equal(e.settlePendingDoorApproachOnWitness().state,'waiting')
+ evidenceState={...evidenceState,independentSamples:5,
+   independentPreviousAt:100100,independentAt:100150,
+   independentLatestFeet:{x:.5,y:65,z:1.5}}
+ now=100200
+ const verified=e.settlePendingDoorApproachOnWitness()
+ assert.equal(verified.state,'verified')
+ assert.equal(verified.serverMovementVerified,true)
+ assert.equal(e.pendingDoorApproachStep,null)
  assert.equal(e.lastEscapeDoorAction?.serverMovementVerified,false)
  assert.equal(activations,0,'approach is not automatic door activation')
  assert.equal(digs,0,'constructed room is never mined')
@@ -1098,7 +1114,10 @@ test('already open wood door refuses physical crossing without fresh independent
 
 test('safety-preempted doorway approach does not retain unrelated two-minute idle work cooldown',async()=>{
  let now=100000
- const f=fixture(()=>now),e=new AliceBedrockRuntime({...f,policies:await policies()})
+ const movementEvidence={get:()=>({independentSource:'bds_querytarget',
+    independentSamples:3,independentAt:99980,independentPreviousAt:99950,
+    independentLatestFeet:{x:.5,y:65,z:.5},loginAt:90000,lifeEpochAt:null})}
+ const f=fixture(()=>now),e=new AliceBedrockRuntime({...f,policies:await policies(),movementEvidence})
  f.bot.entity.position=vec(.5,65,.5);f.bot.entity.onGround=true
  f.bot.time={timeOfDay:13000}
  f.api.GoalNear=class{constructor(x,y,z){this.x=x;this.y=y;this.z=z}}
@@ -1113,8 +1132,8 @@ test('safety-preempted doorway approach does not retain unrelated two-minute idl
    if(x===0&&z===5&&y===65)return {name:'oak_door',boundingBox:'block',
      getProperties:()=>({open_bit:0,upper_block_bit:0})}
    if(x===0&&z>=0&&z<=4)return y===64?
-     {name:'oak_planks',boundingBox:'block'}:{name:'air',boundingBox:'empty'}
-   return {name:'stone_bricks',boundingBox:'block'}
+     {name:'oak_planks',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}:{name:'air',boundingBox:'empty',shapes:[]}
+   return {name:'stone_bricks',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}
  }
  e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
  e.lastHumanAt=0;e.nextIdleAt=0
