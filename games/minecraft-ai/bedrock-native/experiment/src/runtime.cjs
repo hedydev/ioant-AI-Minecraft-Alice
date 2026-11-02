@@ -1579,6 +1579,7 @@ class AliceBedrockRuntime {
     this.pendingBedStep=null
     this.lastBedApproachAction={
       status:out.ok?'verified':'unverified',reason:out.reason,
+      action:step.action||'WALK',
       attempted:true,serverMovementVerified:out.ok,
       at:now,serverMovedBlocks:out.ok?
         Math.round(out.travelledBlocks*100)/100:null}
@@ -1676,6 +1677,7 @@ class AliceBedrockRuntime {
     const initialAt=initial?.independentAt
     const initialCount=initial?.independentSamples
     const oneStep={createdAt:now,startedAt:null,epoch:this.epoch+1,
+      action:jump?.ok?'JUMP_UP':'WALK',
       independentAt:initialAt,independentSamples:initialCount,
       loginAt:initial?.loginAt??null,lifeEpochAt:initial?.lifeEpochAt??null,
       from:initialFeet&&{x:initialFeet.x,y:initialFeet.y,z:initialFeet.z},
