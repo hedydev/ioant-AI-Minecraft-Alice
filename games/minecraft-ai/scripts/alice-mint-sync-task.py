@@ -26,6 +26,99 @@ def parse_node_summary(output):
         return None
     return found
 
+
+def parse_failed_test_names(output):
+    # Whitelisted test titles only. Never include assertions, paths, chat,
+    # credentials, private coordinates or stdout/stderr lines.
+    names=[]
+    for line in output.splitlines():
+        line=line.strip()
+        match=re.match(r'^(?:✖|not ok\\s+\\d+\\s+-)\\s*([A-Za-z][A-Za-z0-9 _.,:()/-]{2,105})',line)
+        if not match:
+            continue
+        title=re.sub(r'\\s+\\([0-9.]+ms\\)
+    matches=re.findall(r'Ran (\d+) tests? in [0-9.]+s',output)
+    if not matches:
+        return None
+    return int(matches[-1])
+
+def emit(output,report):
+    if output.is_symlink() or not output.is_dir():
+        raise ValueError('unsafe_output_directory')
+    fd=os.open(output/'mint_sync_result.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL|
+               getattr(os,'O_NOFOLLOW',0),0o600)
+    with os.fdopen(fd,'w',encoding='utf-8') as file:
+        json.dump(report,file,separators=(',',':'))
+        file.write('\n')
+    print(json.dumps({'state':report['state'],'node24':report['mintNode24'],
+                      'localPythonTests':report['macPythonTests'],
+                      'failedTestNames':report['failedTestNames']}))
+
+def selftest():
+    data='\nℹ tests 652\nℹ pass 650\nℹ fail 0\nℹ skipped 2\n'
+    assert parse_node_summary(data)==dict(tests=652,**{'pass':650,'fail':0,'skipped':2})
+    assert parse_node_summary('ℹ tests 2\nℹ pass 1\nℹ fail 1\nℹ skipped 0\n')['fail']==1
+    assert parse_node_summary('tests unclear') is None
+    assert parse_failed_test_names('✖ one-cell door approach (3.50ms)\\n✖ failing tests:\\n')==['one-cell door approach']
+    assert parse_python_summary('Ran 227 tests in 19.1s\n\nOK (skipped=3)')==227
+    print('ALICE_SYNC_REPORT_SELFTEST_PASS')
+
+def sync(output,target):
+    if not TARGET.fullmatch(target):
+        raise ValueError('invalid_explicit_mint_target')
+    project=Path(__file__).resolve().parents[1]
+    repo=project.parents[1]
+    wrapper=project/'scripts/alice-mac.sh'
+    def git(*args):
+        result=subprocess.run(['/usr/bin/git',*args],cwd=repo,
+                              capture_output=True,text=True,timeout=10,check=False)
+        if result.returncode!=0:
+            return None
+        return result.stdout.strip()
+    if (git('branch','--show-current')!='main' or
+        git('status','--porcelain','--untracked-files=no')!= '' or
+        not wrapper.is_file() or wrapper.is_symlink()):
+        raise ValueError('source_preflight_failed')
+    report={'audit':'ALICE_MINT_NONRESTART_SYNC','schemaVersion':1,
+            'action':'alice-mac.sh sync','state':'unknown',
+            'aliceRestarted':False,'bdsRestarted':False,
+            'worldModifiedByTask':False,'consoleCommandSent':False,
+            'macPythonTests':None,'mintNode24':None,'syncExitCode':None,'failedTestNames':[]}
+    env={**os.environ,'ALICE_SSH_TARGET':target}
+    try:
+        proc=subprocess.run(['/bin/bash',str(wrapper),'sync'],cwd=repo,
+                            env=env,capture_output=True,text=True,
+                            timeout=420,check=False)
+        all_output=proc.stdout+'\n'+proc.stderr
+        report['syncExitCode']=proc.returncode
+        report['macPythonTests']=parse_python_summary(all_output)
+        report['mintNode24']=parse_node_summary(all_output)
+        report['failedTestNames']=parse_failed_test_names(all_output)
+        report['state']=('passed' if proc.returncode==0 and
+                         report['mintNode24'] is not None and
+                         report['mintNode24']['fail']==0 else
+                         'failed_or_unverified')
+    except subprocess.TimeoutExpired:
+        report['state']='timeout_unverified'
+    except (OSError,ValueError):
+        report['state']='launch_unavailable'
+    emit(output,report)
+    return 0 if report['state']=='passed' else 1
+
+if __name__=='__main__':
+    if sys.argv[1:]==['--self-test']:
+        selftest()
+    elif len(sys.argv)==4 and sys.argv[1]=='--sync':
+        raise SystemExit(sync(Path(sys.argv[2]),sys.argv[3]))
+    else:
+        raise SystemExit('usage: --self-test | --sync OUTPUT_DIR FIXED_MINT_TARGET')
+,'',match.group(1)).strip()
+        if title.lower().startswith(('failing tests','test at')) or title in names:
+            continue
+        names.append(title[:108])
+        if len(names)>=8:break
+    return names
+
 def parse_python_summary(output):
     matches=re.findall(r'Ran (\d+) tests? in [0-9.]+s',output)
     if not matches:
