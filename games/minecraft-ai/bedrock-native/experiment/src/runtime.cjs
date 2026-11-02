@@ -1604,12 +1604,11 @@ class AliceBedrockRuntime {
        this.bot.health<16||this.bot.game?.dimension!=='overworld'||
        this.bot.entity?.onGround!==true)
       return fail('unsafe_bed_approach_context')
-    // No night fighting/monster pathing: a remote loaded hostile still blocks.
+    // Passive mobs behind a wall are not proof of attack intent. Existing
+    // threat() still preempts; next-cell occupancy is checked *after*
+    // read-only path selection. Do not impose a 12-block proximity combat
+    // rule on movement, nor confuse Minecraft's bed-sleep monster rule.
     const here=this.bot.entity.position
-    if(Object.values(this.bot.entities||{}).some(e=>HOSTILES.has(e?.name)&&
-       e?.position&&[e.position.x,e.position.y,e.position.z].every(Number.isFinite)&&
-       Math.hypot(e.position.x-here.x,e.position.y-here.y,e.position.z-here.z)<12))
-      return fail('hostile_within_twelve_blocks')
     if(!explicitBed&&this.homeBed.summary().status!=='not_verified')return fail('already_has_personal_bed')
     if(this.pendingBedStep)return fail('bed_step_waiting_for_independent_endpoint')
     if(now<this.nextBedApproachStepAt)return fail('one_cell_step_cooldown')
@@ -1638,6 +1637,12 @@ class AliceBedrockRuntime {
       return fail('verified_flat_bed_corridor_unavailable')
     const a=path.waypoints[0],first={x:a?.[0],y:a?.[1],z:a?.[2]}
     const at={x:Math.floor(here.x),y:Math.floor(here.y),z:Math.floor(here.z)}
+    const occupiedNext=Object.values(this.bot.entities||{}).some(e=>
+      HOSTILES.has(e?.name)&&e.position&&
+      [e.position.x,e.position.y,e.position.z].every(Number.isFinite)&&
+      Math.hypot(e.position.x-(first.x+.5),
+        e.position.y-first.y,e.position.z-(first.z+.5))<1.5)
+    if(occupiedNext)return fail('hostile_occupies_next_bed_step')
     // First use the safest possible stair-free horizontal adjacent cell;
     // never ask A* to traverse the remaining 4+ unverified cells in one go.
     if(![first.x,first.y,first.z].every(Number.isSafeInteger)||
@@ -1671,6 +1676,12 @@ class AliceBedrockRuntime {
            this.bot.entity?.onGround!==true)
           return {...result,reason:proof.ok?'bed_one_cell_safety_preempted':proof.reason}
         const fresh=surveyEscape(this.bot,{radius:7,maxNodes:100,bedPositions:selected})
+        if(Object.values(this.bot.entities||{}).some(e=>
+          HOSTILES.has(e?.name)&&e.position&&
+          [e.position.x,e.position.y,e.position.z].every(Number.isFinite)&&
+          Math.hypot(e.position.x-(first.x+.5),
+            e.position.y-first.y,e.position.z-(first.z+.5))<1.5))
+          return {...result,reason:'hostile_occupies_next_bed_step'}
         if(fresh.bedApproach?.waypoints?.[0]?.join(',')!==a.join(','))
           return {...result,reason:'bed_first_cell_changed'}
         const movements=new this.api.Movements(this.bot)
