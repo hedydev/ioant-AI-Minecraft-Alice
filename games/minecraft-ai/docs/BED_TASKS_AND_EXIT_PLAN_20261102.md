@@ -37,3 +37,17 @@
 - 新增纯策略`test/bed_step_witness.test.cjs`7例，`test/bed_directional_step.test.cjs`5例，`test/bed_approach_workflow.test.cjs`5例，`test/bed_runtime_step_contract.test.cjs`4例；改进原`test/bed_task_service.test.cjs`使用真实block/pos和BDS字段而不靠`ready:true`冒充服务端证明。已直接在JS V8装载真实模块（部分外部服务用模拟fixture）检查bed_task10/10、逐格工作流5/5、方向候选5/5、独立终点7/7；额外提取`runtime.cjs`实际步进入口与延迟验收方法，以关闭自主模式的显式控制台指令走完**输入后等待 → 180秒后新BDS双样本终点验收**，结果通过。**不等于在Mint Node24或真实服务器通过**。
 - 出口/门已经有`escape_survey/escape_door_action/escape_crossing`组件，但`crossDoor`现有服务端判定仍依赖包级移动证据，不足以代替独立BDS终点。因此本阶段不把「观察到门打开」自动标记成「已穿门到达床」，下一步需要把真实门侧碰撞和穿门的终点也接入相同的独立BDS多周期验收。
 - OpenClaw Mac源代码同步仍被每项目500份`execution_history_full`挡住，当前GitHub改动**仅源码，没有部署到Alice**。保留原17879世界与原BDS查询预算，不更改玩家当前世界。要做实际验收，先修历史容量并完成合法同步、Node24全回归、客户端加载，再用定向安全格和独立BDS结果逐项验证。
+
+
+## 2026-11-02 第三轮：木门外完整方块阶梯的识别与受控跳跃（仅源码）
+
+用户补充真实环境：原世界 Alice 的房间有**两格高木门**，打开后外面是由完整方块逐级搭建的台阶。普通平地路线不能作为上楼的唯一逻辑。
+
+- 新增`src/one_block_jump.cjs`：识别相邻**完整实心方块上升整整1格**的落脚点，检查当前和目标支撑、头顶至第3格净空、场景已加载、无危险/复杂碰撞/实体占位、不越过STOP/FOLLOW/威胁。仅一次`jump`起跳和最多4个有限时间前进脉冲；离地不再误判为需要重新开始跳跃，沿一格有限走廊监测位置，输入总在`finally`释放。**本地跳跃成功≠服务器确认落点**。不穿门、不破坏、不造桥、不越两格、不支持楼梯方块的复杂碰撞形状。
+- 在`bed_task_service.cjs`和`runtime.resumeBedApproachOnWitness`中接入：玩家明确“去睡觉”且床的道路出现已观测一格上升时，可候选`JUMP_UP`，复用原`scoutStartProof`最新4秒BDS双证据和当前会话生命代次/危险/安全状态。一次物理跳跃后写入`pendingBedStep`，下一轮**全新独立BDS双样本**验证x/y/z升高1格后，才能允许继续下一级或点床。失败或不确定不得自动连跳。
+- `escape_survey.cjs`增加`doorCandidates[].beyondDoorTerrain='observed_one_full_block_rise'`：可以只读观察两格木门**正对面紧接**完整方块上升1格。`escape_crossing.cjs`在门外第一格抬高时返回`crossing_raised_full_block_landing_requires_jump`，不再将它一概当未知墙，也**不会尝试原本仅适合平地的两格穿门动作**。床任务反馈可明确为`bed_route_requires_door_then_jump`。真实门侧、门槛及楼梯需分别验收；门开不等于已穿门、门外有阶梯不等于已爬上去。
+- `src/door_crossing_witness.cjs`要求整个穿门输入结束后重新取得同生命/会话的新独立BDS双样本，验证目标在门另一侧，且不将“门另一侧”视为室外。旧`escape_crossing`基于本地`movementEvidence.progress`和位置包的确认降级为诊断，不再宣称独立服务器成功。`runtime.crossObservedDoor`拒绝未通过新鲜BDS门禁、需要额外接近门的未验证A*路径；普通SCOUT门穿越入口也统一走此安全入口。
+- 修正`runtime.resumeBedApproachOnWitness`原来用`const accepted=startJob()`判断成功的关键bug：正式`startJob`成功时返回**undefined**（任务对象已创建），此前被误判失败。现在查`this.job`和`this.action.source`实际任务身份，专项测试用真实void返回接口覆盖。
+- 控制台`worldRoutine.bedRequest.nextMovementKind`展示WALK/JUMP_UP，标注`awaiting_step`时正在等服务器跳跃落点而不是已成功。
+- 直接装载当前GitHub模块并执行独立V8验证：`one_block_jump.test.cjs`7/7；`bed_jump_runtime.test.cjs`3/3（含companion模式、真实运行时方法摘取、输入后180秒新独立BDS落点）；`door_stair_survey.test.cjs`3/3；实际`validatePassageGeometry`与`crossDoor`在门外立即升高1格时2项拒绝移动检查通过；独立穿门BDS策略`door_crossing_witness.test.cjs`8/8（较早本轮）。**这些不是Mint Node24全量回归，也不是17879实际跳跃记录。**
+- 仍未完成：两格门外第一个台阶恰在门边时，需要先在已打开的门内/门口取得独立BDS站立证据，再单步起跳，不能一次性强行“穿门并跳上台阶”；真实楼梯可能有不同类型方块、宽度、碰撞形状，保留失败诊断，不硬编码现场坐标或降低原证据阈值；后续新版本必须先解决OpenClaw每项目500历史容量，合法同步并完整Node24测试，然后在原17879世界单步验收。
