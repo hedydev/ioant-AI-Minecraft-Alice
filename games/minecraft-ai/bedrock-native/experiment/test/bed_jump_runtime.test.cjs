@@ -3,6 +3,7 @@ const test=require('node:test'),assert=require('node:assert/strict')
 const fs=require('node:fs'),path=require('node:path')
 const {surveyEscape}=require('../src/escape_survey.cjs')
 const {selectDirectionalBedStep}=require('../src/bed_directional_step.cjs')
+const {chooseAdjacentMovement}=require('../src/adjacent_motion_decision.cjs')
 const {scoutStartProof}=require('../src/scout_start_proof.cjs')
 const {candidateOneBlockJump,performOneBlockJump}=require('../src/one_block_jump.cjs')
 const {verifyBedStep}=require('../src/bed_step_witness.cjs')
@@ -12,10 +13,12 @@ const last=code.indexOf('  observeHomeTick(',first)
 assert(first>=0&&last>first)
 const Runtime=new Function('verifyBedStep','scoutStartProof','selectDirectionalBedStep',
  'candidateOneBlockJump','performOneBlockJump','surveyEscape','HOSTILES','selectAdjacentBed',
+ 'chooseAdjacentMovement',
  'return class JumpRuntimeContract {\n'+code.slice(first,last)+'\n}')(
  verifyBedStep,scoutStartProof,selectDirectionalBedStep,
  candidateOneBlockJump,performOneBlockJump,surveyEscape,
- new Set(['zombie','skeleton']),()=>({bed:null,reason:'bed_needs_verified_approach'}))
+ new Set(['zombie','skeleton']),()=>({bed:null,reason:'bed_needs_verified_approach'}),
+ chooseAdjacentMovement)
 const v=(x,y,z)=>({x,y,z,offset(a,b,c){return v(x+a,y+b,z+c)}})
 function fixture({roof=false,blocked=false,companion=true}={}){
  let now=100000,presses=0

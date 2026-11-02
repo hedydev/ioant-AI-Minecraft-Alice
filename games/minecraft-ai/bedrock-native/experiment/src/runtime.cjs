@@ -18,6 +18,7 @@ const {verifyBedStep}=require('./bed_step_witness.cjs')
 const {verifyDoorCrossing}=require('./door_crossing_witness.cjs')
 const {planRaisedDoorThreshold,performRaisedDoorThreshold,verifyRaisedDoorThreshold}=require('./raised_door_threshold.cjs')
 const {selectDirectionalBedStep}=require('./bed_directional_step.cjs')
+const {chooseAdjacentMovement}=require('./adjacent_motion_decision.cjs')
 const {candidateOneBlockJump,performOneBlockJump}=require('./one_block_jump.cjs')
 const {requestBed,resumeBed,cancelBed}=require('./bed_task_service.cjs')
 const {HomeBaseMemory,homeAgenda}=require('./home_base.cjs')
@@ -1637,23 +1638,16 @@ class AliceBedrockRuntime {
     const survey=surveyEscape(this.bot,{radius:7,maxNodes:100,bedPositions:selected})
     const path=survey.bedApproach
     this.lastBedApproach=path||null
-    const pathFlat=path?.status==='observed_route_candidate'&&
-      path.routeComplete===true&&Array.isArray(path.waypoints)&&
-      path.waypoints.length>0&&path.serverVerified===false&&
-      path.permitted===false&&
-      path.waypoints.every((w,i)=>Array.isArray(w)&&w.length===3&&
-        w.every(Number.isSafeInteger)&&w[1]===Math.floor(here.y)&&
-        (i>0?Math.abs(w[0]-path.waypoints[i-1][0])+
-          Math.abs(w[2]-path.waypoints[i-1][2])===1:true))
-    const directional=!pathFlat&&explicitBed?
-      selectDirectionalBedStep(this.bot,bedPosition):null
-    const jump=!pathFlat&&!directional?.ok&&explicitBed?
-      candidateOneBlockJump(this.bot,{toward:{x:bedPosition.x+.5,
-        y:bedPosition.y,z:bedPosition.z+.5}}):null
-    if(!pathFlat&&!directional?.ok&&!jump?.ok)
-      return fail(jump?.reason||directional?.reason||'verified_bed_corridor_unavailable')
-    const a=pathFlat?path.waypoints[0]:directional?.ok?
-      directional.first:[jump.target.x,jump.target.y,jump.target.z]
+    // A single geometry policy decides WALK first, and JUMP_UP only if no
+    // verified flat cell is available and the whole jump arc is clear.
+    const decision=chooseAdjacentMovement(this.bot,{
+      toward:explicitBed?bedPosition:home?.bed,route:path,
+      allowDirectional:!!explicitBed,allowJump:!!explicitBed})
+    if(!decision.ok)return fail(decision.reason)
+    const jump=decision.action==='JUMP_UP'?decision.jump:null
+    const directional=decision.source==='observed_flat_neighbor'?
+      decision.directional:null
+    const a=[decision.target.x,decision.target.y,decision.target.z]
     const first={x:a?.[0],y:a?.[1],z:a?.[2]}
     const at={x:Math.floor(here.x),y:Math.floor(here.y),z:Math.floor(here.z)}
     const occupiedNext=Object.values(this.bot.entities||{}).some(e=>
