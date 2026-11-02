@@ -3175,7 +3175,8 @@ test('fresh aligned pair may arm EXACTLY one flat bed step but never records unv
   assert.equal(source,'自主生存')
   // A real startJob creates both ownership records. Returning true alone
   // used to mask a missing job, and is correctly denied by the runtime.
-  e.job={type,signal:new AbortController().signal}
+  const controller=new AbortController()
+  e.job={type,signal:controller.signal,abort:controller}
   e.action={source}
  }
  const v=e.resumeBedApproachOnWitness()
