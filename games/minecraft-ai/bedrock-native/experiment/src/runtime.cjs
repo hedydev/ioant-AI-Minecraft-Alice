@@ -1588,14 +1588,15 @@ class AliceBedrockRuntime {
   // from IDLE timers, local physics or unsolicited packet corrections.
   // The source provides coordinates, NOT movement permission. Revalidate
   // two new samples, the current world, room, bed and one loaded flat cell.
-  resumeBedApproachOnWitness(){
+  resumeBedApproachOnWitness({bedPosition=null,source='自主生存'}={}){
     const fail=reason=>({state:'held',reason,attempted:false,serverMovementVerified:false})
     if(!scoutStartProof(this.bot,this.movementEvidence,this.clock).ok)
       return fail('fresh_independent_bds_pair_required')
     const now=this.clock(),settings=this.liveBehavior.settings
-    if(!settings.autonomyEnabled||settings.agentMode!=='autonomous'||
-       this.goalPlanner.stoppedByHuman||
-       now-this.lastHumanAt<this.p.autonomy_policy.AUTONOMY_GRACE_MS)
+    const explicitBed=bedPosition&&[bedPosition.x,bedPosition.y,bedPosition.z].every(Number.isSafeInteger)
+    if(this.goalPlanner.stoppedByHuman||
+       !explicitBed&&(!settings.autonomyEnabled||settings.agentMode!=='autonomous'||
+       now-this.lastHumanAt<this.p.autonomy_policy.AUTONOMY_GRACE_MS))
       return fail('human_or_companion_priority')
     if(!this.ready()||this.bot.isSleeping||this.maintenanceBusy||this.job||
        this.safetyBusy||this.threat()||this.core.hasFollowIntent()||
@@ -1609,14 +1610,14 @@ class AliceBedrockRuntime {
        e?.position&&[e.position.x,e.position.y,e.position.z].every(Number.isFinite)&&
        Math.hypot(e.position.x-here.x,e.position.y-here.y,e.position.z-here.z)<12))
       return fail('hostile_within_twelve_blocks')
-    if(this.homeBed.summary().status!=='not_verified')return fail('already_has_personal_bed')
+    if(!explicitBed&&this.homeBed.summary().status!=='not_verified')return fail('already_has_personal_bed')
     if(this.pendingBedStep)return fail('bed_step_waiting_for_independent_endpoint')
     if(now<this.nextBedApproachStepAt)return fail('one_cell_step_cooldown')
     const home=this.homeBase.last
-    if(home?.status!=='observed_indoor_home_candidate'||!home.bed||
-       !Number.isSafeInteger(home.at)||now<home.at||now-home.at>45000)
+    if(!explicitBed&&(home?.status!=='observed_indoor_home_candidate'||!home.bed||
+       !Number.isSafeInteger(home.at)||now<home.at||now-home.at>45000))
       return fail('fresh_indoor_bed_candidate_required')
-    const known=this.observedBeds.nearby(this.bot,{radius:12})
+    const known=explicitBed?[bedPosition]:this.observedBeds.nearby(this.bot,{radius:12})
     const adjacent=selectAdjacentBed(this.bot,known,{radius:12})
     if(adjacent.bed)return fail('bed_already_in_interaction_range')
     if(adjacent.reason!=='bed_needs_verified_approach')
@@ -1624,7 +1625,9 @@ class AliceBedrockRuntime {
     // Use exactly the currently observed candidate bed, not an unrelated
     // occupied/shared bed elsewhere in the loaded chunk.
     const selected=known.filter(p=>[p.x,p.y,p.z].every(Number.isFinite)&&
-      Math.hypot(p.x-home.bed.x,p.y-home.bed.y,p.z-home.bed.z)<=1.5)
+      Math.hypot(p.x-(explicitBed?bedPosition.x:home.bed.x),
+        p.y-(explicitBed?bedPosition.y:home.bed.y),
+        p.z-(explicitBed?bedPosition.z:home.bed.z))<=1.5)
     if(!selected.length)return fail('home_bed_not_loaded')
     const survey=surveyEscape(this.bot,{radius:7,maxNodes:100,bedPositions:selected})
     const path=survey.bedApproach
@@ -1654,7 +1657,7 @@ class AliceBedrockRuntime {
       target:first}
     this.lastBedApproachAction={status:'starting',reason:'fresh_bds_one_cell_admitted',
       attempted:false,serverMovementVerified:false,at:now}
-    const accepted=this.startJob('EXPLORE','自主生存',async signal=>{
+    const accepted=this.startJob('EXPLORE',source,async signal=>{
       let timer=null,abortHandler=null
       let result={ok:false,reason:'bed_one_cell_bds_endpoint_unconfirmed',
         attempted:false,serverMovementVerified:false}
