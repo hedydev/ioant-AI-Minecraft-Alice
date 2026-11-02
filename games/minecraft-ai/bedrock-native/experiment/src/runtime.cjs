@@ -2050,6 +2050,17 @@ class AliceBedrockRuntime {
        !phaseAllowed())
       return {ok:false,reason:'unsafe_scout_start'}
     const start=this.bot.entity.position.clone()
+    // A one-cell witness must not be used to authorize an arbitrary far
+    // GoalNear or a diagonal detour under the guise of a bounded segment.
+    if(this.requireBdsAlignedExplore){
+      const first=candidate.waypoints[0],sx=Math.floor(start.x),
+        sy=Math.floor(start.y),sz=Math.floor(start.z)
+      if(!first||!['x','y','z'].every(k=>Number.isSafeInteger(first[k]))||
+         Math.abs(first.x-sx)+Math.abs(first.z-sz)!==1||
+         Math.abs(first.y-sy)>1)
+        return {ok:false,reason:'scout_first_waypoint_not_adjacent',
+          attempted:false,serverMovementVerified:false}
+    }
     const p=candidate.target
     const checkpoint=this.movementEvidence?.checkpoint?.()||null
     const startingWitness=this.movementEvidence?.get?.()||null

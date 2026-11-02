@@ -7,7 +7,7 @@ function verifyScoutStep(step,obs,local,now){
  const fail=reason=>({ok:false,reason,serverMovementVerified:false})
  if(!step||!finite(step.from)||!finite(step.target)||
     !Number.isSafeInteger(step.startedAt)||!Number.isSafeInteger(step.epoch)||
-    !Number.isSafeInteger(step.independentAt)||
+    !Number.isSafeInteger(step.independentAt)||step.independentAt>=step.startedAt||
     !Number.isInteger(step.independentSamples)||step.independentSamples<2||
     !Number.isSafeInteger(now)||now<step.startedAt||now-step.startedAt>240000)
    return fail('scout_step_context_or_deadline_invalid')

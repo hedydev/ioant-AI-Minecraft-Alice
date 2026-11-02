@@ -44,6 +44,7 @@ test('cannot fabricate movement from current local position',()=>{
 })
 test('owner, timestamp, deadline must remain valid',()=>{
  assert.equal(verifyScoutStep({...start,epoch:NaN},observation,local,20700).ok,false)
+ assert.equal(verifyScoutStep({...start,independentAt:21000},observation,local,20700).ok,false)
  assert.equal(verifyScoutStep(start,observation,local,260001).ok,false)
  assert.equal(verifyScoutStep(start,{...observation,independentAt:20600,independentPreviousAt:20900},local,20700).ok,false)
 })

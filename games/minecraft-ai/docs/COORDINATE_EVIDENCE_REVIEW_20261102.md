@@ -1,3 +1,16 @@
+## 2026-11-02 — Safe one-waypoint admission and post-input BDS endpoint (source staged)
+
+The current-life journal proved repeated `navigation_scout_client_server_position_diverged` rejections AFTER a locally completed waypoint. Previously `boundedScout` iterated all proposed waypoints and called guarded `pathfinder.goto` for each against the **same pre-input independent BDS pair**. This is a control-flow mismatch rather than proof that the server rejected the first cell.
+
+The change in `src/runtime.cjs`, `src/main.cjs` and new `src/scout_step_witness.cjs` now:
+- Requires the FIRST waypoint to be adjacent (one horizontal cell and at most one vertical level) before any input; Pathfinder remains behind the original 4-second / 0.75-block independent starting proof.
+- Runs **one** Pathfinder waypoint per admitted BDS baseline, then returns `scout_step_awaiting_new_bds_pair` with a pending record, never promoting local completion to success, failure memory or a completed multi-cell route.
+- Allows the next waypoint or another optional EXPLORE/GATHER only AFTER two **new independent current-life BDS observations**, both timestamped after the previous input ended and within 4 seconds of the witness callback, match the intended cell, show actual movement (0.25–2 blocks) and have at most 0.75 block local-vs-BDS drift. If only the first waypoint of a multi-cell route is confirmed, the original full route remains **unverified** and the world must be resurveyed.
+- Rejects expired (240 s), STOP/FOLLOW/epoch/life changes, wrong endpoints, stale or single observations; preserves safety priority, BDS query budget and original server. `cancelActive` invalidates pending scout evidence. No extra BDS query or world mutation.
+- The pre-existing legacy `movementEvidence.progress` endpoint path is not used to accept these new production one-cell scout steps; prior packet-mixed historical outcomes remain historical, not new BDS-certified navigation.
+
+Real Mac Python + Mint Node24 regression of the first staged patch (commit `4d6d91b`) passed **310 Python / 917 Node24 (917 pass, 0 fail)** after correcting one flawed stale-time test case. This addendum includes an additional pre-input adjacency and source-timestamp validation that must also pass full regression. **No live Alice reload, game movement, door crossing, bed approach or return-home acceptance is claimed.** The live client remains under the previously authorized lifecycle; source sync is not runtime deployment.
+
 # Coordinate evidence review
 
 ## 2026-11-02 — Coordinate acceptance review: navigation freshness is not the observer window
