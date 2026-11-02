@@ -194,20 +194,19 @@ async function crossDoor(bot,door,{
      if(!movement().arrived)throw Error('crossing_local_endpoint_unverified')
    }
    await Promise.race([walk(),deadline])
-   const evidence=movementEvidence?.progress?.(checkpoint)||{confirmed:false,reason:'no_server_position_delta'}
-   const server=movementEvidence?.get?.()
-   const p=server?.latestFeet
-   const age=Number.isFinite(server?.lastAt)?clock()-server.lastAt:Infinity
-   const serverNear=p&&[p.x,p.y,p.z].every(Number.isFinite)&&
-     Math.hypot(p.x-b[0]-.5,p.y-b[1],p.z-b[2]-.5)<=1.1
-   const confirmed=Boolean(evidence.confirmed===true&&age>=0&&age<=5000&&serverNear)
-   return {ok:confirmed,attempted:attempted||lanePulses>0,door:initial.door,beyond:initial.beyond,pulses,
-     doorLane:{reason:lane.reason||'observed_collision_shape',alignmentPulses:lanePulses,
-       aligned:laneAligned,axis:lane.ok?lane.axis:null},
-     serverMovementVerified:confirmed,
-     reason:confirmed?'door_passage_server_confirmed_room_exit_unverified':
-       'door_passage_local_only_server_unverified',
-     serverEvidenceReason:evidence.reason||null}
+   // Packet-level self-position is diagnostic ONLY. It cannot establish
+   // an independent BDS position after this action or certify a room exit.
+   const packet=movementEvidence?.progress?.(checkpoint)||
+     {confirmed:false,reason:'no_server_position_delta'}
+   return {ok:false,attempted:attempted||lanePulses>0,
+     door:initial.door,beyond:initial.beyond,pulses,
+     doorLane:{reason:lane.reason||'observed_collision_shape',
+       alignmentPulses:lanePulses,aligned:laneAligned,
+       axis:lane.ok?lane.axis:null},
+     serverMovementVerified:false,roomExitVerified:false,
+     packetMotionObserved:packet.confirmed===true,
+     reason:'door_passage_local_only_server_unverified',
+     serverEvidenceReason:'independent_bds_endpoint_pending'}
  }catch(err){
    const reason=String(err?.message||'crossing_failed').slice(0,85)
    const diagnostic=/^crossing_(no_local_forward_progress|local_endpoint_unverified|outsi?de_bounded_corridor|lateral_alignment_unverified|collision_lane_blocked)$/.test(reason)?
