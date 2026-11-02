@@ -147,12 +147,19 @@ async function refreshCommandState(){
     setText('world-home-route',!run?'路线状态未知':
       home.exitVerified===true&&home.returnVerified===true?'出门和返程已有独立验证记录':
       '出门及返程尚未通过独立 BDS 位移验证');
-    const bedStep=routine.bedApproachAction||{};
+    const bedStep=routine.bedApproachAction||{},bedRequest=routine.bedRequest||null;
+    const waitingEndpoint=bedRequest?.stage==='awaiting_step';
+    const waitingStart=bedRequest?.stage==='approach'||bedRequest?.stage==='interact';
     setText('world-bed-step',!run?'状态未知':
+      waitingEndpoint?'已尝试单格 · 等待新独立 BDS 终点':
+      waitingStart?'床任务排队 · 等待起步证明':
       bedStep.serverMovementVerified===true?'BDS 已验证单步移动':
+      bedStep.status==='awaiting_bds_endpoint'?'已尝试单格 · 服务端尚未验收':
       bedStep.attempted===true?'已尝试，服务端位移未确认':
       bedStep.status==='blocked'?'安全条件阻止启动':'尚未开始单步移动');
     setText('world-bed-step-detail',!run?'等待在线':
+      waitingEndpoint?'每一格都必须有移动后的新独立 BDS 双样本确认，才能走下一格':
+      waitingStart?'仅已观察到的安全平地候选；没有新鲜BDS双样本不会移动':
       bedStep.serverMovementVerified===true?'来自移动后的新鲜独立 BDS 见证':
       bedStep.attempted===true?'不能以本地走动或输入计数判定成功':
       '必须有两条4秒内新鲜 BDS 样本及安全站立格');
@@ -161,6 +168,8 @@ async function refreshCommandState(){
       bedPlan.status==='observed_route_candidate'?
       '发现'+bedPlan.steps+'步只读路线候选（尚不可执行）':
       bedPlan.status==='already_in_reach'?'已在床互动范围':
+      bedPlan.status==='observed_single_flat_bedward_cell'?
+        '发现远床 · 仅下一格平地候选':
       '未找到已加载的安全候选路线');
     setText('world-bed-approach-detail',!run?'等待在线':
       bedPlan.status==='observed_route_candidate'?
