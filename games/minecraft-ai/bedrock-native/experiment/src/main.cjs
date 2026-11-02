@@ -411,8 +411,8 @@ async function main(args=process.argv.slice(2)){
     // autonomous bed work. A newly accepted BDS witness admits only the
     // requested already-adjacent bed, with original 4s/0.75 gates intact.
     const requestedBed=runtime.resumeBedRequestOnWitness()
-    if(requestedBed.state==='started'){
-      runtimeLogger.log('[Alice bed] explicit witnessed bed interaction:',
+    if(requestedBed.state==='started'||requestedBed.state==='approaching'){
+      runtimeLogger.log('[Alice bed] explicit witnessed bed task:',
         JSON.stringify({reason:requestedBed.reason}))
       return
     }
