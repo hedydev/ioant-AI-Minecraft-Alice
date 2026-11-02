@@ -56,6 +56,81 @@ def summarize(view):
         if any(v is None for v in checks):return '?'
         if not all(checks):return '#'
         return '+'
+    # A center cell being air does not prove the 0.6-wide avatar can pass
+    # between corners. This *read-only* analysis sweeps its full horizontal
+    # footprint across every proposed center-to-center WALK, checking nine
+    # support probes and two body-height layers. No path is an action permit.
+    hazards=('lava','water','fire','magma','cactus','campfire','powder_snow','sweet_berry_bush')
+    def boxes_at(x,y,z):
+        b=block(x,y,z)
+        if b is None or b['box']=='unverified' or not isinstance(b['shapes'],list):
+            return None
+        if any(t in b['name'] for t in hazards) or b['name'].endswith(('_door','trapdoor')):
+            return None
+        if b['box']=='empty':
+            return [] if not b['shapes'] else None
+        return b['shapes'] if b['box']=='block' and b['shapes'] else None
+    def swept_flat_step(ax,az,bx,bz):
+        if abs(ax-bx)+abs(az-bz)!=1:
+            return False
+        for i in range(9):
+            px=ax+.5+(bx-ax)*i/8
+            pz=az+.5+(bz-az)*i/8
+            for dx in (-.29,0,.29):
+                for dz in (-.29,0,.29):
+                    fx,fz=px+dx,pz+dz
+                    ix,iz=int(fx//1),int(fz//1)
+                    supports=boxes_at(ix,-1,iz)
+                    if supports is None or not any(
+                        abs(-1+shape[4])<.015 and
+                        shape[0]-.0001<=fx-ix<=shape[3]+.0001 and
+                        shape[2]-.0001<=fz-iz<=shape[5]+.0001
+                        for shape in supports):
+                        return False
+            for ix in range(int((px-.3)//1),int((px+.3)//1)+1):
+                for iz in range(int((pz-.3)//1),int((pz+.3)//1)+1):
+                    for iy in (0,1):
+                        solids=boxes_at(ix,iy,iz)
+                        if solids is None:
+                            return False
+                        if any(ix+sh[0]<px+.3-.001 and ix+sh[3]>px-.3+.001 and
+                               iz+sh[2]<pz+.3-.001 and iz+sh[5]>pz-.3+.001 and
+                               iy+sh[1]<1.8-.001 and iy+sh[4]>.001 for sh in solids):
+                            return False
+        return True
+    def door_walk_survey(doors):
+        # Finite BFS, shortest path from the CURRENT nominal cell center.
+        # This is not a bot position, BDS witness, or movement authorization.
+        queue=[(0,0,[])]
+        seen={(0,0)}
+        for x,z,route in queue:
+            if len(route)>=8 or len(queue)>220:
+                continue
+            for dx,dz in ((1,0),(-1,0),(0,1),(0,-1)):
+                nx,nz=x+dx,z+dz
+                if not (-6<=nx<=6 and -6<=nz<=6) or (nx,nz) in seen:
+                    continue
+                if not swept_flat_step(x,z,nx,nz):
+                    continue
+                seen.add((nx,nz))
+                queue.append((nx,nz,route+[[nx,nz]]))
+        targets=[]
+        for dx,dz in doors[:2]:
+            routes=[(x,z,route) for x,z,route in queue
+                    if abs(x-dx)+abs(z-dz)==1]
+            routes.sort(key=lambda row:len(row[2]))
+            if routes:
+                x,z,route=routes[0]
+                targets.append({'door':[dx,dz],'approach':[x,z],
+                                'centerlineSteps':len(route),'centerline':route,
+                                'bdsVerified':False,'executable':False})
+        return {'source':'read_only_client_collision_cache',
+                'movementPermitted':False,'serverMovementVerified':False,
+                'nominalCenterOnly':True,'actualFootPositionUnverified':True,
+                'avatarWidth':0.6,'avatarHeight':1.8,
+                'reachableCenters':len(queue),'firstCellCandidates':
+                    [[x,z] for x,z,route in queue if len(route)==1][:4],
+                'doorApproaches':targets}
     doorpoints=[]
     for x in range(-7,8):
         for z in range(-7,8):
@@ -77,6 +152,7 @@ def summarize(view):
     return {'state':'observed','source':'client_chunk_cache_not_bds',
        'bdsEndpointVerified':False,'movementPermitted':False,
        'collisionRadius':7,'records':len(cells),'unknown':0,
+       'sweptDoorSurvey':door_walk_survey(doorpoints),
        'doorColumns':[{'dx':x,'dz':z,
                        'lower':block(x,0,z),'upper':block(x,1,z)}
                       for x,z in doorpoints[:2]],
@@ -120,6 +196,8 @@ def selftest():
     compile(remote(),'<readonly-original-world>','exec')
     assert 'querytarget' not in REMOTE and 'restart' not in REMOTE
     assert summarize({'palette':['air'],'collisionSurvey':None})['state']=='not_published'
+    assert 'door_walk_survey(doorpoints)' in inspect.getsource(summarize)
+    assert 'swept_flat_step' in remote()
     print('ALICE_COLLISION_SHAPE_READONLY_SELFTEST_PASS')
 def run(out):
     out=Path(out)
