@@ -5,6 +5,7 @@ const {selectAdjacentBed,useBedForSpawn}=require('./bed_spawnpoint.cjs')
 const {scoutStartProof}=require('./scout_start_proof.cjs')
 const {environment}=require('./world_routine.cjs')
 const {surveyEscape}=require('./escape_survey.cjs')
+const {selectDirectionalBedStep}=require('./bed_directional_step.cjs')
 const {outcome,message}=require('./bed_request_outcome.cjs')
 const TIMEOUT=240000
 const TYPES=new Set(['sleep','set_spawnpoint'])
@@ -92,6 +93,26 @@ function requestBed(r,action,source,report=null){
     needsApproach=true
    }
   }catch{r.lastBedApproach=null}
+  if(!bedPosition){
+   // Loaded bed outside the seven-cell local corridor: a one-cell observed
+   // flat direction is still a useful *candidate*. Only the BDS-witnessed
+   // executor can issue input, then the next independent pair must accept
+   // the endpoint. A wall/door/step yields no candidate.
+   const sorted=positions.slice().sort((a,b)=>
+     Math.hypot(a.x-r.bot.entity.position.x,a.z-r.bot.entity.position.z)-
+     Math.hypot(b.x-r.bot.entity.position.x,b.z-r.bot.entity.position.z))
+   for(const bed of sorted){
+    const next=selectDirectionalBedStep(r.bot,bed)
+    if(next.ok){
+     bedPosition={x:bed.x,y:bed.y,z:bed.z}
+     needsApproach=true
+     r.lastBedApproach={status:'observed_single_flat_bedward_cell',
+       bed:[bed.x,bed.y,bed.z],waypoints:[next.first],
+       steps:1,routeComplete:false,permitted:false,serverVerified:false}
+     break
+    }
+   }
+  }
  }
  if(!bedPosition)return reply('rejected',choice.reason,message({reason:choice.reason}))
  const now=r.clock(),ev=r.movementEvidence?.get?.()
