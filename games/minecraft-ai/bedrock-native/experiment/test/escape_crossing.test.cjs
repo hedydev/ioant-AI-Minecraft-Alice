@@ -16,6 +16,9 @@ function room({floor=true,outside=true,upper=true,open=true,move=true,
    if(x!==0||z<0||z>2)return {name:'stone_bricks',boundingBox:'block'}
    if(raisedBeyond&&z===2&&y===65)
      return {name:'stone',boundingBox:'block'}
+   // One-high jump must also have three known-clear overhead cells.
+   if(raisedBeyond&&y>=67&&y<=68)
+     return {name:'air',boundingBox:'empty'}
    if(y===64)return {name:(z===2&&!floor)?'air':'oak_planks',
       boundingBox:(z===2&&!floor)?'empty':'block'}
    if(z===1&&y===65)return {name:'oak_door',boundingBox:'block',

@@ -3,6 +3,7 @@ const test=require('node:test'),assert=require('node:assert/strict')
 const fs=require('node:fs'),path=require('node:path')
 const {scoutStartProof}=require('../src/scout_start_proof.cjs')
 const {selectDirectionalBedStep}=require('../src/bed_directional_step.cjs')
+const {candidateOneBlockJump,performOneBlockJump}=require('../src/one_block_jump.cjs')
 const {verifyBedStep}=require('../src/bed_step_witness.cjs')
 const {surveyEscape}=require('../src/escape_survey.cjs')
 // Actual controller methods are isolated, not rewritten as optimistic mocks.
@@ -12,10 +13,12 @@ const first=text.indexOf('  settlePendingBedStepOnWitness(){')
 const last=text.indexOf('  observeHomeTick(',first)
 assert(first>=0&&last>first)
 const Runtime=new Function('scoutStartProof','selectDirectionalBedStep','verifyBedStep',
- 'surveyEscape','HOSTILES','selectAdjacentBed',
+ 'surveyEscape','HOSTILES','selectAdjacentBed','candidateOneBlockJump',
+ 'performOneBlockJump',
  'return class BedMethodContract {\n'+text.slice(first,last)+'\n}')(
  scoutStartProof,selectDirectionalBedStep,verifyBedStep,surveyEscape,
- new Set(['zombie','skeleton']),()=>({bed:null,reason:'bed_needs_verified_approach'}))
+ new Set(['zombie','skeleton']),()=>({bed:null,reason:'bed_needs_verified_approach'}),
+ candidateOneBlockJump,performOneBlockJump)
 const vec=(x,y,z)=>({x,y,z,offset:(a,b,c)=>vec(x+a,y+b,z+c)})
 function fixture({autonomous=false,blocked=false}={}){
  let now=100000,inputs=0

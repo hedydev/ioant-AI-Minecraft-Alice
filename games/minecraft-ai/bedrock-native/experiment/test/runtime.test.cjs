@@ -925,7 +925,8 @@ test('blocked Alice autonomously opens one nearby observed door without digging 
  assert.equal(digs,0)
  assert.equal(f.calls.some(x=>x[0]==='goto'),false,
    'blocked door exit must be rejected BEFORE any approach movement')
- assert.equal(e.lastEscapePassageAction?.reason,'crossing_opposite_side_blocked_or_unknown')
+ // With no current independent BDS admission, OPEN is observable but crossing is not.
+ assert.equal(e.lastEscapePassageAction?.reason,'scout_bds_position_unavailable')
  assert.equal(e.lastEscapePassageAction?.attempted,false)
  assert.equal(e.lastEscapeDoorAction?.reason,'door_open_observed_exit_unverified')
  assert.equal(e.lastEscapeDoorAction?.serverMovementVerified,false)
@@ -1038,14 +1039,16 @@ test('enclosed Alice opens a known wooden door and attempts observed passage wit
  assert.equal(opens,1,'do not click repeatedly or close the door')
  assert.equal(digs,0,'never dig or place parts of a house')
  assert.equal(f.calls.some(x=>x[0]==='goto'),false,'door crossing must not auto-toggle via pathfinder')
- assert(f.calls.filter(x=>x[0]==='control'&&x[1]==='forward'&&x[2]===true).length>=1)
+ assert.equal(f.calls.filter(x=>x[0]==='control'&&x[1]==='forward'&&x[2]===true).length,0,
+   'packet-only position must never authorize a door crossing')
  assert.equal(e.lastEscapeDoorAction?.openObserved,true)
- assert.equal(e.lastEscapePassageAction?.serverMovementVerified,true)
+ assert.equal(e.lastEscapePassageAction?.serverMovementVerified,false)
+ assert.equal(e.lastEscapePassageAction?.reason,'scout_bds_position_unavailable')
  assert.equal(e.lastEscapePassageAction?.roomExitVerified,false,'door passage is not guaranteed outdoors')
  await new Promise(r=>setImmediate(r))
  const jobs=f.calls.filter(x=>x[0]==='log'&&x[1]==='[Alice Bedrock] verified job result:')
  assert(jobs.some(x=>String(x[2]).includes('"doorOpenObserved":true')&&
-   String(x[2]).includes('"serverMovementVerified":true')),
+   String(x[2]).includes('"serverMovementVerified":false')),
    'overall job is evaluated by doorway passage, not just activation')
  e.stop()
 })
@@ -1735,7 +1738,7 @@ test('A* local first waypoint permits only a separately verified adjacent failed
  e.job=null;e.stop()
 })
 
-test('A* failed next voxel being an OPEN Bedrock wooden door uses existing guarded crossing',async()=>{
+test('A* failed next voxel being an OPEN Bedrock wooden door refuses input without independent BDS proof',async()=>{
  const f=fixture(),pressed=[],interacted=[]
  f.bot.entity.position=vec(.5,65,.5);f.bot.entity.onGround=true
  f.bot.time={timeOfDay:6000}
@@ -1766,12 +1769,13 @@ test('A* failed next voxel being an OPEN Bedrock wooden door uses existing guard
  const result=await e.boundedScout(candidate,signal)
  assert.equal(result.serverMovementVerified,false)
  assert.equal(result.ok,false)
- assert(pressed.some(x=>x[0]==='forward'&&x[1]===true),
-    'only observed OPEN door passage may issue a bounded input')
+ assert.equal(pressed.some(x=>x[0]==='forward'&&x[1]===true),false,
+    'even an observed OPEN door never bypasses independent BDS start proof')
  assert.equal(interacted.length,0,'an open door must never be toggled closed')
- assert(pressed.some(x=>x[0]==='forward'&&x[1]===false))
+ assert.equal(pressed.some(x=>x[0]==='forward'&&x[1]===true),false)
  assert(f.calls.some(x=>x[1]==='[Alice exploration] scout door passage:'))
  assert.equal(e.lastEscapePassageAction.door.join(','),'2,65,0')
+ assert.equal(result.reason,'scout_bds_position_unavailable')
  e.job=null;e.stop()
 })
 test('A* failed wooden door with CLOSED state or blocked far side never sends forward input',async()=>{
@@ -1802,7 +1806,8 @@ test('A* failed wooden door with CLOSED state or blocked far side never sends fo
    assert.equal(result.attempted,false)
    assert.equal(result.serverMovementVerified,false)
    assert(!keys.some(([k,v])=>k==='forward'&&v))
-   assert.match(result.reason,/crossing_(open_door_state_unverified|opposite_side_blocked_or_unknown)/)
+   // The upstream independent-BDS entry gate is stricter than geometry inspection.
+   assert.equal(result.reason,'scout_bds_position_unavailable')
    e.job=null;e.stop()
  }
 })
@@ -3164,7 +3169,11 @@ test('fresh aligned pair may arm EXACTLY one flat bed step but never records unv
  let started=0,task=null
  e.startJob=(type,source,work,options)=>{
   started++;task=work;assert.equal(type,'EXPLORE')
-  assert.equal(source,'自主生存');return true
+  assert.equal(source,'自主生存')
+  // A real startJob creates both ownership records. Returning true alone
+  // used to mask a missing job, and is correctly denied by the runtime.
+  e.job={type,signal:new AbortController().signal}
+  e.action={source}
  }
  const v=e.resumeBedApproachOnWitness()
  assert.equal(v.state,'started',JSON.stringify(v))
@@ -3172,7 +3181,7 @@ test('fresh aligned pair may arm EXACTLY one flat bed step but never records unv
  assert.equal(e.resumeBedApproachOnWitness().reason,'one_cell_step_cooldown')
  assert.equal(started,1)
  assert.equal(e.lastBedApproachAction.attempted,false)
- const result=await task(new AbortController().signal)
+ const result=await task(e.job.signal)
  assert.equal(result.ok,false)
  assert.equal(result.serverMovementVerified,false)
  assert(f.calls.some(v=>v[0]==='goto'))

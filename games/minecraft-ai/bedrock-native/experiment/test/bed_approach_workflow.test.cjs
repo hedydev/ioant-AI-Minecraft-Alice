@@ -20,7 +20,8 @@ function world({walled=false,doorway=false}={}){
    if(doorway&&x===1&&z!==0&&Math.abs(z)<=7&&y===65)
     return {name:'stone',boundingBox:'block',position:vec(x,y,z)}
    if(y===64)return {name:'stone',boundingBox:'block',position:vec(x,y,z)}
-   if(walled&&y===65&&x>=1&&x<=2&&Math.abs(z)<=7)
+   // A genuine two-block-height solid wall is not a safe one-block step.
+   if(walled&&(y===65||y===66)&&x>=1&&x<=2&&Math.abs(z)<=7)
     return {name:'stone',boundingBox:'block',position:vec(x,y,z)}
    return {name:'air',boundingBox:'empty',position:vec(x,y,z)}
   }}
