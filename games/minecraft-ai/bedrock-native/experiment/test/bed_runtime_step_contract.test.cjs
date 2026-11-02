@@ -100,3 +100,41 @@ test('manual task cannot override active STOP, danger or human FOLLOW',()=>{
   assert.equal(f.inputs(),0)
  }
 })
+
+// Contract: no HOME prerequisite for safe *autonomous* first-cell bed approach.
+test('autonomous bed approach requires current independent witness, no pending job and loaded free bed',()=>{
+ const f=fixture({autonomous:true}),r=f.r
+ r.lastHumanAt=-1000000
+ r.homeBed.summary=()=>({status:'not_verified'})
+ const b={x:14,y:65,z:0}
+ r.observedBeds={nearby:()=>[b]}
+ r.bot.parseBedMetadata=()=>({occupied:0})
+ r.bot.blockAt=(p)=>Math.floor(p.x)===14&&Math.floor(p.y)===65&&Math.floor(p.z)===0?
+   {name:'red_bed',position:vec(14,65,0)}:
+   Math.floor(p.y)===64?{name:'stone',boundingBox:'block'}:
+   {name:'air',boundingBox:'empty'}
+ assert.equal(r.resumeAutonomousBedApproachOnWitness().state,'started')
+ assert.equal(r.job.type,'EXPLORE')
+ const active=r.resumeAutonomousBedApproachOnWitness()
+ assert.equal(active.state,'held')
+ assert.equal(active.reason,'autonomous_bed_other_priority')
+})
+test('autonomous bed approach never overrides STOP/FOLLOW, active scout or unknown BDS',()=>{
+ for(const block of ['stop','follow','scout','proof']){
+  const f=fixture({autonomous:true}),r=f.r
+  r.lastHumanAt=-1000000
+  r.homeBed.summary=()=>({status:'not_verified'})
+  r.observedBeds={nearby:()=>[{x:14,y:65,z:0}]}
+  r.bot.parseBedMetadata=()=>({occupied:0})
+  r.bot.blockAt=(p)=>Math.floor(p.x)===14&&Math.floor(p.y)===65&&Math.floor(p.z)===0?
+    {name:'red_bed',position:vec(14,65,0)}:
+    Math.floor(p.y)===64?{name:'stone',boundingBox:'block'}:
+    {name:'air',boundingBox:'empty'}
+  if(block==='stop')r.goalPlanner.stoppedByHuman=true
+  if(block==='follow')r.core.hasFollowIntent=()=>true
+  if(block==='scout')r.pendingScoutStep={epoch:1}
+  if(block==='proof')r.movementEvidence.get=()=>null
+  assert.equal(r.resumeAutonomousBedApproachOnWitness().state,'held')
+  assert.equal(r.job,undefined)
+ }
+})

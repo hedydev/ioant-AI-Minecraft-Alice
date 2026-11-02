@@ -448,9 +448,16 @@ async function main(args=process.argv.slice(2)){
       runtimeLogger.warn('[Alice home] bed check:',String(err?.message||err).slice(0,70)))
     // A verified pair lasts just four seconds. The original autonomous
     // decision timer runs every five seconds, so it may miss that window.
-    // After giving the higher-priority bed/respawn check its turn, re-run
-    // the ORIGINAL fail-closed idleTick once. No direct input or goal override.
+    // After giving the higher-priority bed/respawn check its turn, permit
+    // one separately guarded step TOWARD a loaded free bed, never a blind
+    // long path. Then retain the original fall-closed scout admission.
     Promise.resolve(bedCheck).then(()=>{
+      const bedMove=runtime.resumeAutonomousBedApproachOnWitness()
+      if(bedMove.state==='started'){
+        runtimeLogger.log('[Alice home] witnessed short bed approach:',
+          JSON.stringify(bedMove))
+        return
+      }
       // Only a NEW BDS witness that already VERIFIED the door threshold
       // can admit one isolated headroom-checked raised landing. A later BDS
       // pair is still mandatory to mark its destination complete.
@@ -471,11 +478,6 @@ async function main(args=process.argv.slice(2)){
       else witnessIdleResume.request()
     }).catch(err=>
       runtimeLogger.warn('[Alice autonomy] witness idle check:',String(err?.message||err).slice(0,70)))
-    // Only a genuine newly ingested independent witness may initiate one
-    // short flat bed-approach step; the full two-sample 4s gate is rechecked.
-    const bedMove=runtime.resumeBedApproachOnWitness()
-    if(bedMove.state==='started')
-      runtimeLogger.log('[Alice home] witnessed short bed approach:',JSON.stringify(bedMove))
   }
   stableWitness=live?attachStableActionbarWitness(bot._client,{
     evidence:movementEvidence,name:()=>bot.username,

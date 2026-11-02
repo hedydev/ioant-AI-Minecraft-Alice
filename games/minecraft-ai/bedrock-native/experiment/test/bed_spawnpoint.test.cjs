@@ -22,6 +22,15 @@ test('bed reach + personal server packet set respawn without nighttime requireme
  assert.equal(r.serverConfirmed,true)
  assert.equal(x.client.listenerCount('set_spawn_position'),0)
 })
+test('loaded bed at 15 blocks is still observed for a bounded one-step approach',()=>{
+ const {bot}=mock()
+ bot.entity.position={x:0.5,y:64,z:0.5,
+   offset(a,b,c){return {x:this.x+a,y:this.y+b,z:this.z+c}}}
+ const far={x:15,y:64,z:0}
+ const selected=selectAdjacentBed(bot,[far],{radius:16})
+ assert.equal(selected.bed,null)
+ assert.equal(selected.reason,'bed_needs_verified_approach')
+})
 test('world spawn, stale witness, unreachable bed never mark spawn',async()=>{
  const a=mock();a.bot.activateBlock=async()=>a.client.emit('set_spawn_position',{
   spawn_type:'world',player_position:{x:1,y:64,z:1}})

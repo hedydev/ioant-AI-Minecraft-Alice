@@ -1542,8 +1542,8 @@ class AliceBedrockRuntime {
        this.homeBed.summary().status==='server_confirmed_current_session')return false
     // Observe bed reach before independent BDS admission; neither observation
     // authorizes an interaction or bypasses the existing movement safety gate.
-    const positions=this.observedBeds.nearby(this.bot,{radius:12})
-    const pick=selectAdjacentBed(this.bot,positions,{radius:12})
+    const positions=this.observedBeds.nearby(this.bot,{radius:16})
+    const pick=selectAdjacentBed(this.bot,positions,{radius:16})
     // A local-only route is a diagnostic, never a replacement for BDS proof.
     const survey=pick.reason==='bed_needs_verified_approach'?
       surveyEscape(this.bot,{radius:7,maxNodes:100,bedPositions:positions}):null
@@ -1637,13 +1637,14 @@ class AliceBedrockRuntime {
     const here=this.bot.entity.position
     if(!explicitBed&&this.homeBed.summary().status!=='not_verified')return fail('already_has_personal_bed')
     if(this.pendingBedStep)return fail('bed_step_waiting_for_independent_endpoint')
+    if(this.pendingScoutStep||this.pendingDoorCrossing)return fail('other_independent_movement_in_flight')
     if(now<this.nextBedApproachStepAt)return fail('one_cell_step_cooldown')
     const home=this.homeBase.last
     if(!explicitBed&&(home?.status!=='observed_indoor_home_candidate'||!home.bed||
        !Number.isSafeInteger(home.at)||now<home.at||now-home.at>45000))
       return fail('fresh_indoor_bed_candidate_required')
     const known=explicitBed?[bedPosition]:this.observedBeds.nearby(this.bot,{radius:12})
-    const adjacent=selectAdjacentBed(this.bot,known,{radius:12})
+    const adjacent=selectAdjacentBed(this.bot,known,{radius:explicitBed?16:12})
     if(adjacent.bed)return fail('bed_already_in_interaction_range')
     if(adjacent.reason!=='bed_needs_verified_approach')
       return fail(adjacent.reason)
@@ -1801,6 +1802,49 @@ class AliceBedrockRuntime {
     }
     return {state:'started',reason:'bed_first_cell_started',
       attempted:true,serverMovementVerified:false}
+  }
+  // Autonomous spawnpoint preparation is deliberately distinct from
+  // user-ordered bed tasks. An observed loaded bed may be up to 16 cells
+  // away, but can admit only ONE safe adjacent cell per FRESH BDS pair.
+  // No prior HOME/respawn confirmation is required to begin this approach:
+  // those confirmations are the desired result, not an admission prerequisite.
+  resumeAutonomousBedApproachOnWitness(){
+    const hold=reason=>({state:'held',reason})
+    const mode=this.liveBehavior?.settings
+    if(!mode?.autonomyEnabled||mode.agentMode!=='autonomous'||
+       this.goalPlanner?.stoppedByHuman||
+       this.clock()-this.lastHumanAt<this.p.autonomy_policy.AUTONOMY_GRACE_MS)
+      return hold('autonomous_bed_human_or_mode_priority')
+    if(this.pendingBedRequest||this.pendingBedStep||this.pendingScoutStep||
+       this.pendingDoorCrossing||this.job||this.maintenanceBusy||
+       this.safetyBusy||this.threat()||this.core.hasFollowIntent()||
+       this.bot.isSleeping||this.closed||!this.ready()||
+       this.bot.health<16||this.bot.game?.dimension!=='overworld')
+      return hold('autonomous_bed_other_priority')
+    if(this.homeBed.summary().status!=='not_verified'||
+       this.currentRespawnStatus?.()==='observed_server_player_spawn_packet')
+      return hold('autonomous_bed_respawn_already_known')
+    if(!scoutStartProof(this.bot,this.movementEvidence,this.clock).ok)
+      return hold('autonomous_bed_bds_pair_not_fresh')
+    const here=this.bot.entity?.position
+    if(!here||!Number.isFinite(here.x)||!Number.isFinite(here.y)||
+       !Number.isFinite(here.z))return hold('autonomous_bed_position_unknown')
+    const known=this.observedBeds.nearby(this.bot,{radius:16})
+      .slice().sort((a,b)=>Math.hypot(a.x-here.x,a.y-here.y,a.z-here.z)-
+        Math.hypot(b.x-here.x,b.y-here.y,b.z-here.z))
+    for(const position of known){
+      const status=selectAdjacentBed(this.bot,[position],{radius:16})
+      if(status.bed)return hold('autonomous_bed_already_in_reach')
+      if(status.reason!=='bed_needs_verified_approach')continue
+      // The original admission routine revalidates the same loaded bed,
+      // health, STOP/FOLLOW, terrain, headroom and BDS position. It starts
+      // one bounded WALK/JUMP only, then waits for NEW independent evidence.
+      return this.resumeBedApproachOnWitness({bedPosition:{
+        x:Math.floor(position.x),y:Math.floor(position.y),z:Math.floor(position.z)},
+        source:'自主生存'})
+    }
+    return hold(known.length?'autonomous_bed_no_verified_free_approach':
+      'autonomous_bed_not_loaded_in_radius')
   }
   observeHomeTick(){
     if(!this.ready()||this.bot.isSleeping||this.safetyBusy||this.threat())return
