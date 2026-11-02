@@ -16,6 +16,10 @@ const makeRuntime=()=>{
   threat:()=>null,safetyBusy:false,ready:()=>true,
   refreshBehavior(){},cancelActive(why){calls.push(['cancel',why])},
   ops:{eatIfSafe:async()=>({ok:true})},
+  requestBedTask(action,source,report){
+    calls.push(['bed',action,source])
+    return {status:'started',reason:'awaiting_bds_bed_proof',message:'等待BDS见证'}
+  },
   gatherCount:async()=>({ok:true}),craftWeaponOrTable:async()=>({ok:false,reason:'missing_ingredients'}),
   startJob(type,source,work){calls.push(['start',type,source]);this.job={type}
     Promise.resolve().then(()=>work(new AbortController().signal)).finally(()=>{this.job=null})}
@@ -41,6 +45,20 @@ test('safe operator probe rejects stale BDS proof; no path starts',()=>{
  assert.equal(runCommand(runtime,{action:'probe_step'},()=>{}).reason,'probe_armed')
  cancelArmedProbe(runtime,'probe_cancelled_by_stop')
  assert.equal(calls.some(x=>x[0]==='start'),false)
+})
+test('typed sleep and spawnpoint console actions share one bed service, never impersonate player',()=>{
+ const {runtime,calls}=makeRuntime()
+ for(const action of ['sleep','set_spawnpoint']){
+  const cmd={id,createdAt:100000,action}
+  assert.equal(cleanCommand(cmd,100000)?.action,action)
+  const res=runCommand(runtime,cmd,()=>{})
+  assert.equal(res.status,'started')
+  assert.equal(res.reason,'awaiting_bds_bed_proof')
+ }
+ assert.deepEqual(calls.filter(c=>c[0]==='bed'),[
+  ['bed','sleep','控制台'],['bed','set_spawnpoint','控制台']])
+ assert.equal(cleanCommand({id,createdAt:100000,action:'sleep',target:'Steve'},100000),null)
+ assert(!calls.some(c=>c[0]==='start'),'console must not start a physical job itself')
 })
 test('typed parser rejects all unknown, injected or out-of-range actions',()=>{
  assert.equal(cleanCommand({id,createdAt:100000,action:'shell'},100000),null)
