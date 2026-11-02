@@ -40,11 +40,19 @@ def summarize(view):
                         'type':e['type']})
         if len(columns)>=4:break
     nearest=lambda a: min((e['dist'] for e in a),default=None)
+    # Relative loaded bed cells only; no absolute server/player location.
+    closest_bed=sorted(beds,key=lambda e:(e['dist'],abs(e['dy']),e['dx'],e['dz']))
+    bed_columns=[]
+    for e in closest_bed:
+        if any(c['dx']==e['dx'] and c['dz']==e['dz'] for c in bed_columns):continue
+        bed_columns.append({'dx':e['dx'],'dz':e['dz'],'dy':e['dy'],'type':e['type']})
+        if len(bed_columns)>=3:break
     return {'state':'observed','source':'client_chunk_cache_not_bds',
         'doorVoxelCount':len(doors),'doorWithinSurvey7':sum(e['dist']<=7.5 and abs(e['dy'])<=2 for e in doors),
         'nearestDoorHorizontal':nearest(doors),'relativeDoorColumns':columns,
         'bedVoxelCount':len(beds),'bedWithin12':sum(e['dist']<=12.5 for e in beds),
         'nearestBedHorizontal':nearest(beds),
+        'relativeBedColumns':bed_columns,
         'unknownCells':view.get('unknown') if type(view.get('unknown')) is int else None}
 
 REMOTE=r"""
@@ -86,6 +94,7 @@ def selftest():
     x=summarize(v)
     assert x['doorVoxelCount']==1 and x['doorWithinSurvey7']==1
     assert x['bedVoxelCount']==1 and x['nearestDoorHorizontal']==3.0
+    assert x['relativeBedColumns']==[{'dx':1,'dz':0,'dy':0,'type':'red_bed'}]
     assert x['relativeDoorColumns']==[{'dx':3,'dz':0,'dyLevels':[0],'type':'oak_door'}]
     assert 'def summarize(view):' in build_remote()
     assert 'import json,math,os,re,subprocess,sys,time' in build_remote()
@@ -105,7 +114,7 @@ def run(folder):
             x=json.loads(p.stdout)
             if x.get('state') in ('observed','unverified') and set(x)<={
                 'state','reason','source','doorVoxelCount','doorWithinSurvey7','nearestDoorHorizontal',
-                'bedVoxelCount','bedWithin12','nearestBedHorizontal','unknownCells','relativeDoorColumns'}:obs=x
+                'bedVoxelCount','bedWithin12','nearestBedHorizontal','relativeBedColumns','unknownCells','relativeDoorColumns'}:obs=x
     except (OSError,ValueError,subprocess.SubprocessError):pass
     report={'audit':'ALICE_HOME_DOOR_VOXEL_READONLY','schemaVersion':1,
       'bdsCommandsSent':False,'movementAttempted':False,'observation':obs}
