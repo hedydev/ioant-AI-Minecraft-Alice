@@ -4,6 +4,7 @@
 const {selectAdjacentBed,useBedForSpawn}=require('./bed_spawnpoint.cjs')
 const {scoutStartProof}=require('./scout_start_proof.cjs')
 const {environment}=require('./world_routine.cjs')
+const {surveyEscape}=require('./escape_survey.cjs')
 const {outcome,message}=require('./bed_request_outcome.cjs')
 const TIMEOUT=240000
 const TYPES=new Set(['sleep','set_spawnpoint'])
@@ -58,7 +59,17 @@ function requestBed(r,action,source,report=null){
  // Only loaded, verified bed cells; a farther candidate is NOT a safe route.
  const positions=observedBedPositions(r)
  const choice=selectAdjacentBed(r.bot,positions,{radius:16})
- if(!choice.bed)return reply('rejected',choice.reason,message({reason:choice.reason}))
+ if(!choice.bed){
+  // Seeing a bed does not imply we can reach it. Show the existing local
+  // read-only approach/door survey, never attempt physical movement here.
+  if(choice.reason==='bed_needs_verified_approach'){
+   try{
+    const survey=surveyEscape(r.bot,{radius:7,maxNodes:100,bedPositions:positions})
+    r.lastBedApproach=survey?.bedApproach||null
+   }catch{r.lastBedApproach=null}
+  }
+  return reply('rejected',choice.reason,message({reason:choice.reason}))
+ }
  const now=r.clock(),ev=r.movementEvidence?.get?.()
  const p={action,source,report,at:now,expiresAt:now+TIMEOUT,
    epoch:r.epoch,loginAt:ev?.loginAt??null,lifeEpochAt:ev?.lifeEpochAt??null,
