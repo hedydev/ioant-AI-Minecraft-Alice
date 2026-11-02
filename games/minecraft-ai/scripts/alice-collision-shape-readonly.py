@@ -198,6 +198,39 @@ def selftest():
     assert summarize({'palette':['air'],'collisionSurvey':None})['state']=='not_published'
     assert 'door_walk_survey(doorpoints)' in inspect.getsource(summarize)
     assert 'swept_flat_step' in remote()
+    # Synthetic, bounded collision cache: a three-WALK approach must be
+    # detected, but cannot survive full walls on both neighboring cells.
+    palette=['air','stone','torch','spruce_door']
+    shapes=[{'boundingBox':'unverified','shapes':None},
+            {'boundingBox':'empty','shapes':[]},
+            {'boundingBox':'block','shapes':[[0,0,0,1,1,1]]},
+            {'boundingBox':'block','shapes':[[0,0,0,.1825,1,1]]}]
+    cells=[]
+    for x in range(-7,8):
+        for z in range(-7,8):
+            for y in range(-2,4):
+                door=(x,z)==(-2,-2) and y in (0,1)
+                if door:
+                    cell=[x,y,z,3,3,False,y==1]
+                elif y in (-1,2):
+                    cell=[x,y,z,1,2,None,None]
+                else:
+                    cell=[x,y,z,0,1,None,None]
+                cells.append(cell)
+    view={'palette':palette,'collisionSurvey':{'radius':7,'below':2,
+          'above':3,'source':'client_chunk_cache_not_bds','shapes':shapes,
+          'cells':cells,'unknown':0}}
+    good=summarize(view)
+    assert good['state']=='observed'
+    approaches=good['sweptDoorSurvey']['doorApproaches']
+    assert approaches and approaches[0]['centerlineSteps']==3
+    assert not good['sweptDoorSurvey']['movementPermitted']
+    assert not good['sweptDoorSurvey']['serverMovementVerified']
+    for cell in cells:
+        if (cell[0],cell[2]) in ((-1,0),(0,-1)) and cell[1] in (0,1):
+            cell[3:5]=[1,2]
+    blocked=summarize(view)
+    assert blocked['sweptDoorSurvey']['doorApproaches']==[]
     print('ALICE_COLLISION_SHAPE_READONLY_SELFTEST_PASS')
 def run(out):
     out=Path(out)
