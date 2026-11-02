@@ -305,6 +305,11 @@ async function main(args=process.argv.slice(2)){
         homeBase:runtime.homeBase.summary(),homeAgenda:runtime.lastHomeAgenda,
         bedApproach:runtime.lastBedApproach,
         bedApproachAction:runtime.lastBedApproachAction,
+        doorCrossingPending:runtime.pendingDoorCrossing?{
+          door:runtime.pendingDoorCrossing.door,
+          beyond:runtime.pendingDoorCrossing.beyond,
+          startedAt:runtime.pendingDoorCrossing.startedAt,
+          independentVerified:false,roomExitVerified:false}:null,
         bedRequest:runtime.pendingBedRequest?{
           action:runtime.pendingBedRequest.action,
           stage:runtime.pendingBedRequest.stage,
@@ -397,6 +402,12 @@ async function main(args=process.argv.slice(2)){
     // It never requests another query or extends the four-second proof.
     try{writeWitnessAck({bot,evidence:movementEvidence,producerStartToken})}
     catch(err){runtimeLogger.warn('[Alice BDS witness] ack unavailable:',String(err?.message||err).slice(0,60))}
+    // A doorway packet correction is not a real-world independent BDS
+    // arrival. Only a new post-input double witness can resolve one passage.
+    const priorDoor=runtime.settlePendingDoorCrossingOnWitness()
+    if(priorDoor.state==='verified'||priorDoor.state==='rejected')
+      runtimeLogger.log('[Alice exploration] delayed door crossing:',
+        JSON.stringify(priorDoor))
     // Verify any earlier ONE-CELL bed movement using a NEW post-input
     // independent BDS pair, before considering a subsequent step.
     const priorBedStep=runtime.settlePendingBedStepOnWitness()
