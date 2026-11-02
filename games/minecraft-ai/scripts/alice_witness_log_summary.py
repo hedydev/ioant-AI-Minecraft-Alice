@@ -20,7 +20,10 @@ def summarize_witness_log(tail):
     }
     result = {'witnessHandoffCount': 0, 'lastWitnessHandoff': 'unknown',
               'idleMirrorDeferredCount': 0, 'lastIdleMirrorDeferred': 'unknown',
-              'preparedScoutStartCount': 0}
+              'preparedScoutStartCount': 0, 'endpointFeedbackCount': 0,
+              'confirmedEndpointCount': 0, 'unverifiedEndpointCount': 0,
+              'waypointFailureCount': 0, 'lastWaypointFailure': 'unknown',
+              'lastCompletedLocalWaypoints': None, 'lastLocalTravelEstimate': None}
     for line in tail.splitlines():
         if line.startswith('[Alice autonomy] prepared route admitted:'):
             result['preparedScoutStartCount'] += 1
@@ -39,6 +42,35 @@ def summarize_witness_log(tail):
                 result[key] = value if value in allowed else 'other_or_unavailable'
             except (ValueError, TypeError):
                 result[key] = 'other_or_unavailable'
+        for marker in ('[Alice exploration] endpoint feedback:',
+                       '[Alice movement] A* waypoint failure:'):
+            if not line.startswith(marker):
+                continue
+            try:
+                row = json.loads(line.split(marker, 1)[1])
+                if not isinstance(row, dict):
+                    continue
+                if 'endpoint feedback:' in marker:
+                    result['endpointFeedbackCount'] += 1
+                    if row.get('outcome') == 'confirmed' and row.get('serverMovementVerified') is True:
+                        result['confirmedEndpointCount'] += 1
+                    elif row.get('outcome') in ('unverified', 'blocked'):
+                        result['unverifiedEndpointCount'] += 1
+                else:
+                    result['waypointFailureCount'] += 1
+                    reason = row.get('reason')
+                    result['lastWaypointFailure'] = reason if isinstance(reason, str) and reason in {
+                        'pathfinder_no_path', 'navigation_scout_client_server_position_diverged',
+                        'navigation_scout_bds_position_unavailable', 'scout_timeout',
+                        'scout_conditions_changed', 'scout_waypoint_not_reached',
+                        'scout_cancelled', 'scout_cancelled_after_waypoint',
+                    } else 'other_or_unavailable'
+                    n = row.get('completedLocalWaypoints')
+                    result['lastCompletedLocalWaypoints'] = n if type(n) is int and 0 <= n <= 32 else None
+                    n = row.get('totalLocalEstimateBlocks')
+                    result['lastLocalTravelEstimate'] = round(n, 3) if type(n) in (int, float) and 0 <= n <= 32 else None
+            except (ValueError, TypeError):
+                pass
     return result
 
 
@@ -48,7 +80,9 @@ def summarize_witness_journal(records, since, now):
         return {'verifiedTimeRange': False, **summarize_witness_log('')}
     markers = {'[Alice autonomy] BDS witness idle handoff:',
                '[Alice movement] safe-idle BDS-local mirror deferred:',
-               '[Alice autonomy] prepared route admitted:'}
+               '[Alice autonomy] prepared route admitted:',
+               '[Alice exploration] endpoint feedback:',
+               '[Alice movement] A* waypoint failure:'}
     rows = []
     for r in records:
         if (not isinstance(r, dict) or type(r.get('at')) is not int or

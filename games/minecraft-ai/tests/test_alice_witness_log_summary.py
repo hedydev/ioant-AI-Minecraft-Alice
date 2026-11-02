@@ -61,6 +61,19 @@ class WitnessLogSummaryTests(unittest.TestCase):
         self.assertFalse(r['verifiedTimeRange'])
         self.assertEqual(r['lastWitnessHandoff'], 'unknown')
 
+    def test_real_endpoint_feedback_and_intermediate_rejection_do_not_mean_success(self):
+        r = module.summarize_witness_log('\n'.join([
+            '[Alice exploration] endpoint feedback: {"outcome":"unverified","serverMovementVerified":false}',
+            '[Alice movement] A* waypoint failure: '
+            '{"reason":"navigation_scout_client_server_position_diverged",'
+            '"completedLocalWaypoints":1,"totalLocalEstimateBlocks":1.17,"lastAfter":{"x":999}}',
+        ]))
+        self.assertEqual(r['endpointFeedbackCount'], 1)
+        self.assertEqual(r['confirmedEndpointCount'], 0)
+        self.assertEqual(r['lastCompletedLocalWaypoints'], 1)
+        self.assertEqual(r['lastLocalTravelEstimate'], 1.17)
+        self.assertNotIn('999', str(r))
+
 
 if __name__ == '__main__':
     unittest.main()
