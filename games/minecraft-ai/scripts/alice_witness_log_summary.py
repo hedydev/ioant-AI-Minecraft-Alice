@@ -21,7 +21,7 @@ def summarize_witness_log(tail):
     result = {'witnessHandoffCount': 0, 'lastWitnessHandoff': 'unknown',
               'idleMirrorDeferredCount': 0, 'lastIdleMirrorDeferred': 'unknown',
               'preparedScoutStartCount': 0, 'endpointFeedbackCount': 0,
-              'confirmedEndpointCount': 0, 'unverifiedEndpointCount': 0,
+              'confirmedEndpointCount': 0, 'partialEndpointCount': 0, 'unverifiedEndpointCount': 0,
               'waypointFailureCount': 0, 'lastWaypointFailure': 'unknown',
               'lastCompletedLocalWaypoints': None, 'lastLocalTravelEstimate': None,
               'postWaypointDivergenceCount': 0}
@@ -55,6 +55,11 @@ def summarize_witness_log(tail):
                     result['endpointFeedbackCount'] += 1
                     if row.get('outcome') == 'confirmed' and row.get('serverMovementVerified') is True:
                         result['confirmedEndpointCount'] += 1
+                    elif row.get('outcome') == 'partial_verified':
+                        if row.get('serverMovementVerified') is True:
+                            result['partialEndpointCount'] += 1
+                        else:
+                            result['unverifiedEndpointCount'] += 1
                     elif row.get('outcome') in ('unverified', 'blocked'):
                         result['unverifiedEndpointCount'] += 1
                 else:

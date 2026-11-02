@@ -76,5 +76,19 @@ class WitnessLogSummaryTests(unittest.TestCase):
         self.assertNotIn('999', str(r))
 
 
+    def test_partial_server_step_is_separate_from_whole_route_success(self):
+        r = module.summarize_witness_log('\\n'.join([
+            '[Alice exploration] endpoint feedback: '
+            '{"outcome":"partial_verified","serverMovementVerified":true}',
+            '[Alice exploration] endpoint feedback: '
+            '{"outcome":"partial_verified","serverMovementVerified":false}',
+            '[Alice exploration] endpoint feedback: '
+            '{"outcome":"confirmed","serverMovementVerified":true}'
+        ]))
+        self.assertEqual(r['endpointFeedbackCount'], 3)
+        self.assertEqual(r['partialEndpointCount'], 1)
+        self.assertEqual(r['confirmedEndpointCount'], 1)
+        self.assertEqual(r['unverifiedEndpointCount'], 1)
+
 if __name__ == '__main__':
     unittest.main()

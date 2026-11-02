@@ -36,13 +36,13 @@ FIELDS={'audit','schemaVersion','state','currentOwner','freshStatus','coreState'
 'health','independentSamples','independentAgeBand','lastModelTool',
 'modelProposalCount','modelFailureCount','navRejectCount','lastNavReject',
 'lastNavRejectDistance','scoutOutcomeCount','serverTravelBetweenPair',
-'modelInferenceInvoked','bdsCommandSent','deathRecoveryPhase','deathRecoveryCycles','clientServerAxisDelta','idleMirrorCount','respawnMirrorCount','lastIdleMirrorDistance','modelObserveWithoutActionCount','lastModelObserveReason','verifiedLocalSkillCount','flatRouteChangedCount','witnessHandoffCount','lastWitnessHandoff','idleMirrorDeferredCount','lastIdleMirrorDeferred','preparedScoutStartCount','witnessJournalSummary','endpointFeedbackCount','confirmedEndpointCount','unverifiedEndpointCount','waypointFailureCount','lastWaypointFailure','lastCompletedLocalWaypoints','lastLocalTravelEstimate','postWaypointDivergenceCount','witnessSummarySource'}
+'modelInferenceInvoked','bdsCommandSent','deathRecoveryPhase','deathRecoveryCycles','clientServerAxisDelta','idleMirrorCount','respawnMirrorCount','lastIdleMirrorDistance','modelObserveWithoutActionCount','lastModelObserveReason','verifiedLocalSkillCount','flatRouteChangedCount','witnessHandoffCount','lastWitnessHandoff','idleMirrorDeferredCount','lastIdleMirrorDeferred','preparedScoutStartCount','witnessJournalSummary','endpointFeedbackCount','confirmedEndpointCount','partialEndpointCount','unverifiedEndpointCount','waypointFailureCount','lastWaypointFailure','lastCompletedLocalWaypoints','lastLocalTravelEstimate','postWaypointDivergenceCount','witnessSummarySource'}
 def valid(v):
  if not isinstance(v,dict) or set(v)!=FIELDS or v.get('audit')!='ALICE_MODEL_NAVIGATION_LOG' or v.get('schemaVersion')!=1 or v.get('state') not in ('unverified','observed'):return None
  for k in ('currentOwner','freshStatus','modelInferenceInvoked','bdsCommandSent'):
   if type(v[k]) is not bool:return None
  if v['modelInferenceInvoked'] or v['bdsCommandSent']:return None
- for k in ('modelProposalCount','modelFailureCount','navRejectCount','scoutOutcomeCount','independentSamples','idleMirrorCount','respawnMirrorCount','modelObserveWithoutActionCount','verifiedLocalSkillCount','flatRouteChangedCount','witnessHandoffCount','idleMirrorDeferredCount','preparedScoutStartCount','endpointFeedbackCount','confirmedEndpointCount','unverifiedEndpointCount','waypointFailureCount','lastCompletedLocalWaypoints','postWaypointDivergenceCount'):
+ for k in ('modelProposalCount','modelFailureCount','navRejectCount','scoutOutcomeCount','independentSamples','idleMirrorCount','respawnMirrorCount','modelObserveWithoutActionCount','verifiedLocalSkillCount','flatRouteChangedCount','witnessHandoffCount','idleMirrorDeferredCount','preparedScoutStartCount','endpointFeedbackCount','confirmedEndpointCount','partialEndpointCount','unverifiedEndpointCount','waypointFailureCount','lastCompletedLocalWaypoints','postWaypointDivergenceCount'):
   if v[k] is not None and (type(v[k]) is not int or not 0<=v[k]<=100000000):return None
  for k in ('health','lastNavRejectDistance','serverTravelBetweenPair','lastIdleMirrorDistance','lastLocalTravelEstimate'):
   if v[k] is not None and (type(v[k]) not in (int,float) or not 0<=v[k]<=1000):return None
@@ -53,7 +53,7 @@ def valid(v):
  j=v['witnessJournalSummary']
  if not isinstance(j,dict) or set(j)!=set(summarize_witness_journal([],None,0)):return None
  if type(j['verifiedTimeRange']) is not bool:return None
- for k in ('witnessHandoffCount','idleMirrorDeferredCount','preparedScoutStartCount','endpointFeedbackCount','confirmedEndpointCount','unverifiedEndpointCount','waypointFailureCount','lastCompletedLocalWaypoints','postWaypointDivergenceCount'):
+ for k in ('witnessHandoffCount','idleMirrorDeferredCount','preparedScoutStartCount','endpointFeedbackCount','confirmedEndpointCount','partialEndpointCount','unverifiedEndpointCount','waypointFailureCount','lastCompletedLocalWaypoints','postWaypointDivergenceCount'):
   if j[k] is not None and (type(j[k]) is not int or not 0<=j[k]<=100000000):return None
  for k in ('lastWitnessHandoff','lastIdleMirrorDeferred','lastWaypointFailure'):
   if type(j[k]) is not str or len(j[k])>60:return None

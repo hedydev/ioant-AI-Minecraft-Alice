@@ -1,3 +1,26 @@
+## 2026-11-02 — Real BDS-confirmed partial scout steps
+
+Current-life read-only audit `alice_scout_postinput_current_life_n11` for Alice PID
+3521245 independently confirms six local one-cell waypoints, of which five
+received post-input BDS double-sample endpoint proof. Server-proven motion
+examples: **0.82, 1.10, 0.82 blocks**. No waypoint failure or independent
+witness timeout occurred. The sixth step was awaiting proof at that observation.
+This is not a completed multi-cell route or verified exit from the house.
+
+The five `unverified` endpoint feedback events were whole-route records;
+BDS-confirmed first-cell movement was incorrectly conflated with unfinished
+multi-cell routes in `ExplorationProgress.finish`. Commit `0e4f092` fixes the
+source classification to `partial_verified`, retains full-route `confirmed`
+for complete independent proof, and avoids marking a proved first cell as a
+`ContinuousGoal.tool_failed` event. This patch is non-restart-synced on Mint;
+Mac Python310 and Mint Node24 920/920 passed. It remains **not loaded in the
+current game process** until the next approved Alice-only lifecycle.
+
+The separate read-only log inspector now has a `partialEndpointCount` field;
+historical journal rows are never rewritten or retroactively relabeled.
+The original BDS 4s / 0.75-block gates and 40/hour, 180s query cadence remain
+unchanged. HOME/bed/door/return are still not live-accepted.
+
 ## 2026-11-02 — Safe one-waypoint admission and post-input BDS endpoint (source staged)
 
 The current-life journal proved repeated `navigation_scout_client_server_position_diverged` rejections AFTER a locally completed waypoint. Previously `boundedScout` iterated all proposed waypoints and called guarded `pathfinder.goto` for each against the **same pre-input independent BDS pair**. This is a control-flow mismatch rather than proof that the server rejected the first cell.
