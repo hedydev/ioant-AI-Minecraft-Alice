@@ -121,3 +121,18 @@ test('already confirmed personal spawn does not activate bed again',()=>{
  assert.equal(requestBed(r,'set_spawnpoint','控制台').status,'completed')
  assert.equal(calls.length,0)
 })
+
+test('new explicit bed intent cancels stale async model planning without issuing movement',()=>{
+ const {r,calls}=fixture()
+ const oldEpoch=r.epoch,events=[]
+ r.goalPlanner.cancel=reason=>events.push(reason)
+ r.plannerAbort={abort:()=>events.push('planner_aborted')}
+ const receipt=requestBed(r,'sleep','控制台')
+ assert.equal(receipt.status,'started')
+ assert.equal(r.epoch,oldEpoch+1)
+ assert.equal(r.pendingBedRequest.epoch,r.epoch)
+ assert.deepEqual(events,['explicit_bed_request','planner_aborted'])
+ assert.equal(r.lastHumanAt,now)
+ assert.equal(calls.length,0)
+ cancelBed(r)
+})
