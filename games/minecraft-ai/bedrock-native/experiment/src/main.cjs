@@ -416,6 +416,12 @@ async function main(args=process.argv.slice(2)){
     if(priorBedStep.state==='verified'||priorBedStep.state==='rejected')
       runtimeLogger.log('[Alice home] delayed BDS one-cell result:',
         JSON.stringify(priorBedStep))
+    // A local A* waypoint must NEVER be counted as scout movement until
+    // the post-input independent BDS double witness confirms its cell.
+    const priorScoutStep=runtime.settlePendingScoutStepOnWitness()
+    if(priorScoutStep.state==='verified'||priorScoutStep.state==='rejected')
+      runtimeLogger.log('[Alice exploration] delayed BDS scout step result:',
+        JSON.stringify(priorScoutStep))
     // Publish the freshly consumed independent position BEFORE any queued
     // activity, rather than waiting up to 2s for the periodic heartbeat.
     // This does not change the source timestamp or its original 4s TTL.

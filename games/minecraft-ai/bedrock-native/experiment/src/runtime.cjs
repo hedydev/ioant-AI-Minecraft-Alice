@@ -15,6 +15,7 @@ const {evaluateShelter,placeShelterBlock}=require('./night_shelter.cjs')
 const {ObservedBeds}=require('./observed_beds.cjs')
 const {HomeBedMemory,selectAdjacentBed,useBedForSpawn}=require('./bed_spawnpoint.cjs')
 const {verifyBedStep}=require('./bed_step_witness.cjs')
+const {verifyScoutStep}=require('./scout_step_witness.cjs')
 const {verifyDoorCrossing}=require('./door_crossing_witness.cjs')
 const {verifyRaisedDoorLanding}=require('./raised_door_landing_witness.cjs')
 const {planRaisedDoorThreshold,performRaisedDoorThreshold,verifyRaisedDoorThreshold}=require('./raised_door_threshold.cjs')
@@ -179,7 +180,7 @@ class AliceBedrockRuntime {
     this.lastEscapeDoorAttemptKey=null
     this.lastEscapeApproachAt=Number.NEGATIVE_INFINITY;this.lastEscapeApproachKey=null
     this.lastEscapeApproachRetryAt=Number.NEGATIVE_INFINITY
-    this.lastEscapePassageAction=null;this.pendingDoorCrossing=null;this.verifiedRaisedThreshold=null;this.lastEscapePassageAttemptKey=null
+    this.lastEscapePassageAction=null;this.pendingDoorCrossing=null;this.verifiedRaisedThreshold=null;this.pendingScoutStep=null;this.lastEscapePassageAttemptKey=null
     this.lastEscapePassageRetryAt=Number.NEGATIVE_INFINITY
     this.driveJournal=new SelfDriveJournal({clock,log})
     this.followProgress=new FollowProgress({safeRadius:this.liveBehavior.settings.followDistance})
@@ -508,6 +509,7 @@ class AliceBedrockRuntime {
     this.pendingDoorCrossing=null
     this.verifiedRaisedThreshold=null
     this.pendingBedStep=null
+    this.pendingScoutStep=null
     cancelBed(this,'bed_request_cancelled')
     this.preparedScout.clear()
     this.stopDirectFollow(reason)
@@ -845,6 +847,9 @@ class AliceBedrockRuntime {
     // This is a physical navigation gate, never a reason to rewrite client
     // coordinates. An old local A* position 20m away from BDS is not a safe
     // start for another path, even if the planner says SCOUT.
+    // An input already issued by a previous scout must obtain a NEW
+    // independent BDS endpoint before another optional path can start.
+    if(this.pendingScoutStep&&(type==='EXPLORE'||type==='GATHER'))return false
     if((type==='EXPLORE'||type==='GATHER')&&this.requireBdsAlignedExplore){
       const proof=scoutStartProof(this.bot,this.movementEvidence,this.clock)
       if(!proof.ok){
@@ -890,6 +895,18 @@ class AliceBedrockRuntime {
         taskType:type,source:source==='自主模型'?'model':source==='自主任务'?'autonomous':'other',
         result:result?.ok===true?'verified':'incomplete',
         durationMs:Math.max(0,this.clock()-(this.job?.startedAt??this.clock()))}))
+      if(type==='EXPLORE'&&result?.reason==='scout_step_awaiting_new_bds_pair'&&
+         this.pendingScoutStep?.epoch===id){
+        // Neither route success nor movement failure. The local waypoint
+        // completed, but only a later post-input BDS pair can settle it.
+        this.lastScoutProgress={confirmed:false,reason:result.reason,
+          failureKind:'awaiting_independent_endpoint',segmentBlocks:result.distance||null,
+          serverMovedBlocks:null,at:this.clock()}
+        this.log.log('[Alice exploration] scout step awaits independent BDS:',JSON.stringify({
+          reason:result.reason,localEstimateBlocks:result.localEstimateBlocks,
+          serverMovementVerified:false}))
+        return
+      }
       this.driveJournal.recordOutcome({type,source,result})
       this.continuousGoal.finish(type,source,result)
       const dependencyHold=!result?.ok&&navigationHoldReason(result?.reason)
@@ -1964,6 +1981,51 @@ class AliceBedrockRuntime {
     },{label:selected.action==='PLACE_BRIDGE'?'安全填补一处小坑':'清除一块天然土层',announce:false})
     return true
   }
+  settlePendingScoutStepOnWitness(){
+    const step=this.pendingScoutStep
+    if(!step)return {state:'none'}
+    const now=this.clock()
+    if(this.closed||step.epoch!==this.epoch||now<step.startedAt||
+       now-step.startedAt>240000){
+      this.pendingScoutStep=null
+      return {state:'rejected',reason:'scout_step_context_or_deadline_changed'}
+    }
+    const out=verifyScoutStep(step,this.movementEvidence?.get?.(),
+      this.bot.entity?.position,now)
+    if(out.reason==='scout_step_new_independent_pair_missing')
+      return {state:'waiting',reason:out.reason}
+    this.pendingScoutStep=null
+    const complete=out.ok&&step.candidate?.waypoints?.length===1&&
+      step.candidate?.key===[step.target.x,step.target.y,step.target.z].join(',')
+    const result={ok:complete,attempted:true,
+      reason:out.ok?(complete?'scout_step_server_verified_full_route':
+        'scout_step_server_verified_partial_route'):out.reason,
+      serverMovementVerified:out.ok,
+      serverMovedBlocks:out.ok?out.travelledBlocks:null,
+      confirmedEndpoint:complete?step.candidate.key:null}
+    if(step.candidate?.key){
+      const progress=this.explorationProgress.finish(step.candidate,result)
+      if(progress)this.log.log('[Alice exploration] endpoint feedback:',JSON.stringify(progress))
+    }
+    if(out.ok){
+      // Even a verified partial step is NOT the original multi-cell goal.
+      // Re-observe current blocks before admitting any additional path.
+      this.lastVoxelKey=null
+      this.nextIdleAt=Math.min(this.nextIdleAt,now+15000)
+      this.scoutDirection=null
+    }
+    this.lastScoutProgress={confirmed:complete,reason:result.reason,
+      failureKind:out.ok?'none':'evidence_gap',
+      serverMovedBlocks:out.ok?Math.round(out.travelledBlocks*100)/100:null,
+      at:now}
+    this.continuousGoal.finish('EXPLORE',step.source,result)
+    if(step.source==='自主模型')this.goalPlanner.outcome(result)
+    this.log.log('[Alice exploration] post-input scout step BDS witness:',
+      JSON.stringify({reason:result.reason,serverMovementVerified:out.ok,
+        fullRouteVerified:complete,serverMovedBlocks:this.lastScoutProgress.serverMovedBlocks}))
+    return {state:out.ok?'verified':'rejected',reason:result.reason,
+      serverMovementVerified:out.ok,fullRouteVerified:complete}
+  }
   async boundedScout(candidate,signal,{allowNightFallback=false}={}){
     // At night only a verified two-cell flat defensive reposition may run;
     // ordinary scouting still requires daytime safety.
@@ -1990,6 +2052,7 @@ class AliceBedrockRuntime {
     const start=this.bot.entity.position.clone()
     const p=candidate.target
     const checkpoint=this.movementEvidence?.checkpoint?.()||null
+    const startingWitness=this.movementEvidence?.get?.()||null
     const timeoutMs=Math.min(20000,Math.max(6500,4000+candidate.distance*1250))
     let timer,aborted,ended=false,lastAttemptedWaypoint=null,lastAttemptStart=null
     let locallyCompletedWaypoints=0
@@ -2007,7 +2070,11 @@ class AliceBedrockRuntime {
       moves.allowParkour=false;moves.openable?.clear?.()
       this.bot.pathfinder.setMovements(moves)
       const traverse=async()=>{
-        for(const waypoint of candidate.waypoints){
+        // Only ONE new waypoint per admitted independent BDS baseline.
+        // A subsequent goto against the pre-input baseline is not a fresh
+        // navigation admission, even if local Pathfinder says reached.
+        for(const waypoint of (this.requireBdsAlignedExplore?
+          candidate.waypoints.slice(0,1):candidate.waypoints)){
           lastAttemptedWaypoint=waypoint
           const before=this.bot.entity?.position
           lastAttemptStart=before&&[before.x,before.y,before.z].every(Number.isFinite)?
@@ -2030,6 +2097,40 @@ class AliceBedrockRuntime {
         }
       }
       await Promise.race([traverse(),deadline])
+      if(this.requireBdsAlignedExplore){
+        if(signal?.aborted||ended||this.closed||this.threat()||
+           this.core.hasFollowIntent()||this.bot.health<16||!phaseAllowed())
+          return {ok:false,reason:'scout_conditions_changed',serverMovementVerified:false}
+        const first=candidate.waypoints[0]
+        const from=startingWitness?.independentLatestFeet
+        const startAt=this.clock()
+        if(!from||!['x','y','z'].every(k=>Number.isFinite(from[k]))||
+           !Number.isInteger(startingWitness?.independentSamples)||
+           !Number.isSafeInteger(startingWitness?.independentAt)||
+           !first||!['x','y','z'].every(k=>Number.isSafeInteger(first[k]))||
+           this.pendingScoutStep)
+          return {ok:false,reason:'scout_start_witness_context_invalid',
+            serverMovementVerified:false}
+        const current=this.bot.entity?.position
+        const localEstimate=current?Math.hypot(current.x-start.x,
+          current.y-start.y,current.z-start.z):null
+        this.pendingScoutStep={from:{x:from.x,y:from.y,z:from.z},
+          target:{x:first.x,y:first.y,z:first.z},candidate,
+          epoch:this.epoch,source:this.action?.source||'autonomous',
+          startedAt:startAt,loginAt:startingWitness.loginAt??null,
+          lifeEpochAt:startingWitness.lifeEpochAt??null,
+          independentAt:startingWitness.independentAt,
+          independentSamples:startingWitness.independentSamples}
+        this.log.log('[Alice exploration] one waypoint locally reached:',JSON.stringify({
+          localEstimateBlocks:Number.isFinite(localEstimate)?
+            Math.round(localEstimate*100)/100:null,
+          reason:'scout_step_awaiting_new_bds_pair',serverMovementVerified:false}))
+        return {ok:false,reason:'scout_step_awaiting_new_bds_pair',
+          attempted:true,serverMovementVerified:false,
+          localEstimateBlocks:Number.isFinite(localEstimate)?
+            Math.round(localEstimate*100)/100:null,
+          distance:candidate.distance,elevationChanges:candidate.elevationChanges}
+      }
       if(signal?.aborted||this.threat()||this.core.hasFollowIntent()||
          this.bot.health<16||!phaseAllowed())
         return {ok:false,reason:'scout_conditions_changed'}
@@ -2634,6 +2735,17 @@ class AliceBedrockRuntime {
     // independently witnessed one-cell steps. STOP/FOLLOW/safety can still
     // preempt; equipment and urgent food run via maintenanceTick.
     if(this.pendingBedRequest)return
+    if(this.pendingScoutStep){
+      if(this.clock()-this.pendingScoutStep.startedAt<=240000)return
+      const step=this.pendingScoutStep
+      this.pendingScoutStep=null
+      this.lastScoutProgress={confirmed:false,reason:'scout_step_independent_timeout',
+        failureKind:'evidence_gap',at:this.clock()}
+      if(step.candidate?.key)this.explorationProgress.finish(step.candidate,{
+        ok:false,attempted:true,reason:'scout_step_independent_timeout'})
+      this.log.log('[Alice exploration] scout step witness expired:',JSON.stringify({
+        reason:'scout_step_independent_timeout',serverMovementVerified:false}))
+    }
     if(!this.liveBehavior.settings.autonomyEnabled)return
     if(this.liveBehavior.settings.agentMode==='companion'||this.goalPlanner.stoppedByHuman)return
     if(!this.ready()||this.bot.isSleeping||this.job||this.safetyBusy||this.threat()||this.bot.health<14||this.core.hasFollowIntent()||
