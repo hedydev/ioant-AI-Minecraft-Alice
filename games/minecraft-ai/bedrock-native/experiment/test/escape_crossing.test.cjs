@@ -51,14 +51,16 @@ test('crossing uses at most eight bounded forward pulses without pathfinder or d
  assert.equal(f.isForward(),false,'controls must be released')
  assert(f.events.some(e=>e[0]==='control'&&e[1]==='forward'&&e[2]===true))
 })
-test('fresh Bedrock server self-position near far side confirms door passage, not outdoors',async()=>{
+test('even a fresh packet self-position on far side is only a diagnostic, NOT independent BDS',async()=>{
  const f=room()
  const evidence={checkpoint:()=>({events:2}),progress:()=>({confirmed:true,reason:'server_position_changed'}),
  get:()=>({lastAt:99995,latestFeet:{x:.5,y:65,z:2.5}})}
  const r=await crossDoor(f.bot,Door,options(f,{movementEvidence:evidence}))
- assert.equal(r.ok,true)
- assert.equal(r.serverMovementVerified,true)
- assert.equal(r.reason,'door_passage_server_confirmed_room_exit_unverified')
+ assert.equal(r.ok,false)
+ assert.equal(r.serverMovementVerified,false)
+ assert.equal(r.roomExitVerified,false)
+ assert.equal(r.packetMotionObserved,true)
+ assert.equal(r.reason,'door_passage_local_only_server_unverified')
 })
 test('missing or unsafe outside, unknown upper half, closed door all deny movement',async()=>{
  for(const args of [{floor:false},{outside:false},{upper:false},{open:false}]){
