@@ -127,6 +127,13 @@ function requestBed(r,action,source,report=null){
   return reply('rejected',reason,message({reason}))
  }
  const now=r.clock(),ev=r.movementEvidence?.get?.()
+ // A new explicit human command outranks a slow autonomous model answer.
+ // It invalidates an older planning epoch without touching the BDS witness,
+ // cancelling a protected action, or modifying the current game world.
+ r.goalPlanner.cancel?.('explicit_bed_request')
+ r.plannerAbort?.abort?.()
+ r.epoch++
+ r.lastHumanAt=now
  const p={action,source,report,at:now,expiresAt:now+TIMEOUT,
    globalExpiresAt:now+1200000,steps:0,
    stage:needsApproach?'approach':'interact',
