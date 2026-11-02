@@ -31,7 +31,7 @@ function fixture({autonomous=false,blocked=false}={}){
  Object.assign(r,{clock:()=>now,epoch:0,pendingBedStep:null,nextBedApproachStepAt:0,
   bot:{game:{dimension:'overworld'},entities:{},health:20,isSleeping:false,
    entity:{position:vec(.5,65,.5),onGround:true},
-   blockAt:p=>Math.floor(p.y)===64?{name:'stone',boundingBox:'block'}:
+   blockAt:p=>Math.floor(p.y)===64?{name:'stone',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}:
      blocked&&Math.floor(p.x)===1&&Math.floor(p.y)===65?
        {name:'spruce_door',boundingBox:'block'}:{name:'air',boundingBox:'empty'},
    pathfinder:{async goto(){inputs++},setMovements(){},setGoal(){}}},
@@ -111,7 +111,7 @@ test('autonomous bed approach requires current independent witness, no pending j
  r.bot.parseBedMetadata=()=>({occupied:0})
  r.bot.blockAt=(p)=>Math.floor(p.x)===14&&Math.floor(p.y)===65&&Math.floor(p.z)===0?
    {name:'red_bed',position:vec(14,65,0)}:
-   Math.floor(p.y)===64?{name:'stone',boundingBox:'block'}:
+   Math.floor(p.y)===64?{name:'stone',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}:
    {name:'air',boundingBox:'empty'}
  assert.equal(r.resumeAutonomousBedApproachOnWitness().state,'started')
  assert.equal(r.job.type,'EXPLORE')
@@ -130,7 +130,7 @@ test('autonomous bed approach never overrides STOP/FOLLOW, active scout or unkno
   r.bot.parseBedMetadata=()=>({occupied:0})
   r.bot.blockAt=(p)=>Math.floor(p.x)===14&&Math.floor(p.y)===65&&Math.floor(p.z)===0?
     {name:'red_bed',position:vec(14,65,0)}:
-    Math.floor(p.y)===64?{name:'stone',boundingBox:'block'}:
+    Math.floor(p.y)===64?{name:'stone',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}:
     {name:'air',boundingBox:'empty'}
   if(block==='stop')r.goalPlanner.stoppedByHuman=true
   if(block==='follow')r.core.hasFollowIntent=()=>true
