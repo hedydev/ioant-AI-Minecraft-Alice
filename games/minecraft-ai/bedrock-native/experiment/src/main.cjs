@@ -410,6 +410,13 @@ async function main(args=process.argv.slice(2)){
     if(priorDoor.state==='verified'||priorDoor.state==='rejected')
       runtimeLogger.log('[Alice exploration] delayed door crossing:',
         JSON.stringify(priorDoor))
+    // Do not chain another observed doorway waypoint based on the local
+    // pathfinder. Confirm the previous ONE cell from a NEW independent BDS
+    // pair first. Unknown outcome remains pending and never grants a route.
+    const priorDoorApproach=runtime.settlePendingDoorApproachOnWitness()
+    if(priorDoorApproach.state==='verified'||priorDoorApproach.state==='rejected')
+      runtimeLogger.log('[Alice exploration] delayed door approach step:',
+        JSON.stringify(priorDoorApproach))
     // Verify any earlier ONE-CELL bed movement using a NEW post-input
     // independent BDS pair, before considering a subsequent step.
     const priorBedStep=runtime.settlePendingBedStepOnWitness()
