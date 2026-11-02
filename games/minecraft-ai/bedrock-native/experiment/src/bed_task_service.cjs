@@ -59,34 +59,51 @@ function requestBed(r,action,source,report=null){
  // Only loaded, verified bed cells; a farther candidate is NOT a safe route.
  const positions=observedBedPositions(r)
  const choice=selectAdjacentBed(r.bot,positions,{radius:16})
- if(!choice.bed){
-  // Seeing a bed does not imply we can reach it. Show the existing local
-  // read-only approach/door survey, never attempt physical movement here.
-  if(choice.reason==='bed_needs_verified_approach'){
-   try{
-    const survey=surveyEscape(r.bot,{radius:7,maxNodes:100,bedPositions:positions})
-    r.lastBedApproach=survey?.bedApproach||null
-   }catch{r.lastBedApproach=null}
-  }
-  return reply('rejected',choice.reason,message({reason:choice.reason}))
+ let bedPosition=choice.bed?.position||null,needsApproach=false
+ if(!bedPosition&&choice.reason==='bed_needs_verified_approach'){
+  try{
+   const survey=surveyEscape(r.bot,{radius:7,maxNodes:100,bedPositions:positions})
+   r.lastBedApproach=survey?.bedApproach||null
+   const plan=r.lastBedApproach
+   if(plan?.status==='observed_route_candidate'&&plan.routeComplete===true&&
+      plan.permitted===false&&plan.serverVerified===false&&
+      plan.steps>=1&&plan.steps<=8&&Array.isArray(plan.bed)&&
+      plan.bed.length===3&&plan.bed.every(Number.isSafeInteger)&&
+      Array.isArray(plan.waypoints)&&plan.waypoints.length===plan.steps&&
+      plan.waypoints.every(p=>Array.isArray(p)&&p.length===3&&
+        p.every(Number.isSafeInteger))){
+    bedPosition={x:plan.bed[0],y:plan.bed[1],z:plan.bed[2]}
+    needsApproach=true
+   }
+  }catch{r.lastBedApproach=null}
  }
+ if(!bedPosition)return reply('rejected',choice.reason,message({reason:choice.reason}))
  const now=r.clock(),ev=r.movementEvidence?.get?.()
  const p={action,source,report,at:now,expiresAt:now+TIMEOUT,
+   globalExpiresAt:now+1200000,steps:0,
+   stage:needsApproach?'approach':'interact',
    epoch:r.epoch,loginAt:ev?.loginAt??null,lifeEpochAt:ev?.lifeEpochAt??null,
    dimension:r.bot.game?.dimension,
-   position:{x:choice.bed.position.x,y:choice.bed.position.y,z:choice.bed.position.z},
+   position:{x:bedPosition.x,y:bedPosition.y,z:bedPosition.z},
    timer:null}
- p.timer=setTimeout(()=>{
-  if(r.pendingBedRequest===p)cancelBed(r,'bed_request_expired')
- },TIMEOUT)
- p.timer.unref?.()
+ const arm=()=>{
+  clearTimeout(p.timer)
+  p.timer=setTimeout(()=>{
+   if(r.pendingBedRequest===p)cancelBed(r,'bed_request_expired')
+  },Math.max(1,p.expiresAt-r.clock()))
+  p.timer.unref?.()
+ }
+ arm()
  r.pendingBedRequest=p
  const next=resumeBed(r)
  if(next.state==='started')return reply('started','bed_interaction_started','已找到床，正在等待服务器确认')
+ if(next.state==='approaching')return reply('started',next.reason,
+   '已经启动一格安全接近床的尝试；终点需要后续独立BDS见证，不会自动连续走')
  if(next.state==='completed')return reply('completed',next.reason,next.message)
  if(next.state==='rejected')return reply('rejected',next.reason,message({reason:next.reason}))
- return reply('started','awaiting_bds_bed_proof',
-   '找到可触及的床；等待新鲜 BDS 双坐标证明，不会擅自移动')
+ return reply('started',needsApproach?'awaiting_bds_bed_approach':'awaiting_bds_bed_proof',
+   needsApproach?'已发现床和只读安全接近路线；等待BDS双样本开始单步行走':
+     '找到可触及的床；等待新鲜 BDS 双坐标证明，不会擅自移动')
 }
 function resumeBed(r){
  const p=r.pendingBedRequest
@@ -108,7 +125,34 @@ function resumeBed(r){
  const proof=scoutStartProof(r.bot,r.movementEvidence,r.clock)
  if(!proof.ok)return proof.reason==='scout_bds_position_unavailable'?
    {state:'waiting',reason:proof.reason}:deny(proof.reason)
- const choice=selectAdjacentBed(r.bot,[p.position],{radius:2})
+ // A completed local GoalNear cannot certify the prior one-cell step.
+ // The callback first settles its later independent BDS endpoint. Refuse
+ // both duplicate movement and bed activation until that succeeds.
+ if(p.stage==='awaiting_step'){
+  if(r.pendingBedStep||r.job)
+   return {state:'waiting',reason:'bed_step_waiting_for_independent_endpoint'}
+  const last=r.lastBedApproachAction
+  if(last?.status!=='verified'||last.at<p.stepIssuedAt||
+     last.serverMovementVerified!==true)
+   return deny('bed_step_independent_endpoint_unconfirmed')
+  p.steps++
+  if(p.steps>8||now>=p.globalExpiresAt)return deny('bed_approach_step_limit')
+  p.stage='approach';p.expiresAt=Math.min(p.globalExpiresAt,now+TIMEOUT)
+  clearTimeout(p.timer)
+  p.timer=setTimeout(()=>{if(r.pendingBedRequest===p)cancelBed(r,'bed_request_expired')},
+    Math.max(1,p.expiresAt-now));p.timer.unref?.()
+ }
+ const choice=selectAdjacentBed(r.bot,[p.position],{radius:16})
+ if(!choice.bed&&choice.reason==='bed_needs_verified_approach'&&
+    p.stage==='approach'){
+  if(typeof r.resumeBedApproachOnWitness!=='function')
+   return deny('bed_approach_executor_unavailable')
+  const step=r.resumeBedApproachOnWitness({
+    bedPosition:p.position,source:p.source})
+  if(step.state!=='started')return deny(step.reason||'bed_step_not_admitted')
+  p.stage='awaiting_step';p.stepIssuedAt=now;p.epoch=r.epoch
+  return {state:'approaching',reason:'bed_one_cell_started_endpoint_unverified'}
+ }
  if(!choice.bed||['x','y','z'].some(k=>choice.bed.position[k]!==p.position[k]))
    return deny('bed_changed_or_no_longer_adjacent')
  r.pendingBedRequest=null;clearTimeout(p.timer)
