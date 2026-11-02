@@ -177,3 +177,32 @@ test('unknown, occupied and blocked bed approaches are never suggested as paths'
  assert.equal(surveyEscape(r.bot,{radius:6,bedPositions:[pos(5,65,0)]}).bedApproach,null)
  assert.equal(r.actions(),0)
 })
+
+test('known collision-free torch under 2-block roof allows readonly room survey',()=>{
+ const r=room({door:true}),original=r.bot.blockAt
+ r.bot.blockAt=p=>{
+  if(Math.floor(p.x)===0&&Math.floor(p.z)===0&&Math.floor(p.y)===66)
+   return {name:'torch',boundingBox:'empty',shapes:[]}
+  if(Math.floor(p.x)===0&&Math.floor(p.z)===0&&Math.floor(p.y)===67)
+   return solid('cobblestone')
+  return original(p)
+ }
+ const s=surveyEscape(r.bot,{radius:4})
+ assert.equal(s.status,'door_interaction_candidate')
+ assert.equal(s.doorCandidates.length>0,true)
+ assert.equal(s.canModifyWorld,false)
+ assert.equal(r.actions(),0)
+})
+test('torch with nonempty or unknown collision shape cannot fake open room',()=>{
+ for(const wrong of [
+  {name:'torch',boundingBox:'block'},
+  {name:'torch',boundingBox:'empty',shapes:[[0,0,0,1,1,1]]},
+  {name:'stone',boundingBox:'block'}]){
+  const r=room({door:true}),original=r.bot.blockAt
+  r.bot.blockAt=p=>Math.floor(p.x)===0&&Math.floor(p.z)===0&&
+    Math.floor(p.y)===66?wrong:original(p)
+  const s=surveyEscape(r.bot,{radius:4})
+  assert.equal(s.status,'current_tile_unverified')
+  assert.equal(r.actions(),0)
+ }
+})
