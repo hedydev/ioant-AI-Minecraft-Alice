@@ -227,7 +227,7 @@ def selftest():
     assert not good['sweptDoorSurvey']['movementPermitted']
     assert not good['sweptDoorSurvey']['serverMovementVerified']
     for cell in cells:
-        if (cell[0],cell[2]) in ((-1,0),(0,-1)) and cell[1] in (0,1):
+        if (cell[0],cell[2]) in ((-1,0),(0,-1),(1,0),(0,1)) and cell[1] in (0,1):
             cell[3:5]=[1,2]
     blocked=summarize(view)
     assert blocked['sweptDoorSurvey']['doorApproaches']==[]
