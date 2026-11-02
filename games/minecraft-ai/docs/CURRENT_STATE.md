@@ -2092,5 +2092,4 @@ User clarified wood is just an example. Ultimate goal: understand arbitrary Mine
 - 实际在原Mac工作区通过合法OpenClaw repository_sync，原Mint经 `alice-mac.sh sync` 非重启执行 Node24 **908/908 PASS、fail0、skip0**，Mac Python299；验收回执 `alice_raise_landing_mint_node_20261102_v02` / `mint_sync`：`aliceRestarted=false,bdsRestarted=false,worldModifiedByTask=false,consoleCommandSent=false`。**正在运行的客户端未重载**；已有客户端重载平台拒绝记录必须遵守，不可借其他任务重放。
 ## User play session: Alice stop requested (2026-11-02)
 
-User explicitly asks to take Alice offline while they play, without reconnecting. The new stop-only operator task uses existing verified process shutdown and never starts a replacement. Coordinate development/live acceptance must not reconnect Alice until the user requests it. Actual stop receipt pending.
-
+User explicitly asks to take Alice offline while they play, without reconnecting. The new stop-only operator task uses existing verified process shutdown and never starts a replacement. Coordinate development/live acceptance must not reconnect Alice until the user requests it. Actual MCP alice_user_play_stop_20261102_k4n8v2cs_01 passed/cached: oldPid2472609 stopped, processAlive=false, replacementStarted=false. Independent canonical status afterwards confirms pid=null/no_running_process. Keep Alice offline until the user explicitly asks to reconnect.

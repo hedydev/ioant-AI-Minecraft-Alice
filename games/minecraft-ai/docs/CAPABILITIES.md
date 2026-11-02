@@ -1112,5 +1112,4 @@ User clarified wood is just an example. Ultimate goal: understand arbitrary Mine
 - Original Mac/Mint source sync and native Node24 908/908 passed; existing online Alice client has NOT been restarted or proven to load these changes. Real-world movement, server coordinates and sleep remain **unverified**.
 ## Explicit stop-only operator task (2026-11-02)
 
-Added identity-verified Alice client-only stop for the user's play session, with no replacement start or BDS/world changes. Four focused lifecycle tests and script self-test pass; actual stop receipt pending. Task: `.openclaw/tasks/alice_client_stop_operator.json`.
-
+Added identity-verified Alice client-only stop for the user's play session, with no replacement start or BDS/world changes. Four focused lifecycle tests and script self-test pass; actual MCP stop passed/cached and independent status confirms no_running_process; no replacement was started. Task: `.openclaw/tasks/alice_client_stop_operator.json`.
