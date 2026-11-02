@@ -1,5 +1,19 @@
 # AliceAI standalone repository — AI instructions
 
+## Approved MCP client lifecycle (2026-11-03)
+
+For an explicitly user-authorized Alice-only restart, use the original approved
+`.openclaw/tasks/alice_17879_client_restart.json` via OpenClaw Mac repository_task,
+workspace_mode=current and exact current HEAD. Read project_actions first for
+approvedLifecycleTasks[name=alice_client_restart].enabled; then poll the same
+operation and read alice_restart. No user terminal relay is needed. The bridge
+pins separately approved task/script hashes; current owner/world/17879, healthy
+IDLE/no-job and final pre-stop safety checks remain mandatory. This does not
+override platform review or authorize replay of refused h01/uncertain work. Actual
+single replacement and heartbeat/game session acceptance is recorded in
+games/minecraft-ai/docs/CLIENT_RESTART_APPROVAL_20261103.md. No BDS/world/auth or
+movement protection changes are granted by this lifecycle approval.
+
 Canonical project: `games/minecraft-ai/`. First read:
 1. [Project AGENTS](games/minecraft-ai/AGENTS.md)
 2. [Current state](games/minecraft-ai/docs/CURRENT_STATE.md)

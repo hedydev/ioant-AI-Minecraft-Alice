@@ -1,3 +1,10 @@
+## 2026-11-03 — Approved client restart available and live-tested
+
+ChatGPT can run the original approved alice_17879_client_restart task through
+MCP/current without user terminal relay. Actual single replacement3521245→3633395
+has live heartbeat/connection/session proof. Local grant pins reviewed code;
+platform review and world/game safety gates remain. See CLIENT_RESTART_APPROVAL_20261103.md.
+
 ## 2026-11-02 — Current-life witness/route diagnostics observed
 
 The maintained existing-log task now uses the current-life timestamped private journal as primary evidence with an explicit source field. Actual a5 captured30 handoffs,9 prepared route starts and9 post-waypoint divergence rejections; old nonexistent endpoint-outcome log labels are corrected. These are diagnostic/control-flow observations, not new movement abilities or independent endpoint acceptance. Game runtime, proof thresholds and query cadence are unchanged. See COORDINATE_EVIDENCE_REVIEW_20261102.md.
@@ -1113,10 +1120,11 @@ User clarified wood is just an example. Ultimate goal: understand arbitrary Mine
 ## Explicit stop-only operator task (2026-11-02)
 
 Added identity-verified Alice client-only stop for the user's play session, with no replacement start or BDS/world changes. Four focused lifecycle tests and script self-test pass; actual MCP stop passed/cached and independent status confirms no_running_process; no replacement was started. Task: `.openclaw/tasks/alice_client_stop_operator.json`.
-## 2026-11-03 — Explicitly approved client-only restart (staged)
+## 2026-11-03 — Explicitly approved client-only restart (accepted)
 
 Original MCP restart task now supports reviewed enrollment and standard old/new
 PID, live heartbeat/game-session receipts, final safety recheck and durable
 no-repeat claims. Platform review remains mandatory; runtime permission and
-actual replacement are pending. No BDS/world/player-data or movement permission
-was added. See CLIENT_RESTART_APPROVAL_20261103.md.
+actual replacement are accepted through real MCP:3521245→3633395 with live
+heartbeat and established game session. No BDS/world/player-data or movement
+permission was added. See CLIENT_RESTART_APPROVAL_20261103.md.

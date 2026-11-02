@@ -1,3 +1,14 @@
+## 2026-11-03 — Latest live client and approved restart
+
+MCP restart permission is now explicitly enrolled and actually accepted. Current
+verified owner is PID3633395 (replaced3521245 once), connected/current heartbeat/
+session established, HP20/IDLE. Receipt alice_client_restart_approved_20261103_k4n8v2cs_01
+passed/cached, no BDS/world operation. Use the approved original repository task;
+see CLIENT_RESTART_APPROVAL_20261103.md. Earlier PID-based coordinate reports and
+the temporary offline-for-play instruction below are historical. Previous-owner
+6 independently verified partial steps remain historical; no whole route/bed/HOME
+acceptance is inferred for this newly started life.
+
 ## 2026-11-02 — Root boundary: repeated waypoint admission uses the old independent baseline
 
 Actual current-life journal MCP a5 now proves9 divergence failures AFTER a locally completed waypoint; latest completed1 local node/.94 estimated blocks, then navigation_scout_client_server_position_diverged. There were30 witness handoffs and9 prepared starts, so evidence did reach navigation. Per-waypoint goto/setGoal rechecks the original independent baseline, which is not refreshed during an ordinary route under the180s provider cadence. This isolates a route/proof handoff failure boundary, not proof that BDS accepted every local step. The earlier guard correctly prevents old-sample pullback; do not undo it. No game runtime was changed this turn; motion/independent endpoints remain unaccepted. Updated diagnostics are committed and real-MCP tested; full Mac Python306(skip3), parser7, Node diagnostic8 pass. See COORDINATE_EVIDENCE_REVIEW_20261102.md.
@@ -2093,10 +2104,13 @@ User clarified wood is just an example. Ultimate goal: understand arbitrary Mine
 ## User play session: Alice stop requested (2026-11-02)
 
 User explicitly asks to take Alice offline while they play, without reconnecting. The new stop-only operator task uses existing verified process shutdown and never starts a replacement. Coordinate development/live acceptance must not reconnect Alice until the user requests it. Actual MCP alice_user_play_stop_20261102_k4n8v2cs_01 passed/cached: oldPid2472609 stopped, processAlive=false, replacementStarted=false. Independent canonical status afterwards confirms pid=null/no_running_process. Keep Alice offline until the user explicitly asks to reconnect.
-## 2026-11-03 — Explicit MCP lifecycle permission staged
+## 2026-11-03 — Explicit MCP lifecycle permission accepted
 
 User authorized a formally approved Alice-only restart capability, not a replay
 of refused h01. Existing task/script updated with state/owner/world checks,
 per-operation durable claims, no second session and standard receipt. Nine
 focused tests and full Mac Python320(skip3) pass. Local bridge approval and actual
-restart acceptance are pending. See CLIENT_RESTART_APPROVAL_20261103.md.
+restart acceptance passed: MCP alice_client_restart_approved_20261103_k4n8v2cs_01,
+3521245→3633395, live heartbeat/connection/session verified, cached=true. New
+independent samples start at0; previous-life step evidence is historical, not
+current-process motion acceptance. See CLIENT_RESTART_APPROVAL_20261103.md.

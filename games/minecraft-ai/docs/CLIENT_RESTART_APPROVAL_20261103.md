@@ -20,5 +20,22 @@ Mint 私有生命周期锁和停机前落盘的 operation claim 防止重复。�
 不重做。标准回执含 oldPid/newPid、存活、心跳、连接、sessionEstablished、失败原因；
 未确认新会话不能算成功。平台如果仍拒绝，停止并交管理员审核，不能改用别的工具。
 
-新专项 9/9 和完整 Mac Python 320 项（跳过 3 项）通过；正式批准和实机结果待补记。
-这不是坐标或自主行为的验收。
+新专项 9/9 和完整 Mac Python 320 项（跳过 3 项）通过。MCP 全量1376/1376通过。
+
+## 实际获准重启（北京时间 2026-11-03 00:39）
+
+本机独立批准已登记（批准哈希 `0b0b2ee78a0738b155c0334a00e9fe8292d5b3f60e5254030d0bac813385b99f`），
+正式 MCP 动作列表已公布 enabled=true。原任务在本仓库提交
+`a7c1a5ef08859b406ff52b654cb785fdc6dd79be` 通过 MCP/current 实际执行一次：
+`alice_client_restart_approved_20261103_k4n8v2cs_01`。
+
+结果 passed/cached=true；标准 lifecycle 回执 completed/failureReason=none，
+旧PID3521245→新PID3633395，replacementCount=1。新进程存活、心跳、连接、
+sessionEstablished、owner/world/port验证均true；无现有游戏job，BDS未重启、
+任务未改世界，无本地模型调用。声明产物 alice_restart 实际可读，SHA256
+`5a807aa7410caab7630afe79a179e37f3ccb4932a7a7ffa75297eb7cfcac2ae7`。
+独立 canonical status 再确认同PID/current_process、心跳0.3秒、在线HP20/IDLE。
+无需用户终端命令，旧 h01 未执行或复用。MCP自身平台审核仍保留。
+
+重启仅证明新游戏会话就绪；新生命独立样本重新从0开始。此前旧PID下6次独立
+BDS partial-step证明仍是历史证据，不能算当前进程的移动、出门、床或HOME通过。
