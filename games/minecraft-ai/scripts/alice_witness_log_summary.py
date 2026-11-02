@@ -40,3 +40,25 @@ def summarize_witness_log(tail):
             except (ValueError, TypeError):
                 result[key] = 'other_or_unavailable'
     return result
+
+
+def summarize_witness_journal(records, since, now):
+    import json
+    if type(since) is not int or type(now) is not int or not 0 < since <= now:
+        return {'verifiedTimeRange': False, **summarize_witness_log('')}
+    markers = {'[Alice autonomy] BDS witness idle handoff:',
+               '[Alice movement] safe-idle BDS-local mirror deferred:',
+               '[Alice autonomy] prepared route admitted:'}
+    rows = []
+    for r in records:
+        if (not isinstance(r, dict) or type(r.get('at')) is not int or
+                not since <= r['at'] <= now or not isinstance(r.get('kind'), str) or
+                r['kind'] not in markers or
+                not isinstance(r.get('detail'), dict)):
+            continue
+        rows.append(r)
+    rows.sort(key=lambda r: r['at'])
+    # Feed only exact known event kinds; the shared parser discards arbitrary
+    # detail values. Never export journal rows, positions or free-form text.
+    lines = [r['kind'] + ' ' + json.dumps(r['detail']) for r in rows]
+    return {'verifiedTimeRange': True, **summarize_witness_log('\n'.join(lines))}

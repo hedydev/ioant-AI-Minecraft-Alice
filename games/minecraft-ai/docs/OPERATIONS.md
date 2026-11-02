@@ -1,6 +1,6 @@
 ## 2026-11-02 — Diagnose the accepted-witness handoff without another reload
 
-The existing alice_model_navigation_log_readonly_20261101 task now reports fixed witness idle-handoff outcomes, mirror-deferral reasons and prepared-route start counts from the current owner’s bounded existing log tail. Run once at its exact committed SHA through MCP/current and read model_nav; no model, BDS query, remote script install or client/BDS restart. Last logged outcomes are historical within that process tail, not instantaneous state. Keep4s/.75 navigation and1000ms diagnostic criteria distinct; see [review and commands](COORDINATE_EVIDENCE_REVIEW_20261102.md).
+The existing alice_model_navigation_log_readonly_20261101 task now reports fixed witness idle-handoff outcomes, mirror-deferral reasons and prepared-route start counts from the current owner’s bounded existing log tail, plus up to five private acceptance journal segments filtered after the verified process/login/life start. Run once at its exact committed SHA through MCP/current and read model_nav; no model, BDS query, remote script install or client/BDS restart. Last logged outcomes are historical within that process tail, not instantaneous state. Keep4s/.75 navigation and1000ms diagnostic criteria distinct; see [review and commands](COORDINATE_EVIDENCE_REVIEW_20261102.md).
 
 ## 2026-11-02 — Activity-qualified mirror rollout and observer clock
 

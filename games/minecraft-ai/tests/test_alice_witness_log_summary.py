@@ -43,6 +43,24 @@ class WitnessLogSummaryTests(unittest.TestCase):
             '{"outcome":"idle_started"}')
         self.assertEqual(r['witnessHandoffCount'], 0)
 
+    def test_journal_filters_previous_process_future_and_unrelated_rows(self):
+        kind = '[Alice autonomy] BDS witness idle handoff:'
+        rows = [{'at': a, 'kind': kind, 'detail': {'outcome': o}}
+                for a, o in [(50, 'controller_busy'), (110, 'queued'),
+                             (120, 'idle_started'), (210, 'sleeping')]]
+        rows.append({'at': 130, 'kind': '[Alice agent] private text',
+                     'detail': {'outcome': 'controller_busy'}})
+        r = module.summarize_witness_journal(rows, 100, 200)
+        self.assertTrue(r['verifiedTimeRange'])
+        self.assertEqual(r['witnessHandoffCount'], 2)
+        self.assertEqual(r['lastWitnessHandoff'], 'idle_started')
+        self.assertNotIn('private', str(r))
+
+    def test_unknown_current_process_time_does_not_inherit_old_journal(self):
+        r = module.summarize_witness_journal([], None, 200)
+        self.assertFalse(r['verifiedTimeRange'])
+        self.assertEqual(r['lastWitnessHandoff'], 'unknown')
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -21,3 +21,11 @@ node --test games/minecraft-ai/bedrock-native/experiment/test/inspect_reconcilia
 ```
 
 No Alice/BDS restart is needed for this read-only operator script. Do not deploy any client runtime or increase query frequency to make the diagnostic pass. Actual movement synchronization remains unaccepted until independent post-input BDS evidence matches the intended outcome.
+
+## First real log check and time-scoped journal follow-up
+
+Actual MCP `alice_coord_handoff_20261102_k4n8v2cs_a1` atf790374 passed both read-only steps, exported nonempty model_nav (1274bytes, SHA352cbec05387e291430f7e349f59140b1716d5e6f85160a2812354a2b381b087). Current owner is healthyIDLE, independent samples19, latest historical navigation rejection1.17 blocks, six rejections, zero endpoint outcomes. The250KB stdout tail had zero exact witness/mirror-deferral/prepared-admission markers; that is missing context, NOT proof callbacks never ran.
+
+Existing read-only load audit `alice_coord_main_load_20261102_k4n8v2cs_a2` also passed: connected/current heartbeat, process under1hour and main-file source mtime precedes process start. This falsifies a simple “forgot to reload the current project main file” explanation, without claiming a cryptographic loaded-code hash.
+
+The maintained inspector now also reads at most five already-existing private acceptance journal segments (each<=1MiB), filters timestamps to the current verified process/login/life and exact fixed event kinds, and exports only enum/count summaries. This can recover witness reasons lost from the250KB stdout tail. Previous-life/future/quoted/malformed records are excluded. No source deployment, client restart or game interaction is required. The new journal parser has6 focused Python tests; runtime readback follows the committed task.
