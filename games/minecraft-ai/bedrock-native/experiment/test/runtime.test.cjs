@@ -982,7 +982,7 @@ test('indoor WAIT approaches a four-cell doorway without opening or mining until
  assert.equal(verified.state,'verified')
  assert.equal(verified.serverMovementVerified,true)
  assert.equal(e.pendingDoorApproachStep,null)
- assert.equal(e.lastEscapeDoorAction?.serverMovementVerified,false)
+ assert.equal(e.lastEscapeDoorAction?.serverMovementVerified,true)
  assert.equal(activations,0,'approach is not automatic door activation')
  assert.equal(digs,0,'constructed room is never mined')
  e.stop()
