@@ -151,7 +151,9 @@ class BedrockOperations {
   hasNearbyBed(radius=12,options={}){return life.hasNearbyBed(this.bot,radius,options)}
   inspectNightBeds(radius=12,options={}){return life.inspectNightBeds(this.bot,radius,options)}
   async sleepNearby(args){
-    const r=await life.sleepNearby(this.bot,this.api,args)
+    const r=await life.sleepNearby(this.bot,this.api,{
+      ...args,evidence:args?.evidence??this.movementEvidence
+    })
     return r.ok?{...r,message:'服务器确认 Alice 已进入睡眠'}:r
   }
   async transferNearby(args){
