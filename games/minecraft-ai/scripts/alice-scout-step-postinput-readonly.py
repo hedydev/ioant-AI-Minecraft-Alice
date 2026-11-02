@@ -110,7 +110,7 @@ def run(output):
  remote=extract.__code__
  # Pure parser is inserted before the statically audited read-only command.
  import inspect
- source=inspect.getsource(extract)+'\n'+REMOTE
+ source='MARKERS='+repr(MARKERS)+'\nREASONS='+repr(REASONS)+'\n'+inspect.getsource(extract)+'\n'+REMOTE
  process=subprocess.run(['/usr/bin/ssh','-T','-o','BatchMode=yes',
    '-o','ConnectTimeout=8','-o','StrictHostKeyChecking=yes',
    'tedz@192.168.0.104','/usr/bin/python3 -c '+shlex.quote(source)],
@@ -138,6 +138,11 @@ def selftest():
  assert d['recent'][-1]['reason']=='scout_step_bds_endpoint_unconfirmed'
  assert extract(events,0,at)['state']=='unverified_time_context'
  assert 'querytarget' not in REMOTE and 'stop' not in REMOTE.split('def diagnostic():')[1].split('try:out=')[0].lower()
+ import inspect
+ source='MARKERS='+repr(MARKERS)+'\nREASONS='+repr(REASONS)+'\n'+inspect.getsource(extract)
+ sandbox={}
+ exec(compile(source,'<static-parser>','exec'),sandbox)
+ assert sandbox['extract'](events,30000,at)['counts']['bds_endpoint']==1
  print('ALICE_SCOUT_POSTINPUT_READONLY_SELFTEST_PASS')
 if __name__=='__main__':
  if sys.argv[1:]==['--self-test']:selftest()
