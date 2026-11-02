@@ -1,3 +1,7 @@
+## 2026-11-02 — Diagnose the accepted-witness handoff without another reload
+
+The existing alice_model_navigation_log_readonly_20261101 task now reports fixed witness idle-handoff outcomes, mirror-deferral reasons and prepared-route start counts from the current owner’s bounded existing log tail. Run once at its exact committed SHA through MCP/current and read model_nav; no model, BDS query, remote script install or client/BDS restart. Last logged outcomes are historical within that process tail, not instantaneous state. Keep4s/.75 navigation and1000ms diagnostic criteria distinct; see [review and commands](COORDINATE_EVIDENCE_REVIEW_20261102.md).
+
 ## 2026-11-02 — Activity-qualified mirror rollout and observer clock
 
 The new stationary activity guard is runtime code and needs an authorized normal Alice-only lifecycle after sync/tests. Read `activityGuardVersion`:1 identifies the new input timeline marker; older replay counters with a null marker do not establish this patch loaded. The version marker is feature telemetry, not a cryptographic source hash or independent BDS acceptance. Do not replay a prior platform-rejected reload or consume an old intent again.

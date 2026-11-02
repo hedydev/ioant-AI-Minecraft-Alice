@@ -1,0 +1,30 @@
+{
+  "schema_version": 2,
+  "event_id": "baf22e06-89ea-4d4a-be3b-b1b922c0f78f",
+  "task_id": "cf34f05d-a84c-4cbe-999f-76e5d3366a7d",
+  "event_type": "progress_recorded",
+  "occurred_at": "2026-11-02T04:02:43.254240Z",
+  "actor": {
+    "actor_type": "ai",
+    "ai_name": "ChatGPT",
+    "ai_session_id": "k4n8v2cs"
+  },
+  "ledger_branch": "main",
+  "development_branch": "main",
+  "observed_commit": "f43f7e6f8d4d66bd9d0ed45a76a8b80542e907e0",
+  "message": "Read actual revision56 receipts. New PID has loaded guard1; seven fresh-pair samples were rejected only by stricter1s diagnostic skew while same-session ACK proved the4s/.75 gate passed at least once. Historical1.21 rejection remains real but movement acceptance incomplete. Added read-only existing-log reason summaries, no game runtime/TTL/query/coordinate changes.",
+  "changes": {
+    "remaining_work": [
+      "Exact-commit read-only witness handoff log diagnosis",
+      "Independent fresh post-input BDS movement acceptance",
+      "Human acceptance"
+    ]
+  },
+  "evidence": [
+    {
+      "kind": "document",
+      "path": "games/minecraft-ai/docs/COORDINATE_EVIDENCE_REVIEW_20261102.md"
+    }
+  ],
+  "supersedes_event_id": null
+}

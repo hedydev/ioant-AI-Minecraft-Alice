@@ -85,3 +85,15 @@ test('samples from an earlier login or life do not qualify even when timestamps 
   assert.equal(r.clientBdsDistance,null);assert.equal(r.bdsFreshPair,false)
  }
 })
+test('zero close-time comparison windows does not prove the 4s navigation gate never passed',()=>{
+ const {scoutStartProof}=require('../src/scout_start_proof.cjs')
+ const v=fixture();v.core.movementEvidence.independentAt=v.now-1500
+ v.core.movementEvidence.independentPreviousAt=v.now-2500
+ v.core.position={...v.core.movementEvidence.independentLatestFeet}
+ const r=summarizeReconciliation(v)
+ assert.equal(r.bdsFreshPair,true)
+ assert.equal(r.coordinateComparison,'sample_time_skew')
+ assert.equal(r.clientBdsDistance,null)
+ assert.equal(scoutStartProof({entity:{position:v.core.position}},
+   {get:()=>v.core.movementEvidence},()=>v.now).ok,true)
+})

@@ -1,3 +1,7 @@
+## 2026-11-02 — Distinguish navigation proof from close-time observation
+
+The4s/.75 navigation gate and stricter1s diagnostic comparison are separate. Actual rev56 includes fresh-pair/time-skew readings plus an aligned ACK, so zero observed close-time windows is not evidence that navigation proof never existed. New bounded read-only existing-log summaries expose fixed handoff, mirror-deferral and prepared-route admission counts; actual runtime readback is pending. No new game capability or moving synchronization acceptance. See [review](COORDINATE_EVIDENCE_REVIEW_20261102.md).
+
 ## 2026-11-02 — Loaded activity guard and fresh stationary position agreement (OBSERVED scope)
 
 Actual current-owner activityGuardVersion1 and original17879 login confirmed on PID1924898. Two separate finite observations captured two distinct fresh BDS-pair windows; five plus four repeated qualified readings reported0.00-block relative error at0.01 precision, with no snapshot failures. This accepts the measured stationary windows only, not exact float equality or continuously identical positions. Later six motion inputs have no independently verified fresh post-movement endpoint yet; active movement acceptance remains pending. Source798/798 regression evidence is unchanged.

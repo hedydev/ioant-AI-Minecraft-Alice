@@ -1,3 +1,9 @@
+## 2026-11-02 — Rev56 coordinate report needs separate gate interpretation
+
+Actual cached MCP receipts confirm PID2472609 loaded activityGuardVersion1. In835 reads, seven valid fresh BDS-pair readings failed only the observer’s stricter1000ms time-skew filter; zero close-time windows does not prove the4s navigation gate never passed. Separate same-session ACK reports gate=true. The historical1.21 rejection is real, but later65.899s-old subtraction is not a current error. Movement remains unaccepted.
+
+Extended only the maintained read-only log inspector with fixed witness handoff/mirror-deferral/admission counters. No runtime/coordinate/TTL/query or restart change. Full Mac Python303(skip3), parser4 and diagnostic Node8 pass. Exact-commit real log readback is pending. See [evidence review](COORDINATE_EVIDENCE_REVIEW_20261102.md).
+
 ## 2026-11-02 — Alice 两格木门外完整方块阶梯与逐格跳跃（仅源码）
 
 - 用户补充现场：木门占2格高度，门外一段楼梯**由完整方块叠高**，Alice需识别且具备受控跳跃，而不能因平地路径失败一直停在IDLE。
