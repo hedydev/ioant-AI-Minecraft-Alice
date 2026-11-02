@@ -15,6 +15,7 @@ const {evaluateShelter,placeShelterBlock}=require('./night_shelter.cjs')
 const {ObservedBeds}=require('./observed_beds.cjs')
 const {HomeBedMemory,selectAdjacentBed,useBedForSpawn}=require('./bed_spawnpoint.cjs')
 const {verifyBedStep}=require('./bed_step_witness.cjs')
+const {selectDirectionalBedStep}=require('./bed_directional_step.cjs')
 const {requestBed,resumeBed,cancelBed}=require('./bed_task_service.cjs')
 const {HomeBaseMemory,homeAgenda}=require('./home_base.cjs')
 const {planNightReposition,nightConditions}=require('./night_survival.cjs')
@@ -1631,11 +1632,20 @@ class AliceBedrockRuntime {
     const survey=surveyEscape(this.bot,{radius:7,maxNodes:100,bedPositions:selected})
     const path=survey.bedApproach
     this.lastBedApproach=path||null
-    if(path?.status!=='observed_route_candidate'||path.routeComplete!==true||
-       !Array.isArray(path.waypoints)||!path.waypoints.length||
-       path.serverVerified!==false||path.permitted!==false)
-      return fail('verified_flat_bed_corridor_unavailable')
-    const a=path.waypoints[0],first={x:a?.[0],y:a?.[1],z:a?.[2]}
+    const pathFlat=path?.status==='observed_route_candidate'&&
+      path.routeComplete===true&&Array.isArray(path.waypoints)&&
+      path.waypoints.length>0&&path.serverVerified===false&&
+      path.permitted===false&&
+      path.waypoints.every((w,i)=>Array.isArray(w)&&w.length===3&&
+        w.every(Number.isSafeInteger)&&w[1]===Math.floor(here.y)&&
+        (i>0?Math.abs(w[0]-path.waypoints[i-1][0])+
+          Math.abs(w[2]-path.waypoints[i-1][2])===1:true))
+    const directional=!pathFlat&&explicitBed?
+      selectDirectionalBedStep(this.bot,bedPosition):null
+    if(!pathFlat&&!directional?.ok)
+      return fail(directional?.reason||'verified_flat_bed_corridor_unavailable')
+    const a=pathFlat?path.waypoints[0]:directional.first
+    const first={x:a?.[0],y:a?.[1],z:a?.[2]}
     const at={x:Math.floor(here.x),y:Math.floor(here.y),z:Math.floor(here.z)}
     const occupiedNext=Object.values(this.bot.entities||{}).some(e=>
       HOSTILES.has(e?.name)&&e.position&&
@@ -1676,13 +1686,16 @@ class AliceBedrockRuntime {
            this.bot.entity?.onGround!==true)
           return {...result,reason:proof.ok?'bed_one_cell_safety_preempted':proof.reason}
         const fresh=surveyEscape(this.bot,{radius:7,maxNodes:100,bedPositions:selected})
+        const stillSafe=directional?
+          selectDirectionalBedStep(this.bot,bedPosition).first?.join(',')===a.join(','):
+          fresh.bedApproach?.waypoints?.[0]?.join(',')===a.join(',')
         if(Object.values(this.bot.entities||{}).some(e=>
           HOSTILES.has(e?.name)&&e.position&&
           [e.position.x,e.position.y,e.position.z].every(Number.isFinite)&&
           Math.hypot(e.position.x-(first.x+.5),
             e.position.y-first.y,e.position.z-(first.z+.5))<1.5))
           return {...result,reason:'hostile_occupies_next_bed_step'}
-        if(fresh.bedApproach?.waypoints?.[0]?.join(',')!==a.join(','))
+        if(!stillSafe)
           return {...result,reason:'bed_first_cell_changed'}
         const movements=new this.api.Movements(this.bot)
         this.p.terrain_policy.cautiousPathOptions(movements)
