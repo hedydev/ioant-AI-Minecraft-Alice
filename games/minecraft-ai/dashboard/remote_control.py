@@ -130,7 +130,9 @@ def parse_command(payload):
         return {'status':'rejected','reason':'missing_target',
                 'message':'控制台没有游戏角色；请明确指定在线玩家，例如：跟随 MolarParsley191'}
     fixed = {'停止':'stop','停止任务':'stop','收集木头':'gather_wood',
-             '制作木剑':'craft_sword','吃东西':'eat','查看状态':'status','安全试走':'probe_step'}
+             '制作木剑':'craft_sword','吃东西':'eat','查看状态':'status','安全试走':'probe_step',
+             '睡觉':'sleep','去睡觉':'sleep','设置重生点':'set_spawnpoint',
+             '设置重置点':'set_spawnpoint'}
     if value in fixed:
         return {'action':fixed[value]}
     gather = re.fullmatch(r'收集\s*([1-9]|[12][0-9]|3[0-2])\s*个?(?:木头|原木)',value)
@@ -141,7 +143,7 @@ def parse_command(payload):
         return {'action':'follow' if match.group(1)=='跟随' else 'guard',
                 'target':match.group(2)}
     return {'status':'rejected','reason':'unsupported_command',
-            'message':'不支持这条控制台指令；可使用停止、跟随 玩家名、保护 玩家名、收集N个木头、制作木剑、吃东西'}
+            'message':'不支持这条控制台指令；可使用停止、睡觉、设置重生点、跟随 玩家名、收集N个木头'}
 
 def command_result(root=ROOT):
     report = safe_json(root / 'command-result.json')
