@@ -13,7 +13,7 @@
 
 1. **游戏聊天**：`runtime.cjs` 中的 `recognize/parseTask/onChat` 新增中文睡觉和设置重生点专用分支。不再依赖 Ollama 猜测任务或将指令误解析为普通聊天。STOP/FOLLOW 仍保持原优先级。
 2. **安全控制台**：`console_commands.cjs` 仅新增两个有限白名单动作 `sleep`、`set_spawnpoint`；`dashboard/remote_control.py` 映射中文指令；`dashboard/index.html` 与 `world.js` 添加相应按钮。仍由 `localhost:8788` 的同源与写权限检查处理，不引入任意命令/玩家身份伪造/远程开关。
-3. **共享执行入口**：`src/bed_task_service.cjs` 在收到显式命令时做一次 `maxDistance:16/count:24` 的只读 Bedrock 已加载床扫描，并与过去床记忆合并重新读方块；床不在可触及范围，只调用现有 `surveyEscape` 做只读诊断并反馈`bed_needs_verified_approach`，不会宣称可达或移动。
+3. **共享执行入口**：`src/bed_task_service.cjs` 在收到显式命令时做一次 `maxDistance:16/count:24` 的只读 Bedrock 已加载床扫描，并与过去床记忆合并重新读方块；被动床记忆的观察范围也从12扩展到16格，**只增加发现范围，不增加与床交互或移动的权限**；床不在可触及范围，只调用现有 `surveyEscape` 做只读诊断并反馈`bed_needs_verified_approach`，不会宣称可达或移动。
 4. **等待真实BDS位置证据**：只有确认同次登录/生命阶段、4秒内的两次独立BDS样本、客户端与BDS误差不大于0.75格的原`scoutStartProof`后，才允许当前床旁动作；没证据则一次性保存最多240秒的意图，等待`onFreshIndependentBdsWitness`事件；不主动查询BDS、不续签样本、不提高40次/小时和180秒原限制，超时/STOP/重登/死亡/危险/FOLLOW/任务代次变化时取消。
 5. **真实结果判定**：`bed_request_outcome.cjs` 将个人重生点`set_spawn_position`协议确认、实际`isSleeping/entered`观察与服务端时间跳夜严格分离。可分别报告：只设重生点/真正入睡/睡后起床/失败或未确认。历史会话确认不假装是本会话重生点ACK。
 6. **修复睡眠绕过风险**：`life_actions.sleepNearby` 支持`requireBdsProof`与`forbidNavigation`；当前正式世界自主睡眠和显式床指令都采取先证据、**仅相邻床交互**策略，不允许旧版`sleepNearby`自己调用无验证`pathfinder.goto`去远处睡觉。正式世界远床路径尚未打通前，应明确阻断。
