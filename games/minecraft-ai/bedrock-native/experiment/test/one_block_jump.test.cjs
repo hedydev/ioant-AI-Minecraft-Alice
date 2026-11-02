@@ -59,7 +59,8 @@ test('bounded jump emits forward and jump only and releases even after abort',as
  assert.equal(res.attempted,true)
  assert.equal(res.serverMovementVerified,false)
  assert.equal(res.reason,'jump_input_sent_endpoint_requires_new_bds_pair')
- assert.equal(f.events.filter(x=>x[0]==='jump'&&x[1]).length,2)
+ assert.equal(f.events.filter(x=>x[0]==='jump'&&x[1]).length,1,
+  'only one jump initiation even while still airborne')
  assert.equal(f.events.filter(x=>x[0]==='forward'&&x[1]).length,2)
  assert.deepEqual(f.events.slice(-2),[['forward',false],['jump',false]])
  const second=scene(),d=candidateOneBlockJump(second.bot,{toward:v(3.5,66,.5)})
@@ -67,6 +68,22 @@ test('bounded jump emits forward and jump only and releases even after abort',as
  const denied=await performOneBlockJump(second.bot,d,{signal,safe:()=>true})
  assert.equal(denied.attempted,false)
  assert.equal(second.events.length,0)
+})
+test('airborne frames continue bounded forward carry without triggering a second jump',async()=>{
+ const f=scene(),c=candidateOneBlockJump(f.bot,{toward:v(3.5,66,.5)})
+ let count=0
+ const result=await performOneBlockJump(f.bot,c,{pulses:4,safe:()=>true,
+  sleep:async()=>{
+   count++
+   if(count===1){f.bot.entity.onGround=false;f.bot.entity.position=v(.8,65.6,.5)}
+   else if(count===2){f.bot.entity.position=v(1.35,65.9,.5)}
+   else {f.bot.entity.position=v(1.5,66,.5);f.bot.entity.onGround=true}
+  }})
+ assert.equal(result.attempted,true)
+ assert.equal(result.serverMovementVerified,false)
+ assert(count>=3,'must not end jump when onGround becomes false after takeoff')
+ assert.equal(f.events.filter(x=>x[0]==='jump'&&x[1]).length,1)
+ assert.deepEqual(f.events.slice(-2),[['forward',false],['jump',false]])
 })
 test('shape changing after planning stops before physical input',async()=>{
  const f=scene(),c=candidateOneBlockJump(f.bot,{toward:v(3.5,66,.5)})
