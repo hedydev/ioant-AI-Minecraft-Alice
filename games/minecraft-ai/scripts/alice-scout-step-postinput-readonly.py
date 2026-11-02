@@ -52,7 +52,7 @@ def extract(events,since,now):
  return dict(state='observed',counts=counts,lastReasons=last_reasons,recent=latest[-16:])
 
 REMOTE=r"""
-import json,os,subprocess,time
+import json,os,subprocess,time,stat
 from pathlib import Path
 def diagnostic():
  root=Path.home()/'.alice-bedrock-control'
@@ -64,7 +64,7 @@ def diagnostic():
  if type(pid)!=int or s.get('statusSource')!='current_process' or s.get('heartbeatFresh') is not True:raise ValueError('invalid_owner')
  file=root/'status.json'
  st=file.lstat()
- if not st.is_file() or file.is_symlink() or st.st_uid!=os.getuid() or (st.st_mode&0o077) or st.st_size>8192:raise ValueError('unsafe_status')
+ if not stat.S_ISREG(st.st_mode) or file.is_symlink() or st.st_uid!=os.getuid() or (st.st_mode&0o077) or st.st_size>8192:raise ValueError('unsafe_status')
  d=json.loads(file.read_text())
  if d.get('producerPid')!=pid or d.get('world')!='Bedrock level' or d.get('serverPort')!=17879 or d.get('sessionEstablished') is not True:raise ValueError('owner_or_world_unverified')
  mv=d.get('movementEvidence') or {}
@@ -74,13 +74,13 @@ def diagnostic():
  now=int(time.time()*1000)
  home=root/'acceptance'
  st=home.lstat()
- if not st.is_dir() or home.is_symlink() or st.st_uid!=os.getuid() or st.st_mode&0o077:raise ValueError('unsafe_journal_dir')
+ if not stat.S_ISDIR(st.st_mode) or home.is_symlink() or st.st_uid!=os.getuid() or st.st_mode&0o077:raise ValueError('unsafe_journal_dir')
  records=[]
  for name in ('events.4.jsonl','events.3.jsonl','events.2.jsonl','events.1.jsonl','events.jsonl'):
   p=home/name
   if not p.exists():continue
   st=p.lstat()
-  if not st.is_file() or p.is_symlink() or st.st_uid!=os.getuid() or (st.st_mode&0o077) or st.st_size>1048576:continue
+  if not stat.S_ISREG(st.st_mode) or p.is_symlink() or st.st_uid!=os.getuid() or (st.st_mode&0o077) or st.st_size>1048576:continue
   for line in p.read_text().splitlines():
    if len(line)>4096:continue
    try:records.append(json.loads(line))
@@ -145,6 +145,7 @@ def selftest():
  assert d['recent'][-1]['reason']=='scout_step_bds_endpoint_unconfirmed'
  assert extract(events,0,at)['state']=='unverified_time_context'
  assert 'querytarget' not in REMOTE and 'stop' not in REMOTE.split('def diagnostic():')[1].split('try:out=')[0].lower()
+ assert 'st.is_file()' not in REMOTE and 'st.is_dir()' not in REMOTE
  import inspect
  source='MARKERS='+repr(MARKERS)+'\nREASONS='+repr(REASONS)+'\n'+inspect.getsource(extract)
  sandbox={}
