@@ -2090,3 +2090,7 @@ User clarified wood is just an example. Ultimate goal: understand arbitrary Mine
 - `performOneBlockJump` 仅发送一次 bounded 起跳和最多四次有限前进脉冲；若发出动作，原`pendingDoorCrossing` 保存 `raised_landing`，禁止下一轮自主移动。新增 `verifyRaisedDoorLanding` 必须得到本次输入完成后的另一组独立BDS双样本、同一login/life、真实升高1格目标单元及<=0.75格本地漂移才标记 `raised_landing_bds_verified`。从不把门口/上一级认定为室外或已到床。
 - `cancelActive` 清除授权令牌；任务变更和BDS过期不能重用，床交互/人工优先级保留。此阶段只覆盖**自主脱困的木门外完整方块高一级**，不宣称能连续上楼、多级寻路、普通跟随自动跳阶、原世界实机验收或自主睡觉完成。
 - 实际在原Mac工作区通过合法OpenClaw repository_sync，原Mint经 `alice-mac.sh sync` 非重启执行 Node24 **908/908 PASS、fail0、skip0**，Mac Python299；验收回执 `alice_raise_landing_mint_node_20261102_v02` / `mint_sync`：`aliceRestarted=false,bdsRestarted=false,worldModifiedByTask=false,consoleCommandSent=false`。**正在运行的客户端未重载**；已有客户端重载平台拒绝记录必须遵守，不可借其他任务重放。
+## User play session: Alice stop requested (2026-11-02)
+
+User explicitly asks to take Alice offline while they play, without reconnecting. The new stop-only operator task uses existing verified process shutdown and never starts a replacement. Coordinate development/live acceptance must not reconnect Alice until the user requests it. Actual stop receipt pending.
+

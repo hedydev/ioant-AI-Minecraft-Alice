@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Explicit user request: stop verified Alice client and leave offline, no BDS changes or replacement",
+  "steps": [
+    {"name":"selftest","runtime":"python","script":"games/minecraft-ai/scripts/alice-client-stop-mac.py","args":["--self-test"],"timeoutSeconds":10},
+    {"name":"stop_owned_client_once","runtime":"python","script":"games/minecraft-ai/scripts/alice-client-stop-mac.py","args":["--stop","@output_dir"],"timeoutSeconds":50}
+  ],
+  "artifacts": [{"id":"client_stop","file":"alice_client_stop.json","format":"json"}]
+}

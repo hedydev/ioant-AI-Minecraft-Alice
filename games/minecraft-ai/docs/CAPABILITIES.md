@@ -1110,3 +1110,7 @@ User clarified wood is just an example. Ultimate goal: understand arbitrary Mine
 ## 2026-11-02 raised-door one-step continuation
 - **Staged only**: independently verified door-cell threshold may now admit exactly one observed, headroom-cleared JUMP_UP to the next full-cube raised landing under the normal safety and 4s independent double-BDS start gate. Another strictly later independent BDS double pair is mandatory for successful raised landing. Per-step permission is one-use and expires within 4s; no teleport, obstacle digging, blind chaining or inference that Alice is outdoors.
 - Original Mac/Mint source sync and native Node24 908/908 passed; existing online Alice client has NOT been restarted or proven to load these changes. Real-world movement, server coordinates and sleep remain **unverified**.
+## Explicit stop-only operator task (2026-11-02)
+
+Added identity-verified Alice client-only stop for the user's play session, with no replacement start or BDS/world changes. Four focused lifecycle tests and script self-test pass; actual stop receipt pending. Task: `.openclaw/tasks/alice_client_stop_operator.json`.
+
