@@ -67,6 +67,7 @@ def selftest():
     assert parse_node_summary('ℹ tests 2\nℹ pass 1\nℹ fail 1\nℹ skipped 0\n')['fail']==1
     assert parse_node_summary('tests unclear') is None
     assert parse_python_summary('Ran 227 tests in 19.1s\n\nOK (skipped=3)')==227
+    assert parse_failed_test_names('✖ one-cell door approach (3.50ms)\n✖ failing tests:\n') == ['one-cell door approach']
     print('ALICE_SYNC_REPORT_SELFTEST_PASS')
 
 def sync(output,target):
