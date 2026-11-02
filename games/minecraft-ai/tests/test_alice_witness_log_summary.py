@@ -77,7 +77,7 @@ class WitnessLogSummaryTests(unittest.TestCase):
 
 
     def test_partial_server_step_is_separate_from_whole_route_success(self):
-        r = module.summarize_witness_log('\\n'.join([
+        r = module.summarize_witness_log('\n'.join([
             '[Alice exploration] endpoint feedback: '
             '{"outcome":"partial_verified","serverMovementVerified":true}',
             '[Alice exploration] endpoint feedback: '
