@@ -60,3 +60,20 @@ OpenClaw 仓库的 `integrations/chatgpt-openclaw/project-execution-runner.mjs` 
 ## 原则
 
 不要以任何自动化监控、时间流逝、MCP/Web 重启或 Git 成功作为原结果已明确的证明。诊断、审阅、恢复启动均是不同操作，分别获得独立回执；**原结果保留 `inconclusive`** 以保持审计闭环。
+
+
+## 恢复后MCP复核
+
+维护端随后通过原MCP正常执行只读 alice_recovery_runtime_verify_20261103_k4n8v2cs_01，
+固定完整提交90b241e3772cac84812e4fa0a59a2629f7278fb5，passed/cached。
+声明client_audit产物SHA256为9c8976d66820e0adfaa5ec558c0d1526f54613e3c9a19d375c2f9174b78b250e，
+alive/heartbeatFresh/connected/sessionEstablished/statusSourceCurrent/worldVerified均true；
+自然见证样本8，不代表新生命运动终点已验证。原失败结果仍inconclusive，并有单独
+reconciliation=resolved/confirmed_offline/lockReleased=true，不再阻止新任务。
+
+重启schema3的任务/入口已重新审阅批准，hash为
+4a92be323ec2490de70dade1addd470243cfe05748bac66030f4198df54f733f。
+MCP0.13.1加入受控恢复，真实SDK目录17工具及新inspect历史缓存读取通过；
+原有云端result/report/execute无需新目录即可正常使用。旧网页Chat如果工具列表缺
+openclaw_project_reconcile，需要刷新插件工具目录一次；维护时用户正在使用Chrome，
+未争抢前台。没有声称该网页缓存已刷新。当前Alice保持在线，不再为验收重复重启。
