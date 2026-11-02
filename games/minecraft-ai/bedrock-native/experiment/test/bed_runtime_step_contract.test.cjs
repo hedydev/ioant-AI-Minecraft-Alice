@@ -118,6 +118,8 @@ test('autonomous bed approach requires current independent witness, no pending j
  const active=r.resumeAutonomousBedApproachOnWitness()
  assert.equal(active.state,'held')
  assert.equal(active.reason,'autonomous_bed_other_priority')
+ assert.equal(r.lastBedApproachAction?.status,'held')
+ assert.equal(r.lastBedApproachAction?.reason,'autonomous_bed_other_priority')
 })
 test('autonomous bed approach never overrides STOP/FOLLOW, active scout or unknown BDS',()=>{
  for(const block of ['stop','follow','scout','proof']){

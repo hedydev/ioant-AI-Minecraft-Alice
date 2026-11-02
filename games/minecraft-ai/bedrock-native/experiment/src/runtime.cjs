@@ -1809,7 +1809,17 @@ class AliceBedrockRuntime {
   // No prior HOME/respawn confirmation is required to begin this approach:
   // those confirmations are the desired result, not an admission prerequisite.
   resumeAutonomousBedApproachOnWitness(){
-    const hold=reason=>({state:'held',reason})
+    const hold=reason=>{
+      // Export only a bounded fixed diagnostic reason; never promote a
+      // local-only route into a BDS-verified bed movement.
+      if(!this.pendingBedStep&&
+         !['starting','awaiting_bds_endpoint'].includes(this.lastBedApproachAction?.status)&&
+         (this.lastBedApproachAction?.status!=='held'||
+          this.lastBedApproachAction?.reason!==reason))
+        this.lastBedApproachAction={status:'held',reason,attempted:false,
+          serverMovementVerified:false,at:this.clock()}
+      return {state:'held',reason}
+    }
     const mode=this.liveBehavior?.settings
     if(!mode?.autonomyEnabled||mode.agentMode!=='autonomous'||
        this.goalPlanner?.stoppedByHuman||
@@ -1839,9 +1849,10 @@ class AliceBedrockRuntime {
       // The original admission routine revalidates the same loaded bed,
       // health, STOP/FOLLOW, terrain, headroom and BDS position. It starts
       // one bounded WALK/JUMP only, then waits for NEW independent evidence.
-      return this.resumeBedApproachOnWitness({bedPosition:{
+      const result=this.resumeBedApproachOnWitness({bedPosition:{
         x:Math.floor(position.x),y:Math.floor(position.y),z:Math.floor(position.z)},
         source:'自主生存'})
+      return result.state==='held'?hold(result.reason):result
     }
     return hold(known.length?'autonomous_bed_no_verified_free_approach':
       'autonomous_bed_not_loaded_in_radius')
