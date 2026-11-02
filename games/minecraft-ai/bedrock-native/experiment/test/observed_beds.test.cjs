@@ -45,6 +45,15 @@ test('bed discovery is passive, paced, bounded and not tied to nighttime',()=>{
  assert.equal(m.observe(f.bot).reason,'scan_unavailable')
  assert.deepEqual(m.nearby(f.bot),[])
 })
+test('16-block passive bed observation can see a bed beyond old 12-block range but does not authorize reach',()=>{
+ const f=fixture(),m=new ObservedBeds({clock:()=>100000})
+ f.blocks.set('14,69,0','blue_bed')
+ f.bot.findBlocks=()=>[v(14,69,0)]
+ assert.equal(m.observe(f.bot).added,1)
+ assert.deepEqual(m.nearby(f.bot),[{x:14,y:69,z:0}])
+ assert.deepEqual(m.nearby(f.bot,{radius:12}),[],
+  'observation radius never enlarges separate bed access or movement radius')
+})
 test('bed memory never follows a bed beyond observed local distance',()=>{
  const f=fixture(),m=new ObservedBeds({clock:()=>100000})
  m.observe(f.bot)
