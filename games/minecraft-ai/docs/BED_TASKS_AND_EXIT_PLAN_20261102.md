@@ -25,3 +25,15 @@
 - 当前 Mac 注册工作区仍为旧提交`9189d2b`，之前`repository_sync`在MCP返回`execution_history_full`，本轮没有强制部署、重启Alice、触碰BDS 17879/其他世界、删除OpenClaw历史记录。源码改动尚未通过真实游戏验证。
 - 尚未解决：真实床超过交互范围后分段走到床旁、前往门口开门/跨门/关门/返回的完整BDS验收；睡眠人数比例或服务端状态是否造成世界跳夜的**独立验收**；多人床抢占、白天试设重生点后的长期HOME记忆；床制作/放置需独立授权与材料规划。这些不能冒充本次已经交付。
 - 后续应先修OpenClaw已查明的每项目500历史记录上限（禁止直接删执行证据，必须归档保留operation IDs）。在获得正式工作区同步/测试/安全客户端加载以后，仅在原17879世界进行指定床坐标及新鲜BDS终点验收，再接入一格一步的到床/通门动作。
+
+
+## 2026-11-02 第二轮：床的逐格引导与跨 BDS 查询间隔验收（源码级）
+
+- 发现原`resumeBedApproachOnWitness`在4.5秒移动超时后马上要求后续两份独立BDS样本；正常MCSManager见证间隔约180秒，造成物理动作与独立终点验收窗口错位。本轮新增`src/bed_step_witness.cjs`：在当前新鲜双样本通过4秒/0.75格起步门禁后，启动**一格**旧版受控`GoalNear`，仅记录`pendingBedStep`。路径执行本身的`ok=false`，不声称到达；后续全新BDS双样本必须在输入发生后生成、同login/life且误差与目标位置吻合，才能单独记录`bed_step_new_independent_endpoint_confirmed`。4分钟截止，STOP/FOLLOW/危险/死亡/新任务改变epoch清零，绝不使用packet级`movementEvidence.progress`取代独立BDS。
+- 显式聊天/控制台床任务现可保留`approach / awaiting_step / interact`状态；本地路径扫描`surveyEscape`若提供完整平坦路线，严查首步相邻、连续同层、终点可从床边触及，等待BDS真实起步和逐格终点。移动过一格**必须再收到下一轮独立BDS证明**，不重复压移动输入。
+- 如果床在已加载16格内、超出7格局部搜寻，但正向水平一格的站立方块和上下空间是确定完整平地，可由`src/bed_directional_step.cjs`选择**仅一格**更接近床的已观察候选；无完整路线保证，不宣称床可达，不穿墙、不绕过门、不上下台阶。下一次见证后再重新观察。若墙、门、未知地面、实体占据下一步，返回受阻而非直接移动。
+- 原有床步进逻辑对12格内**任何怪物**一律拒绝，已改为只以真正`threat()`作危险抢占，同时阻止怪物实际占据下一个格子的移动；**Minecraft睡觉时的床周围怪物限制是另一种服务器判定**，不会强制攻击无攻击意图的怪物。
+- 显式玩家/控制台指令在`companion`模式也可通过所有原始安全门禁执行，修正旧`autonomyEnabled`条件将手动床动作误拒的bug。等待显式床任务期间`runIdleDecision`不再启动普通自主采集抢占位置，`maintenanceTick`仍允许紧急安全食物/装备保养。
+- 新增纯策略`test/bed_step_witness.test.cjs`7例，`test/bed_directional_step.test.cjs`5例，`test/bed_approach_workflow.test.cjs`5例，`test/bed_runtime_step_contract.test.cjs`4例；改进原`test/bed_task_service.test.cjs`使用真实block/pos和BDS字段而不靠`ready:true`冒充服务端证明。已直接在JS V8装载真实模块（部分外部服务用模拟fixture）检查bed_task10/10、逐格工作流5/5、方向候选5/5、独立终点7/7；额外提取`runtime.cjs`实际步进入口与延迟验收方法，以关闭自主模式的显式控制台指令走完**输入后等待 → 180秒后新BDS双样本终点验收**，结果通过。**不等于在Mint Node24或真实服务器通过**。
+- 出口/门已经有`escape_survey/escape_door_action/escape_crossing`组件，但`crossDoor`现有服务端判定仍依赖包级移动证据，不足以代替独立BDS终点。因此本阶段不把「观察到门打开」自动标记成「已穿门到达床」，下一步需要把真实门侧碰撞和穿门的终点也接入相同的独立BDS多周期验收。
+- OpenClaw Mac源代码同步仍被每项目500份`execution_history_full`挡住，当前GitHub改动**仅源码，没有部署到Alice**。保留原17879世界与原BDS查询预算，不更改玩家当前世界。要做实际验收，先修历史容量并完成合法同步、Node24全回归、客户端加载，再用定向安全格和独立BDS结果逐项验证。
