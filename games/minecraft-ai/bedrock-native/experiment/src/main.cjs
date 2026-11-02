@@ -445,6 +445,15 @@ async function main(args=process.argv.slice(2)){
     // After giving the higher-priority bed/respawn check its turn, re-run
     // the ORIGINAL fail-closed idleTick once. No direct input or goal override.
     Promise.resolve(bedCheck).then(()=>{
+      // Only a NEW BDS witness that already VERIFIED the door threshold
+      // can admit one isolated headroom-checked raised landing. A later BDS
+      // pair is still mandatory to mark its destination complete.
+      const landing=runtime.resumeRaisedDoorLandingOnWitness()
+      if(landing.state==='started'){
+        runtimeLogger.log('[Alice exploration] independently witnessed raised step admitted:',
+          JSON.stringify(landing))
+        return
+      }
       // The bed/spawnpoint check retains priority. A prepared autonomy route
       // can only be admitted by the real, still-fresh BDS witness event and
       // the ORIGINAL guarded startJob / boundedScout path.
