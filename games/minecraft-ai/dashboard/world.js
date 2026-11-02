@@ -149,10 +149,13 @@ async function refreshCommandState(){
       '出门及返程尚未通过独立 BDS 位移验证');
     const bedStep=routine.bedApproachAction||{},bedRequest=routine.bedRequest||null;
     const waitingEndpoint=bedRequest?.stage==='awaiting_step';
+    const jumpStep=bedRequest?.nextMovementKind==='JUMP_UP';
     const waitingStart=bedRequest?.stage==='approach'||bedRequest?.stage==='interact';
     setText('world-bed-step',!run?'状态未知':
-      waitingEndpoint?'已尝试单格 · 等待新独立 BDS 终点':
-      waitingStart?'床任务排队 · 等待起步证明':
+      waitingEndpoint?(jumpStep?'已尝试一次上台阶跳跃 · 等待 BDS 落点':
+        '已尝试单格步行 · 等待新独立 BDS 终点'):
+      waitingStart?(jumpStep?'已识别完整方块台阶 · 等待 BDS 起步证明':
+        '床任务排队 · 等待起步证明'):
       bedStep.serverMovementVerified===true?'BDS 已验证单步移动':
       bedStep.status==='awaiting_bds_endpoint'?'已尝试单格 · 服务端尚未验收':
       bedStep.attempted===true?'已尝试，服务端位移未确认':
