@@ -2,15 +2,22 @@
 const test=require('node:test'),assert=require('node:assert/strict')
 const {outcome}=require('../src/bed_request_outcome.cjs')
 const {requestBed,resumeBed,cancelBed}=require('../src/bed_task_service.cjs')
-const bed={name:'red_bed',position:{x:1,y:65,z:0}}
+const vec=(x,y,z)=>({x,y,z,
+ offset(dx,dy,dz){return vec(x+dx,y+dy,z+dz)},
+ distanceTo(p){return Math.hypot(x-p.x,y-p.y,z-p.z)}})
+const bed={name:'red_bed',position:vec(1,65,0)}
 let now=100000
 function fixture(){
  now=100000
  const calls=[],reports=[]
  const r={
   pendingBedRequest:null,job:null,epoch:4,closed:false,seenSpawn:true,
-  bot:{health:20,isSleeping:false,entity:{position:{x:.5,y:65,z:.5}},
-    game:{dimension:'overworld'},blockAt:()=>bed,findBlocks:()=>[bed.position]},
+  bot:{health:20,isSleeping:false,entity:{position:vec(.5,65,.5),onGround:true},
+    game:{dimension:'overworld'},parseBedMetadata:()=>({occupied:0}),
+    activateBlock:async()=>{},findBlocks:()=>[bed.position],
+    blockAt(p)=>Math.floor(p.x)===1&&Math.floor(p.y)===65&&Math.floor(p.z)===0?
+      bed:{name:'air',position:vec(Math.floor(p.x),Math.floor(p.y),Math.floor(p.z)),
+        boundingBox:'empty'}},
   clock:()=>now,ready:()=>true,safetyBusy:false,threat:()=>null,
   core:{hasFollowIntent:()=>false},
   goalPlanner:{stoppedByHuman:false},
@@ -61,7 +68,9 @@ test('no BDS proof only stores bounded pending intent and never starts movement'
 test('second new BDS witness may admit only existing adjacent bed without a route',()=>{
  const {r,calls}=fixture()
  requestBed(r,'set_spawnpoint','控制台')
- r.movementEvidence.get=()=>({loginAt:6,lifeEpochAt:7,ready:true})
+ r.movementEvidence.get=()=>({loginAt:6,lifeEpochAt:7,independentSamples:2,
+   independentSource:'bds_querytarget',independentPreviousAt:now-1100,
+   independentAt:now-100,independentLatestFeet:{x:.5,y:65,z:.5}})
  assert.equal(resumeBed(r).state,'started')
  assert.equal(calls[0][1],'RECOVER')
  assert.equal(r.pendingBedRequest,null)
