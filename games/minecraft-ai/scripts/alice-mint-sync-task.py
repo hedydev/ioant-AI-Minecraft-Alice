@@ -59,7 +59,8 @@ def emit(output,report):
         json.dump(report,file,separators=(',',':'))
         file.write('\n')
     print(json.dumps({'state':report['state'],'node24':report['mintNode24'],
-                      'localPythonTests':report['macPythonTests']}))
+                      'localPythonTests':report['macPythonTests'],
+                      'failedTestNames':report['failedTestNames']}))
 
 def selftest():
     data='\nℹ tests 652\nℹ pass 650\nℹ fail 0\nℹ skipped 2\n'
@@ -90,7 +91,8 @@ def sync(output,target):
             'action':'alice-mac.sh sync','state':'unknown',
             'aliceRestarted':False,'bdsRestarted':False,
             'worldModifiedByTask':False,'consoleCommandSent':False,
-            'macPythonTests':None,'mintNode24':None,'syncExitCode':None}
+            'macPythonTests':None,'mintNode24':None,'syncExitCode':None,
+            'failedTestNames':[]}
     env={**os.environ,'ALICE_SSH_TARGET':target}
     try:
         proc=subprocess.run(['/bin/bash',str(wrapper),'sync'],cwd=repo,
@@ -100,6 +102,7 @@ def sync(output,target):
         report['syncExitCode']=proc.returncode
         report['macPythonTests']=parse_python_summary(all_output)
         report['mintNode24']=parse_node_summary(all_output)
+        report['failedTestNames']=parse_failed_test_names(all_output)
         report['state']=('passed' if proc.returncode==0 and
                          report['mintNode24'] is not None and
                          report['mintNode24']['fail']==0 else
