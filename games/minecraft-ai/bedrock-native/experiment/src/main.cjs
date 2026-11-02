@@ -390,6 +390,12 @@ async function main(args=process.argv.slice(2)){
     // It never requests another query or extends the four-second proof.
     try{writeWitnessAck({bot,evidence:movementEvidence,producerStartToken})}
     catch(err){runtimeLogger.warn('[Alice BDS witness] ack unavailable:',String(err?.message||err).slice(0,60))}
+    // Verify any earlier ONE-CELL bed movement using a NEW post-input
+    // independent BDS pair, before considering a subsequent step.
+    const priorBedStep=runtime.settlePendingBedStepOnWitness()
+    if(priorBedStep.state==='verified'||priorBedStep.state==='rejected')
+      runtimeLogger.log('[Alice home] delayed BDS one-cell result:',
+        JSON.stringify(priorBedStep))
     // Publish the freshly consumed independent position BEFORE any queued
     // activity, rather than waiting up to 2s for the periodic heartbeat.
     // This does not change the source timestamp or its original 4s TTL.
