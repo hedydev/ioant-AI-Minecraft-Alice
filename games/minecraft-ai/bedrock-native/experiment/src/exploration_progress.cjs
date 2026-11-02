@@ -10,7 +10,7 @@ class ExplorationProgress{
   this.load()
  }
  valid(row,now){
-  return row&&routeKey(row.key)&&['attempted','confirmed','unverified','blocked'].includes(row.outcome)&&
+  return row&&routeKey(row.key)&&['attempted','confirmed','partial_verified','unverified','blocked'].includes(row.outcome)&&
     Number.isSafeInteger(row.at)&&row.at>=0&&row.at<=now+60000&&
     now-row.at<=CONFIRMED_HOLD_MS
  }
@@ -61,13 +61,19 @@ class ExplorationProgress{
   const confirmed=result?.ok===true&&result?.confirmedEndpoint===key&&
     result?.serverMovementVerified===true&&
     Number.isFinite(result?.serverMovedBlocks)&&result.serverMovedBlocks>=.25
-  const status=confirmed?'confirmed':
+  // Proven BDS single-cell progress does not imply the full route arrived.
+  const partial=!confirmed&&result?.reason==='scout_step_server_verified_partial_route'&&
+    result?.serverMovementVerified===true&&result?.confirmedEndpoint==null&&
+    Number.isFinite(result?.serverMovedBlocks)&&
+    result.serverMovedBlocks>=.25&&result.serverMovedBlocks<=2
+  const status=confirmed?'confirmed':partial?'partial_verified':
     result?.attempted===false?'blocked':'unverified'
   const old=this.rows.find(r=>r.key===key)
   if(old)old.outcome=status
   else this.rows.push({key,at:this.clock(),outcome:status})
   this.rows=this.rows.slice(-MAX);this.save()
-  return {key,outcome:status,serverMovementVerified:confirmed}
+  return {key,outcome:status,serverMovementVerified:confirmed||partial,
+    fullRouteVerified:confirmed,partialVerified:partial}
  }
  excluded(){
   this.prune()
@@ -75,10 +81,12 @@ class ExplorationProgress{
  }
  summary(){
   this.prune()
-  const counts={attempted:0,unverified:0,blocked:0,confirmed:0}
+  const counts={attempted:0,unverified:0,blocked:0,confirmed:0,partial_verified:0}
   for(const r of this.rows)counts[r.outcome]++
   return {entries:this.rows.length,excludedEndpoints:this.rows.length,
-    ...counts,persistenceError:this.persistenceError,
+    attempted:counts.attempted,unverified:counts.unverified,blocked:counts.blocked,
+    confirmed:counts.confirmed,partialVerified:counts.partial_verified,
+    persistenceError:this.persistenceError,
     trust:'attempted_is_not_server_verified'}
  }
 }

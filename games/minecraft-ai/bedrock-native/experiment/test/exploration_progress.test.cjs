@@ -54,3 +54,36 @@ test('bounded storage rejects symlinked history without altering its target',()=
  assert.equal(fs.readFileSync(target,'utf8'),'protected')
  assert.equal(j.persistenceError,'write_unavailable')
 }))
+
+test('independently confirmed first waypoint is partial, not an unverified move',()=>withDir(root=>{
+ let now=200000
+ const file=path.join(root,'progress.json'),j=new ExplorationProgress({clock:()=>now,file})
+ const c={key:'7,70,3'}
+ j.attempt(c)
+ const p=j.finish(c,{ok:false,attempted:true,
+   reason:'scout_step_server_verified_partial_route',serverMovementVerified:true,
+   serverMovedBlocks:.82,confirmedEndpoint:null})
+ assert.equal(p.outcome,'partial_verified')
+ assert.equal(p.serverMovementVerified,true)
+ assert.equal(p.fullRouteVerified,false)
+ assert.equal(p.partialVerified,true)
+ assert.equal(j.summary().confirmed,0)
+ assert.equal(j.summary().unverified,0)
+ assert.equal(j.summary().partialVerified,1)
+ const restored=new ExplorationProgress({clock:()=>now,file})
+ assert.equal(restored.summary().partialVerified,1)
+ now+=ATTEMPT_HOLD_MS+1
+ assert.equal(restored.excluded().size,0)
+}))
+test('fake partial evidence or local physics alone never promote a route',()=>{
+ const j=new ExplorationProgress({clock:()=>300000}),c={key:'1,70,1'}
+ for(const v of [
+ {reason:'scout_step_server_verified_partial_route',serverMovementVerified:false,serverMovedBlocks:1},
+ {reason:'scout_server_endpoint_unconfirmed',serverMovementVerified:true,serverMovedBlocks:1},
+ {reason:'scout_step_server_verified_partial_route',serverMovementVerified:true,serverMovedBlocks:.1},
+ {reason:'scout_step_server_verified_partial_route',serverMovementVerified:true,serverMovedBlocks:1,confirmedEndpoint:'wrong'}
+ ]){
+  j.attempt(c);assert.equal(j.finish(c,v).outcome,'unverified')
+ }
+ assert.equal(j.summary().partialVerified,0)
+})

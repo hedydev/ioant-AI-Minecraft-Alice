@@ -132,6 +132,19 @@ class ContinuousGoal {
      {event:'action_started'})
    return true
  }
+ acknowledgePartial(type,source,result){
+   // Resolve the ACTING state after independently proved single-cell motion.
+   // Do not claim the original route complete or penalize it as tool_failed.
+   if(!this.goal||type!=='EXPLORE'||!own(source)||
+      this.goal.activeTask!=='EXPLORE'||this.goal.phase!=='ACTING'||
+      result?.reason!=='scout_step_server_verified_partial_route'||
+      result?.serverMovementVerified!==true||
+      !Number.isFinite(result?.serverMovedBlocks)||
+      result.serverMovedBlocks<.25||result.serverMovedBlocks>2)return false
+   this.update({phase:'READY',reason:'review_scheduled',activeTask:null},
+     {event:'partial_step_verified'})
+   return true
+ }
  finish(type,source,result){
    if(!this.goal||!own(source)||!TASKS.has(type))return false
    const ok=result?.ok===true

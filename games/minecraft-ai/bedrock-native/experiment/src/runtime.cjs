@@ -2014,12 +2014,17 @@ class AliceBedrockRuntime {
       this.nextIdleAt=Math.min(this.nextIdleAt,now+15000)
       this.scoutDirection=null
     }
-    this.lastScoutProgress={confirmed:complete,reason:result.reason,
+    this.lastScoutProgress={confirmed:complete,partialVerified:out.ok&&!complete,
+      reason:result.reason,
       failureKind:out.ok?'none':'evidence_gap',
       serverMovedBlocks:out.ok?Math.round(out.travelledBlocks*100)/100:null,
       at:now}
-    this.continuousGoal.finish('EXPLORE',step.source,result)
-    if(step.source==='自主模型')this.goalPlanner.outcome(result)
+    if(out.ok&&!complete){
+      this.continuousGoal.acknowledgePartial('EXPLORE',step.source,result)
+    }else{
+      this.continuousGoal.finish('EXPLORE',step.source,result)
+      if(step.source==='自主模型')this.goalPlanner.outcome(result)
+    }
     this.log.log('[Alice exploration] post-input scout step BDS witness:',
       JSON.stringify({reason:result.reason,serverMovementVerified:out.ok,
         fullRouteVerified:complete,serverMovedBlocks:this.lastScoutProgress.serverMovedBlocks}))

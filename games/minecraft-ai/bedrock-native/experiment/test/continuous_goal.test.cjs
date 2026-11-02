@@ -134,3 +134,22 @@ test('BUILD primitive requires observed block modification before marking progre
  assert.equal(g.snapshot().goal,'SECURE_SHELTER',
    'placing one block cannot finish a complete shelter')
 })
+
+test('BDS verified partial waypoint releases ACTING but does not fail or complete objective',()=>{
+ const {g}=fixture()
+ g.reconcile({plan:'LEARN_WEAPON',wood:0,hasWeapon:false})
+ g.begin('EXPLORE','自主探索')
+ const partial={ok:false,reason:'scout_step_server_verified_partial_route',
+   serverMovementVerified:true,serverMovedBlocks:1.1}
+ assert.equal(g.acknowledgePartial('EXPLORE','自主探索',partial),true)
+ assert.equal(g.snapshot().phase,'READY')
+ assert.equal(g.snapshot().activeTask,null)
+ assert.equal(g.snapshot().attempts,0)
+ assert.equal(g.snapshot().lastCompleted,null)
+ g.begin('GATHER','自主任务')
+ assert.equal(g.acknowledgePartial('EXPLORE','自主探索',partial),false)
+ assert.equal(g.snapshot().activeTask,'GATHER')
+ assert.equal(g.acknowledgePartial('EXPLORE','自主探索',
+  {...partial,serverMovementVerified:false}),false)
+ assert.equal(g.snapshot().phase,'ACTING')
+})
