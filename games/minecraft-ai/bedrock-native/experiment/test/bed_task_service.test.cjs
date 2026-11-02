@@ -10,7 +10,7 @@ function fixture(){
  const r={
   pendingBedRequest:null,job:null,epoch:4,closed:false,seenSpawn:true,
   bot:{health:20,isSleeping:false,entity:{position:{x:.5,y:65,z:.5}},
-    game:{dimension:'overworld'}},
+    game:{dimension:'overworld'},blockAt:()=>bed,findBlocks:()=>[bed.position]},
   clock:()=>now,ready:()=>true,safetyBusy:false,threat:()=>null,
   core:{hasFollowIntent:()=>false},
   goalPlanner:{stoppedByHuman:false},
@@ -39,8 +39,16 @@ test('bed response differentiates personal spawn and actual sleep',()=>{
 test('sleep and spawnpoint require known bed within interaction range',()=>{
  const {r,calls}=fixture()
  r.observedBeds.nearby=()=>[]
+ r.bot.findBlocks=()=>[]
  assert.equal(requestBed(r,'sleep','控制台').reason,'no_loaded_free_bed')
  assert.equal(calls.length,0)
+})
+test('manual command detects a newly loaded bed even when passive memory is empty',()=>{
+ const {r}=fixture()
+ r.observedBeds.nearby=()=>[]
+ const out=requestBed(r,'sleep','控制台')
+ assert.equal(out.reason,'awaiting_bds_bed_proof')
+ cancelBed(r)
 })
 test('no BDS proof only stores bounded pending intent and never starts movement',()=>{
  const {r,calls}=fixture()
