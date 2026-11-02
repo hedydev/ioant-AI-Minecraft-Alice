@@ -944,7 +944,7 @@ test('indoor WAIT approaches a four-cell doorway without opening or mining until
  const movementEvidence={get:()=>evidenceState}
  const f=fixture(()=>now),e=new AliceBedrockRuntime({...f,policies:await policies(),movementEvidence})
  f.bot.entity.position=vec(.5,65,.5);f.bot.entity.onGround=true
- f.bot.time={timeOfDay:13000}
+ f.bot.time={timeOfDay:6000 // Daylight isolates doorway from independent night-reposition priority}
  f.api.GoalNear=class{constructor(x,y,z){this.x=x;this.y=y;this.z=z}}
  f.api.Movements=class{constructor(){this.openable=new Set()}}
  f.bot.pathfinder.goto=async g=>{
@@ -1119,7 +1119,7 @@ test('safety-preempted doorway approach does not retain unrelated two-minute idl
     independentLatestFeet:{x:.5,y:65,z:.5},loginAt:90000,lifeEpochAt:null})}
  const f=fixture(()=>now),e=new AliceBedrockRuntime({...f,policies:await policies(),movementEvidence})
  f.bot.entity.position=vec(.5,65,.5);f.bot.entity.onGround=true
- f.bot.time={timeOfDay:13000}
+ f.bot.time={timeOfDay:6000 // Daylight isolates doorway from independent night-reposition priority}
  f.api.GoalNear=class{constructor(x,y,z){this.x=x;this.y=y;this.z=z}}
  f.api.Movements=class{constructor(){this.openable=new Set()}}
  f.bot.pathfinder.goto=async g=>{
