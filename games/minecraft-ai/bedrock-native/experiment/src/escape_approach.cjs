@@ -3,6 +3,8 @@
 // A connected local route is a proposal, NOT proof of server movement or exit.
 const {knownAir}=require('./scout_routes.cjs')
 const {fullSupport}=require('./escape_survey.cjs')
+const {verifyFlatFirstStep}=require('./direct_flat_step.cjs')
+const {scoutStartProof}=require('./scout_start_proof.cjs')
 const MAX_WAYPOINTS=6
 const xyz=p=>Array.isArray(p)&&p.length===3&&p.every(Number.isSafeInteger)
 // The owner may supply an {ok,reason} gate for actionable diagnostics.
@@ -61,28 +63,49 @@ function validateApproach(bot,door,{maxSteps=MAX_WAYPOINTS}={}){
  return {ok:true,waypoints:route.map(([x,y,z])=>({x,y,z})),
    door:door.position.slice(),steps:route.length,serverVerified:false}
 }
+
 async function approachDoor(bot,door,{
  signal,safe=()=>true,GoalNear,Movements,configureMoves,
  movementEvidence,clock=Date.now,
- timeoutMs=12000,
- setTimeoutFn=setTimeout,clearTimeoutFn=clearTimeout
+ timeoutMs=12000,setTimeoutFn=setTimeout,clearTimeoutFn=clearTimeout
 }={}){
+ const fail=(reason,extra={})=>({ok:false,reason,attempted:false,
+   serverMovementVerified:false,...extra})
  const gate=validateApproach(bot,door)
- if(!gate.ok)return {...gate,attempted:false,serverMovementVerified:false}
+ if(!gate.ok)return fail(gate.reason)
  if(!bot?.pathfinder?.goto||!bot.pathfinder.setMovements||
     typeof GoalNear!=='function'||typeof Movements!=='function'||
     typeof configureMoves!=='function')
-   return {ok:false,reason:'approach_pathfinder_unavailable',attempted:false,serverMovementVerified:false}
- if(signal?.aborted)
-   return {ok:false,reason:'approach_preempted',attempted:false,serverMovementVerified:false}
+   return fail('approach_pathfinder_unavailable')
+ if(signal?.aborted)return fail('approach_preempted')
  const initialDenial=safetyDenial(safe)
- if(initialDenial)
-   return {ok:false,reason:deniedReason('approach_preempted',initialDenial),
-     attempted:false,serverMovementVerified:false}
- let done=false,timer,abortListener,last=null,attempted=false
- const checkpoint=movementEvidence?.checkpoint?.()||null
+ if(initialDenial)return fail(deniedReason('approach_preempted',initialDenial))
+ // The caller may observe up to six reachable cells, but must NEVER drive
+ // more than ONE unverified waypoint. The NEXT cell requires an entirely
+ // new independent BDS post-input pair plus a new collision/goal survey.
+ const witness=scoutStartProof(bot,movementEvidence,clock)
+ if(!witness.ok)return fail(witness.reason)
+ const baseline=movementEvidence.get(),first=gate.waypoints[0]
+ const start=bot.entity.position
+ if(!Number.isSafeInteger(baseline.independentAt)||
+    baseline.independentAt>=clock()||
+    !baseline.independentLatestFeet)
+   return fail('approach_bds_start_unavailable')
+ const sweep=verifyFlatFirstStep(bot,{kind:'observed_voxel_walking_only',
+    waypoints:[first]})
+ if(!sweep.ok)return fail(sweep.reason)
+ const context={
+   from:{x:baseline.independentLatestFeet.x,y:baseline.independentLatestFeet.y,
+     z:baseline.independentLatestFeet.z},
+   target:{x:first.x,y:first.y,z:first.z},
+   independentAt:baseline.independentAt,
+   independentSamples:baseline.independentSamples,
+   loginAt:baseline.loginAt??null,lifeEpochAt:baseline.lifeEpochAt??null
+ }
+ let done=false,timer,abortListener,attempted=false
  const end=new Promise((_,reject)=>{
-   timer=setTimeoutFn(()=>{done=true;reject(Error('approach_timeout'))},Math.min(15000,Math.max(3000,timeoutMs)))
+   timer=setTimeoutFn(()=>{done=true;reject(Error('approach_timeout'))},
+     Math.min(15000,Math.max(3000,timeoutMs)))
    abortListener=()=>reject(Error('approach_aborted'))
    signal?.addEventListener?.('abort',abortListener,{once:true})
  })
@@ -92,51 +115,39 @@ async function approachDoor(bot,door,{
    moves.canDig=false;moves.allow1by1towers=false;moves.allowParkour=false
    moves.canOpenDoors=false;moves.openable?.clear?.()
    bot.pathfinder.setMovements(moves)
-   const navigate=async()=>{
-     for(const waypoint of gate.waypoints){
-       if(done||signal?.aborted)throw Error('approach_conditions_changed')
-       const beforeDenial=safetyDenial(safe)
-       if(beforeDenial)throw Error(deniedReason('approach_conditions_changed',beforeDenial))
-       const local=bot.entity?.position
-       if(!local||Math.abs(local.y-waypoint.y)>0.55||bot.entity.onGround!==true)
-         throw Error('approach_ground_changed')
-       // Each target is still one known-adjacent full-support cell. Recheck
-       // after prior movement because cached chunks may change in real time.
-       if(Math.abs(Math.floor(local.x)-waypoint.x)+Math.abs(Math.floor(local.z)-waypoint.z)!==1||
-          !fullSupport(at(bot,waypoint.x,waypoint.y-1,waypoint.z))||
-          !knownAir(at(bot,waypoint.x,waypoint.y,waypoint.z))||
-          !knownAir(at(bot,waypoint.x,waypoint.y+1,waypoint.z)))
-         throw Error('approach_segment_no_longer_safe')
-       last=waypoint;attempted=true
-       await bot.pathfinder.goto(new GoalNear(waypoint.x,waypoint.y,waypoint.z,0))
-       if(done||signal?.aborted)throw Error('approach_preempted_after_move')
-       const afterDenial=safetyDenial(safe)
-       if(afterDenial)throw Error(deniedReason('approach_preempted_after_move',afterDenial))
-       const p=bot.entity?.position
-       if(!p||bot.entity.onGround!==true||
-          Math.hypot(p.x-waypoint.x-0.5,p.y-waypoint.y,p.z-waypoint.z-0.5)>0.95)
-         throw Error('approach_waypoint_not_observed')
-     }
-   }
-   await Promise.race([navigate(),end])
-   const movement=movementEvidence?.progress?.(checkpoint)||{confirmed:false,reason:'server_position_not_observed'}
-   const server=movementEvidence?.get?.()
-   const s=server?.latestFeet,goal=gate.waypoints.at(-1)
-   const age=Number.isFinite(server?.lastAt)?clock()-server.lastAt:Infinity
-   const serverDistance=s&&[s.x,s.y,s.z].every(Number.isFinite)?
-     Math.hypot(s.x-goal.x-0.5,s.y-goal.y,s.z-goal.z-0.5):Infinity
-   const confirmed=movement.confirmed===true&&age>=0&&age<=5000&&serverDistance<=1.5
-   return {ok:true,reason:confirmed?'approach_server_confirmed':'approach_local_only_server_unverified',
-     attempted:true,steps:gate.steps,door:gate.door,
-     lastWaypoint:last,serverMovementVerified:confirmed,
-     serverEvidenceReason:movement.reason||null}
+   const before=safetyDenial(safe)
+   if(before)throw Error(deniedReason('approach_conditions_changed',before))
+   // Re-sweep immediately before sending movement input. A loaded block,
+   // nearby hazard, changed ground/ceiling, or even a door blocks admission.
+   const fresh=verifyFlatFirstStep(bot,{kind:'observed_voxel_walking_only',
+      waypoints:[first]})
+   if(!fresh.ok)throw Error(fresh.reason)
+   const startedAt=clock()
+   if(startedAt<=context.independentAt)throw Error('approach_bds_start_expired')
+   attempted=true
+   await Promise.race([bot.pathfinder.goto(
+      new GoalNear(first.x,first.y,first.z,0)),end])
+   if(done||signal?.aborted)throw Error('approach_preempted_after_move')
+   const after=safetyDenial(safe)
+   if(after)throw Error(deniedReason('approach_preempted_after_move',after))
+   const p=bot.entity?.position
+   if(!p||bot.entity.onGround!==true||
+      Math.hypot(p.x-first.x-.5,p.y-first.y,p.z-first.z-.5)>.95)
+     throw Error('approach_waypoint_not_observed')
+   // This local result is deliberately NOT a success. The owner must retain
+   // the pre-input witness context and verify a completely NEW BDS pair.
+   return {ok:false,reason:'approach_first_cell_awaits_independent_bds_pair',
+     attempted:true,steps:1,remainingSteps:gate.steps-1,
+     door:gate.door,lastWaypoint:first,startedAt,
+     witnessStart:context,serverMovementVerified:false}
  }catch(err){
    return {ok:false,reason:String(err?.message||'approach_failed').slice(0,76),
-     attempted,door:gate.door,lastWaypoint:last,serverMovementVerified:false}
+     attempted,door:gate.door,lastWaypoint:attempted?first:null,
+     serverMovementVerified:false}
  }finally{
    done=true;clearTimeoutFn(timer);signal?.removeEventListener?.('abort',abortListener)
-   // Never stop a newer route started by STOP/FOLLOW/safety preemption.
    if(!signal?.aborted)bot.pathfinder.stop?.()
  }
 }
+
 module.exports={validateApproach,approachDoor,MAX_WAYPOINTS}
