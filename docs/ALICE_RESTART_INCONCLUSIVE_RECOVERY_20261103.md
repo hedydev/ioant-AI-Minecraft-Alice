@@ -77,3 +77,10 @@ MCP0.13.1加入受控恢复，真实SDK目录17工具及新inspect历史缓存�
 原有云端result/report/execute无需新目录即可正常使用。旧网页Chat如果工具列表缺
 openclaw_project_reconcile，需要刷新插件工具目录一次；维护时用户正在使用Chrome，
 未争抢前台。没有声称该网页缓存已刷新。当前Alice保持在线，不再为验收重复重启。
+
+
+维护完成：MCP0.13.1已正式加载，Tunnel46603 ready；云端actions公布恢复工具，
+云端原result保留inconclusive并附reconciliation resolved/lockReleased=true。
+控制台active0、locked=false、剩余229槽位，历史uncertain1故意保留，不是仍忙碌。
+独立status再次确认PID3923865保持在线、健康20、当前心跳/会话有效。没有为最终
+验收再重启Alice。后续开发Chat恢复最新project_resume后可继续自己的只读/行为验收。
