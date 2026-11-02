@@ -72,6 +72,7 @@ class WitnessLogSummaryTests(unittest.TestCase):
         self.assertEqual(r['confirmedEndpointCount'], 0)
         self.assertEqual(r['lastCompletedLocalWaypoints'], 1)
         self.assertEqual(r['lastLocalTravelEstimate'], 1.17)
+        self.assertEqual(r['postWaypointDivergenceCount'], 1)
         self.assertNotIn('999', str(r))
 
 

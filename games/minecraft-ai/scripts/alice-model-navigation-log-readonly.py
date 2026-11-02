@@ -9,15 +9,16 @@ REMOTE="import json,os,re,subprocess\nfrom pathlib import Path\nroot=Path.home()
 assert "\ntry:\n" in REMOTE and " v['state']='observed'" in REMOTE
 REMOTE = REMOTE.replace("\ntry:\n", "\nv.update(summarize_witness_log(''))\ntry:\n", 1)
 REMOTE = REMOTE.replace(" v['state']='observed'", " v.update(summarize_witness_log(tail))\n v['state']='observed'", 1)
-REMOTE = REMOTE.replace("v.update(summarize_witness_log(''))", "v.update(summarize_witness_log(''))\nv['witnessJournalSummary']=summarize_witness_journal([],None,0)", 1)
+REMOTE = REMOTE.replace("v.update(summarize_witness_log(''))", "v.update(summarize_witness_log(''))\nv['witnessJournalSummary']=summarize_witness_journal([],None,0)\nv['witnessSummarySource']='stdout_tail'", 1)
 _JOURNAL = """ journal_root=root/'acceptance'
- records=[]
+ records=[];files_read=0
  if (journal_root.is_dir() and not journal_root.is_symlink() and
      journal_root.stat().st_uid==os.getuid() and not journal_root.stat().st_mode&0o077):
   for name in ('events.jsonl','events.1.jsonl','events.2.jsonl','events.3.jsonl','events.4.jsonl'):
    file=journal_root/name
    if (file.is_file() and not file.is_symlink() and file.stat().st_uid==os.getuid() and
        not file.stat().st_mode&0o077 and file.stat().st_size<=1048576):
+    files_read+=1
     for line in file.read_text().splitlines():
      if len(line)>4096:continue
      try:records.append(json.loads(line))
@@ -25,6 +26,9 @@ _JOURNAL = """ journal_root=root/'acceptance'
  times=[s.get('processStartAtUnixMs'),e.get('loginAt'),e.get('lifeEpochAt')]
  since=max(t for t in times if type(t) is int) if type(times[0]) is int else None
  v['witnessJournalSummary']=summarize_witness_journal(records,since,int(time.time()*1000))
+ if files_read and v['witnessJournalSummary']['verifiedTimeRange']:
+  v.update({k:value for k,value in v['witnessJournalSummary'].items() if k!='verifiedTimeRange'})
+  v['witnessSummarySource']='current_life_journal'
 """
 REMOTE = REMOTE.replace(" v['state']='observed'", _JOURNAL + " v['state']='observed'", 1)
 REMOTE = inspect.getsource(summarize_witness_log) + "\n" + inspect.getsource(summarize_witness_journal) + "\n" + REMOTE
@@ -32,23 +36,24 @@ FIELDS={'audit','schemaVersion','state','currentOwner','freshStatus','coreState'
 'health','independentSamples','independentAgeBand','lastModelTool',
 'modelProposalCount','modelFailureCount','navRejectCount','lastNavReject',
 'lastNavRejectDistance','scoutOutcomeCount','serverTravelBetweenPair',
-'modelInferenceInvoked','bdsCommandSent','deathRecoveryPhase','deathRecoveryCycles','clientServerAxisDelta','idleMirrorCount','respawnMirrorCount','lastIdleMirrorDistance','modelObserveWithoutActionCount','lastModelObserveReason','verifiedLocalSkillCount','flatRouteChangedCount','witnessHandoffCount','lastWitnessHandoff','idleMirrorDeferredCount','lastIdleMirrorDeferred','preparedScoutStartCount','witnessJournalSummary','endpointFeedbackCount','confirmedEndpointCount','unverifiedEndpointCount','waypointFailureCount','lastWaypointFailure','lastCompletedLocalWaypoints','lastLocalTravelEstimate'}
+'modelInferenceInvoked','bdsCommandSent','deathRecoveryPhase','deathRecoveryCycles','clientServerAxisDelta','idleMirrorCount','respawnMirrorCount','lastIdleMirrorDistance','modelObserveWithoutActionCount','lastModelObserveReason','verifiedLocalSkillCount','flatRouteChangedCount','witnessHandoffCount','lastWitnessHandoff','idleMirrorDeferredCount','lastIdleMirrorDeferred','preparedScoutStartCount','witnessJournalSummary','endpointFeedbackCount','confirmedEndpointCount','unverifiedEndpointCount','waypointFailureCount','lastWaypointFailure','lastCompletedLocalWaypoints','lastLocalTravelEstimate','postWaypointDivergenceCount','witnessSummarySource'}
 def valid(v):
  if not isinstance(v,dict) or set(v)!=FIELDS or v.get('audit')!='ALICE_MODEL_NAVIGATION_LOG' or v.get('schemaVersion')!=1 or v.get('state') not in ('unverified','observed'):return None
  for k in ('currentOwner','freshStatus','modelInferenceInvoked','bdsCommandSent'):
   if type(v[k]) is not bool:return None
  if v['modelInferenceInvoked'] or v['bdsCommandSent']:return None
- for k in ('modelProposalCount','modelFailureCount','navRejectCount','scoutOutcomeCount','independentSamples','idleMirrorCount','respawnMirrorCount','modelObserveWithoutActionCount','verifiedLocalSkillCount','flatRouteChangedCount','witnessHandoffCount','idleMirrorDeferredCount','preparedScoutStartCount','endpointFeedbackCount','confirmedEndpointCount','unverifiedEndpointCount','waypointFailureCount','lastCompletedLocalWaypoints'):
+ for k in ('modelProposalCount','modelFailureCount','navRejectCount','scoutOutcomeCount','independentSamples','idleMirrorCount','respawnMirrorCount','modelObserveWithoutActionCount','verifiedLocalSkillCount','flatRouteChangedCount','witnessHandoffCount','idleMirrorDeferredCount','preparedScoutStartCount','endpointFeedbackCount','confirmedEndpointCount','unverifiedEndpointCount','waypointFailureCount','lastCompletedLocalWaypoints','postWaypointDivergenceCount'):
   if v[k] is not None and (type(v[k]) is not int or not 0<=v[k]<=100000000):return None
  for k in ('health','lastNavRejectDistance','serverTravelBetweenPair','lastIdleMirrorDistance','lastLocalTravelEstimate'):
   if v[k] is not None and (type(v[k]) not in (int,float) or not 0<=v[k]<=1000):return None
  for k in ('coreState','independentAgeBand','lastModelTool','lastNavReject','deathRecoveryPhase','lastModelObserveReason','lastWitnessHandoff','lastIdleMirrorDeferred','lastWaypointFailure'):
   if type(v[k]) is not str or len(v[k])>60:return None
  if v['deathRecoveryCycles'] is not None and (type(v['deathRecoveryCycles']) is not int or not 0<=v['deathRecoveryCycles']<=1000000):return None
+ if v['witnessSummarySource'] not in ('stdout_tail','current_life_journal'):return None
  j=v['witnessJournalSummary']
  if not isinstance(j,dict) or set(j)!=set(summarize_witness_journal([],None,0)):return None
  if type(j['verifiedTimeRange']) is not bool:return None
- for k in ('witnessHandoffCount','idleMirrorDeferredCount','preparedScoutStartCount','endpointFeedbackCount','confirmedEndpointCount','unverifiedEndpointCount','waypointFailureCount','lastCompletedLocalWaypoints'):
+ for k in ('witnessHandoffCount','idleMirrorDeferredCount','preparedScoutStartCount','endpointFeedbackCount','confirmedEndpointCount','unverifiedEndpointCount','waypointFailureCount','lastCompletedLocalWaypoints','postWaypointDivergenceCount'):
   if j[k] is not None and (type(j[k]) is not int or not 0<=j[k]<=100000000):return None
  for k in ('lastWitnessHandoff','lastIdleMirrorDeferred','lastWaypointFailure'):
   if type(j[k]) is not str or len(j[k])>60:return None

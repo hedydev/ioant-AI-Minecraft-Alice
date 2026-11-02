@@ -23,7 +23,8 @@ def summarize_witness_log(tail):
               'preparedScoutStartCount': 0, 'endpointFeedbackCount': 0,
               'confirmedEndpointCount': 0, 'unverifiedEndpointCount': 0,
               'waypointFailureCount': 0, 'lastWaypointFailure': 'unknown',
-              'lastCompletedLocalWaypoints': None, 'lastLocalTravelEstimate': None}
+              'lastCompletedLocalWaypoints': None, 'lastLocalTravelEstimate': None,
+              'postWaypointDivergenceCount': 0}
     for line in tail.splitlines():
         if line.startswith('[Alice autonomy] prepared route admitted:'):
             result['preparedScoutStartCount'] += 1
@@ -65,8 +66,18 @@ def summarize_witness_log(tail):
                         'scout_conditions_changed', 'scout_waypoint_not_reached',
                         'scout_cancelled', 'scout_cancelled_after_waypoint',
                     } else 'other_or_unavailable'
+                    if isinstance(reason, str) and result['lastWaypointFailure'] == 'other_or_unavailable':
+                        lower = reason.lower()
+                        if 'goal' in lower and 'chang' in lower:
+                            result['lastWaypointFailure'] = 'goal_changed'
+                        elif 'path' in lower and 'stop' in lower:
+                            result['lastWaypointFailure'] = 'path_stopped'
                     n = row.get('completedLocalWaypoints')
                     result['lastCompletedLocalWaypoints'] = n if type(n) is int and 0 <= n <= 32 else None
+                    if (reason == 'navigation_scout_client_server_position_diverged' and
+                            result['lastCompletedLocalWaypoints'] is not None and
+                            result['lastCompletedLocalWaypoints'] > 0):
+                        result['postWaypointDivergenceCount'] += 1
                     n = row.get('totalLocalEstimateBlocks')
                     result['lastLocalTravelEstimate'] = round(n, 3) if type(n) in (int, float) and 0 <= n <= 32 else None
             except (ValueError, TypeError):
