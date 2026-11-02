@@ -131,3 +131,28 @@ test('remembered bed observation is used without searching all beds at night',as
  assert.equal(inspectNightBeds(bot,12,opts).eligible,0,
    'remembered coordinates must not bypass fresh bed block verification')
 })
+
+test('live bed task cannot pathfinder.goto a nonadjacent bed even when known',async()=>{
+ const {bot,bed}=fixture()
+ bot.time.timeOfDay=14000
+ let walks=0
+ bot.pathfinder.goto=async()=>{walks++}
+ const result=await sleepNearby(bot,{GoalNear:class{}},{
+   knownPositions:[bed.position],forbidNavigation:true})
+ assert.equal(result.reason,'bed_needs_verified_approach')
+ assert.equal(walks,0)
+ assert.equal(bot.isSleeping,false)
+})
+test('live bed task rejects absent independent BDS proof before interacting',async()=>{
+ const {bot,bed}=fixture()
+ bot.time.timeOfDay=14000
+ let walks=0,sleeps=0
+ bot.pathfinder.goto=async()=>{walks++}
+ bot.sleep=async()=>{sleeps++}
+ const result=await sleepNearby(bot,{GoalNear:class{}},{
+   knownPositions:[bed.position],requireBdsProof:true,evidence:null,
+   forbidNavigation:true})
+ assert.equal(result.ok,false)
+ assert.equal(walks,0)
+ assert.equal(sleeps,0)
+})
