@@ -1094,3 +1094,7 @@ User clarified wood is just an example. Ultimate goal: understand arbitrary Mine
 ## 2026-11-02 raised-door threshold (source stage)
 - Staged: BDS-gated one-cell entry into an observed open wooden door before an immediate full-cube step; separate post-input independent BDS door-cell witness and shape-checked jump candidacy.
 - Pending: chaining these actions with new independent acceptance, full Mint Node24 regression and original 17879-world real validation; no room exit claimed.
+
+## 2026-11-02 — Adjacent WALK/JUMP_UP geometry policy
+- **Staged, not observed in live gameplay**: one read-only motion decision module for first-cell bed approaches. Two-high headroom is sufficient for an otherwise known safe WALK; JUMP_UP requires the existing stricter vertical clearance along the ascent. WALK takes priority; missing blocks, two-high walls, unsafe landings and occupied cells do not become guessed jumps.
+- The decision is a *candidate* only (permitted=false/serverMovementVerified=false). The Bedrock BDS 4s independent-start and post-input server endpoint protocol is unchanged. Follow/general exploration still use their existing executors. Actual synced Mint Node24 902/902 tests passed; original Minecraft-world walking/jumping result remains unverified.
