@@ -994,3 +994,13 @@ python3 -m unittest discover -s games/minecraft-ai/tests -v
 ## Explicit client-only stop (2026-11-02)
 
 When the user asks Alice to leave so they can play, use the committed MCP task `.openclaw/tasks/alice_client_stop_operator.json` at the exact current SHA, workspace_mode=current. It calls the existing Mint AliceProcess.owner/inspect/stop implementation once (pidfd + birth-token checked SIGINT), waits five seconds and checks there is no owner. It never launches a replacement, touches BDS/world/auth, deletes a lock or repeats an uncertain stop. Read client_stop and independently query status afterwards. Already offline is a no-op. A replacement owner or unavailable receipt is a stop-and-inspect condition. This is a new explicit stop request, not replay of an earlier rejected reload.
+## 2026-11-03 — Approved MCP Alice-only lifecycle
+
+See [CLIENT_RESTART_APPROVAL_20261103](CLIENT_RESTART_APPROVAL_20261103.md).
+Use the explicitly approved original `alice_17879_client_restart.json` through
+MCP/current with exact HEAD and original-ID receipt polling. The bridge requires
+a separate reviewed task/script hash grant and retains platform review. This is
+not permission to replay refused h01 or uncertain operations. Healthy IDLE/no-job,
+current owner/birth token/world/17879/fresh session and final pre-stop recheck are
+mandatory; original config, one replacement, no BDS/world/auth changes. Read the
+actual lifecycle receipt; zero script exit alone is not success.

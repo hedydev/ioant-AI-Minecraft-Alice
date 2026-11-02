@@ -1113,3 +1113,10 @@ User clarified wood is just an example. Ultimate goal: understand arbitrary Mine
 ## Explicit stop-only operator task (2026-11-02)
 
 Added identity-verified Alice client-only stop for the user's play session, with no replacement start or BDS/world changes. Four focused lifecycle tests and script self-test pass; actual MCP stop passed/cached and independent status confirms no_running_process; no replacement was started. Task: `.openclaw/tasks/alice_client_stop_operator.json`.
+## 2026-11-03 — Explicitly approved client-only restart (staged)
+
+Original MCP restart task now supports reviewed enrollment and standard old/new
+PID, live heartbeat/game-session receipts, final safety recheck and durable
+no-repeat claims. Platform review remains mandatory; runtime permission and
+actual replacement are pending. No BDS/world/player-data or movement permission
+was added. See CLIENT_RESTART_APPROVAL_20261103.md.

@@ -17,9 +17,10 @@
       "script": "games/minecraft-ai/scripts/alice-17879-client-restart-gated.py",
       "args": [
         "--restart",
-        "@output_dir"
+        "@output_dir",
+        "@operation_id"
       ],
-      "timeoutSeconds": 275
+      "timeoutSeconds": 440
     }
   ],
   "artifacts": [

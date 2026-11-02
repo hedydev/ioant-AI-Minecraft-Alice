@@ -2093,3 +2093,10 @@ User clarified wood is just an example. Ultimate goal: understand arbitrary Mine
 ## User play session: Alice stop requested (2026-11-02)
 
 User explicitly asks to take Alice offline while they play, without reconnecting. The new stop-only operator task uses existing verified process shutdown and never starts a replacement. Coordinate development/live acceptance must not reconnect Alice until the user requests it. Actual MCP alice_user_play_stop_20261102_k4n8v2cs_01 passed/cached: oldPid2472609 stopped, processAlive=false, replacementStarted=false. Independent canonical status afterwards confirms pid=null/no_running_process. Keep Alice offline until the user explicitly asks to reconnect.
+## 2026-11-03 — Explicit MCP lifecycle permission staged
+
+User authorized a formally approved Alice-only restart capability, not a replay
+of refused h01. Existing task/script updated with state/owner/world checks,
+per-operation durable claims, no second session and standard receipt. Nine
+focused tests and full Mac Python320(skip3) pass. Local bridge approval and actual
+restart acceptance are pending. See CLIENT_RESTART_APPROVAL_20261103.md.
