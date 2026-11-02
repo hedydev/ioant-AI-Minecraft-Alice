@@ -14,6 +14,7 @@ const {ContinuousGoal}=require('./continuous_goal.cjs')
 const {evaluateShelter,placeShelterBlock}=require('./night_shelter.cjs')
 const {ObservedBeds}=require('./observed_beds.cjs')
 const {HomeBedMemory,selectAdjacentBed,useBedForSpawn}=require('./bed_spawnpoint.cjs')
+const {requestBed,resumeBed,cancelBed}=require('./bed_task_service.cjs')
 const {HomeBaseMemory,homeAgenda}=require('./home_base.cjs')
 const {planNightReposition,nightConditions}=require('./night_survival.cjs')
 const {configureDoors,createResponsiveFollowGoal,observedLineOfSight}=require('./follow_navigation.cjs')
@@ -75,13 +76,15 @@ function recognize(message) {
   const m=text.match(/^(?:@?aliceai|@?alice|ai|艾丽丝|爱丽丝)[\s,，:：]+(.+)$/i)
   if(m)return m[1]
   if(parseCollect(text)||/^记住[：:].{2,100}$/.test(text))return text
-  return /^(?:状态|帮助|你在干嘛[?？]?|你在哪里[?？]?|背包(?:有什么|里有什么)?|跟着我|跟紧我|紧跟我|跟随我|跟我走|保护我|停止|别跟了|记忆|学习状态|学到了什么|吃东西|回血|收集|采集|搜集|获取|挖|砍|找来|去找|记住|制作木剑|起床|起来|从(?:附近的?)?(?:箱子|储物箱|木桶)|(?:箱子|储物箱|木桶)(?:里|中)?(?:存入|存|放入)|(?:存入|放入|放进|放到)(?:附近的?)?(?:箱子|储物箱|木桶))/.test(text)?text:null
+  return /^(?:睡觉|去睡觉|上床睡觉|去床上睡觉|找床睡觉|休息一下|设置重生点|设置重置点|设定重生点|去设置重生点|设置床位)$/.test(text)?text:/^(?:状态|帮助|你在干嘛[?？]?|你在哪里[?？]?|背包(?:有什么|里有什么)?|跟着我|跟紧我|紧跟我|跟随我|跟我走|保护我|停止|别跟了|记忆|学习状态|学到了什么|吃东西|回血|收集|采集|搜集|获取|挖|砍|找来|去找|记住|制作木剑|起床|起来|从(?:附近的?)?(?:箱子|储物箱|木桶)|(?:箱子|储物箱|木桶)(?:里|中)?(?:存入|存|放入)|(?:存入|放入|放进|放到)(?:附近的?)?(?:箱子|储物箱|木桶))/.test(text)?text:null
 }
 function parseTask(cmd) {
   const c=compact(cmd)
   const storage=parseStorage(c)
   if(storage)return storage
   if(/^(?:起床|起来|醒来)$/.test(c))return {type:'WAKE'}
+  if(/^(?:睡觉|去睡觉|上床睡觉|去床上睡觉|找床睡觉|休息一下)$/.test(c))return {type:'SLEEP'}
+  if(/^(?:设置重生点|设置重置点|设定重生点|去设置重生点|设置床位)$/.test(c))return {type:'SET_SPAWNPOINT'}
   if(/^(?:停|停止|取消|别跟了|停下|别动)$/.test(c))return {type:'STOP'}
   if(/^(?:跟着我|跟紧我|紧跟我|跟随我|跟我走|跟我来|跟着我走)$/.test(c))return {type:'FOLLOW'}
   if(/^(?:保护我|护卫我|守护我)$/.test(c))return {type:'GUARD'}
@@ -133,7 +136,7 @@ class AliceBedrockRuntime {
     this.lastFollowFaceAt=Number.NEGATIVE_INFINITY
     this.followGoalRadius=this.liveBehavior.settings.followDistance;this.lastFollowRadiusChange=0
     this.nextSleepAt=0;this.nextEquipAt=0;this.maintenanceBusy=false
-    this.nextSpawnpointAt=0;this.lastSpawnpointAttempt=null;this.lastBedApproach=null
+    this.nextSpawnpointAt=0;this.pendingBedRequest=null;this.lastSpawnpointAttempt=null;this.lastBedApproach=null
     this.lastBedApproachAction=null;this.nextBedApproachStepAt=0
     this.lastEquipObservation=null
     this.lastSleepOpportunity=null;this.lastSleepOpportunityKey=null
@@ -495,6 +498,7 @@ class AliceBedrockRuntime {
     this.cancelActive(reason);this.plannerAbort?.abort();this.log.log('[Alice Bedrock] controllers stopped:',reason)
   }
   cancelActive(reason='cancel') {
+    cancelBed(this,'bed_request_cancelled')
     this.preparedScout.clear()
     this.stopDirectFollow(reason)
     this.epoch++
@@ -679,6 +683,14 @@ class AliceBedrockRuntime {
       return this.say(`${sender}，需要收集多少个原木？回复1到32之间的数量。`)
     }
     this.lastHumanAt=this.clock();this.nextIdleAt=Math.max(this.nextIdleAt,this.clock()+this.p.autonomy_policy.AUTONOMY_GRACE_MS)
+    if(task.type==='SLEEP'||task.type==='SET_SPAWNPOINT'){
+      const requested=task.type==='SLEEP'?'sleep':'set_spawnpoint'
+      const response=this.requestBedTask(requested,sender,(status,reason,message)=>{
+        if(status==='completed'||status==='failed')this.say(message)
+      })
+      this.say(response.message)
+      return
+    }
     if(task.type==='WAKE'){
       if(!this.bot.isSleeping)return this.say('我现在没有睡觉。')
       try{await this.bot.wake();this.say('已收到起床操作，等待服务器确认。')}
@@ -1485,6 +1497,8 @@ class AliceBedrockRuntime {
     this.followProgress.reset(player,this.bot.entity.position,entity.position,this.clock())
     this.log.log('[Alice follow] active target',player,'(movement needs server position validation)')
   }
+  requestBedTask(action,source,report=null){return requestBed(this,action,source,report)}
+  resumeBedRequestOnWitness(){return resumeBed(this)}
   async spawnpointTick({freshBdsWitness=false}={}){
     // A 20s *observation* cooldown must never consume an independently
     // admitted 4s BDS witness pair. Only the trusted witness-reader caller
