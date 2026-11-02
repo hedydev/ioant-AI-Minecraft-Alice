@@ -26,6 +26,8 @@ function disableCommandControls(){
   byId('world-quick-follow').disabled=!ready||!byId('world-command-target').value;
   byId('world-quick-guard').disabled=!ready||!byId('world-command-target').value;
   byId('world-quick-stop').disabled=!ready;
+  byId('world-quick-sleep').disabled=!ready;
+  byId('world-quick-spawnpoint').disabled=!ready;
   byId('world-mode-autonomous').disabled=!ready;
   byId('world-mode-companion').disabled=!ready;
 }
@@ -629,6 +631,8 @@ byId('world-quick-guard').addEventListener('click',()=>{
   if(name)sendConsoleCommand('保护 '+name)
 });
 byId('world-quick-stop').addEventListener('click',()=>sendConsoleCommand('停止'));
+byId('world-quick-sleep').addEventListener('click',()=>sendConsoleCommand('睡觉'));
+byId('world-quick-spawnpoint').addEventListener('click',()=>sendConsoleCommand('设置重生点'));
 byId('world-mode-autonomous').addEventListener('click',()=>applyConsoleMode('autonomous'));
 byId('world-mode-companion').addEventListener('click',()=>applyConsoleMode('companion'));
 disableCommandControls();
