@@ -1,6 +1,7 @@
 'use strict'
 const wait=ms=>new Promise(r=>setTimeout(r,ms))
 const {environment}=require('./world_routine.cjs')
+const {scoutStartProof}=require('./scout_start_proof.cjs')
 const ranks={netherite:7,diamond:6,iron:5,chainmail:4,golden:3,leather:2,turtle:3}
 const armorParts={helmet:['head',5],chestplate:['torso',6],leggings:['legs',7],boots:['feet',8]}
 const bedName=n=>typeof n==='string'&&(n==='bed'||n.endsWith('_bed'))
@@ -165,7 +166,8 @@ function hasNearbyBed(bot,radius=12,{avoidBed=()=>false,knownPositions=null}={})
   return inspectNightBeds(bot,radius,{avoidBed,knownPositions}).eligible>0
 }
 async function sleepNearby(bot,api,{signal,radius=12,avoidBed=()=>false,
-  knownPositions=null}={}){
+  knownPositions=null,requireBdsProof=false,forbidNavigation=false,
+  evidence=null,clock=Date.now}={}){
  if(signal?.aborted)return {ok:false,reason:'cancelled'}
  if(!canSleepNow(bot))return {ok:false,reason:'not_night_or_thunderstorm_or_wrong_dimension'}
  if(typeof bot.parseBedMetadata!=='function')return {ok:false,reason:'bed_occupancy_unknown'}
@@ -200,7 +202,14 @@ async function sleepNearby(bot,api,{signal,radius=12,avoidBed=()=>false,
    // A bed already in reach should never require an unnecessary
    // navigation action (especially while Alice is injured indoors).
    const adjacent=bot.entity.position.distanceTo(bed.position)<=2.4
+   // Sleeping may involve pathfinder.goto in this helper. On the original
+   // BDS world it must not bypass independent position admission.
+   if(requireBdsProof){
+     const proof=scoutStartProof(bot,evidence,clock)
+     if(!proof.ok)return {ok:false,reason:proof.reason,bedPosition}
+   }
    if(!adjacent){
+     if(forbidNavigation)return {ok:false,reason:'bed_needs_verified_approach',bedPosition}
      if(typeof bot.pathfinder?.goto!=='function'||typeof api?.GoalNear!=='function')
        return {ok:false,reason:'unsupported_bed_navigation',bedPosition}
      if(Number.isFinite(bot.health)&&bot.health<14)
