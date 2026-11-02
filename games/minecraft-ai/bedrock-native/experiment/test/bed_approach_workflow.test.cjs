@@ -17,6 +17,8 @@ function world({walled=false,doorway=false}={}){
    if(x===3&&y===65&&z===0)return bed
    if(doorway&&x===1&&z===0&&(y===65||y===66))
     return {name:'spruce_door',boundingBox:'block',position:vec(x,y,z)}
+   if(doorway&&x===1&&z!==0&&Math.abs(z)<=7&&y===65)
+    return {name:'stone',boundingBox:'block',position:vec(x,y,z)}
    if(y===64)return {name:'stone',boundingBox:'block',position:vec(x,y,z)}
    if(walled&&y===65&&x>=1&&x<=2&&Math.abs(z)<=7)
     return {name:'stone',boundingBox:'block',position:vec(x,y,z)}
