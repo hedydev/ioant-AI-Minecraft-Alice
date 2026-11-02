@@ -2259,6 +2259,10 @@ class AliceBedrockRuntime {
       return {...outcome,ok:false,serverMovementVerified:false,
         roomExitVerified:false,reason:'door_crossing_job_preempted'}
     if(outcome.attempted===true){
+      // Timestamp AFTER the entire physical input sequence. This makes it
+      // impossible for a pair sampled during lookAt/lane alignment to be
+      // misattributed as a new post-crossing BDS endpoint.
+      receipt.startedAt=this.clock()
       this.pendingDoorCrossing=receipt
       return {...outcome,ok:false,serverMovementVerified:false,
         roomExitVerified:false,
