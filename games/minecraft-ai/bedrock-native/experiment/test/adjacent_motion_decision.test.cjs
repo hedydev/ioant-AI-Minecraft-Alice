@@ -18,7 +18,7 @@ function scene({raised=false,roofAt=null,wall=false,unknown=false,
      return {name:'stone',boundingBox:'block'}
    if(wall&&x===1&&z===0&&y===66)
      return {name:'stone',boundingBox:'block'}
-   if(y===64)return {name:'stone',boundingBox:'block'}
+   if(y===64)return {name:'stone',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}
    return {name:'air',boundingBox:'empty'}
   },
   setControlState:()=>{throw Error('pure decision must never move')},
