@@ -135,8 +135,18 @@ function surveyEscape(bot,{radius=6,maxNodes=MAX_NODES,bedPositions=[]}={}){
         // reachable cells; do not overwrite a nearer approach with a longer one.
         const doorKey=key(x,doorY,z),previous=doors.get(doorKey)
         if(!previous||previous.approach.steps>cur.route.length){
+          // Read the cell BEYOND the observed wooden door. A complete
+          // one-high stone/wood block with clear headroom is a man-made
+          // staircase, not an impossible wall or automatic flat crossing.
+          const beyondX=x+dx,beyondZ=z+dz
+          const raisedLanding=doorY===p.y&&
+            fullSupport(block(beyondX,p.y,beyondZ))&&
+            [1,2,3].every(dy=>knownAir(block(beyondX,p.y+dy,beyondZ)))
           doors.set(doorKey,{position:[x,doorY,z],kind:'wooden_door',
             doorLevelAboveApproach:doorY-p.y,
+            beyondDoorTerrain:raisedLanding?'observed_one_full_block_rise':
+              'flat_or_unknown_not_proven',
+            doorToStairsVerified:false,
             action:'interact_then_reprobe',permitted:false,
             approach:{position:vec(p),steps:cur.route.length,
               elevationChanges:cur.heightChanges,
