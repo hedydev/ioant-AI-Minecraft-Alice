@@ -8,7 +8,7 @@ const {outcome,message}=require('./bed_request_outcome.cjs')
 const TIMEOUT=240000
 const TYPES=new Set(['sleep','set_spawnpoint'])
 const hasSpawn=r=>r.currentRespawnStatus?.()==='observed_server_player_spawn_packet'||
-  r.homeBed.summary().status!=='not_verified'
+  r.homeBed.summary().status==='server_confirmed_current_session'
 function cancelBed(r,reason='bed_request_cancelled'){
  const p=r.pendingBedRequest
  if(!p)return false
