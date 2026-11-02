@@ -57,15 +57,19 @@ async function performOneBlockJump(bot,candidate,{
    serverMovementVerified:false})
  if(candidate?.action!=='JUMP_UP'||!candidate?.target)
    return deny('jump_not_approved_action')
- const plan=candidateOneBlockJump(bot)
- if(!plan.ok)return deny(plan.reason)
  const target=candidate.target
+ const plan=candidateOneBlockJump(bot,{toward:{x:target.x+.5,y:target.y,z:target.z+.5}})
+ if(!plan.ok)return deny(plan.reason)
  if(![target.x,target.y,target.z].every(Number.isSafeInteger)||
     plan.target.x!==target.x||plan.target.y!==target.y||plan.target.z!==target.z)
    return deny('jump_landing_changed')
  if(typeof bot.lookAt!=='function'||typeof bot.setControlState!=='function')
    return deny('jump_physical_input_unavailable')
- const permitted=()=>!signal?.aborted&&(safe()===true||safe()?.ok===true)
+ const permitted=()=>{
+   if(signal?.aborted)return false
+   try{const r=safe();return r===true||r?.ok===true}
+   catch{return false}
+ }
  if(!permitted())return deny('jump_safety_preempted')
  let attempted=false
  try{
@@ -76,7 +80,8 @@ async function performOneBlockJump(bot,candidate,{
   const ms=Math.min(160,Math.max(65,pulseMs))
   for(let i=0;i<n;i++){
    if(!permitted())return deny('jump_safety_preempted',attempted)
-   const fresh=candidateOneBlockJump(bot)
+   const fresh=candidateOneBlockJump(bot,
+     {toward:{x:target.x+.5,y:target.y,z:target.z+.5}})
    if(!fresh.ok||fresh.target.x!==target.x||
       fresh.target.y!==target.y||fresh.target.z!==target.z)
      return deny('jump_landing_changed',attempted)
