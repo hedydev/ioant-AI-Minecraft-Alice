@@ -1128,3 +1128,11 @@ no-repeat claims. Platform review remains mandatory; runtime permission and
 actual replacement are accepted through real MCP:3521245→3633395 with live
 heartbeat and established game session. No BDS/world/player-data or movement
 permission was added. See CLIENT_RESTART_APPROVAL_20261103.md.
+## 2026-11-03 — Lifecycle recovery and proven-exit reporting
+
+Maintenance independently resolved the prior unknown restart as offline after
+network fetch/reset failure, kept the original receipt and restored one client
+PID3923865. The MCP task lane accepts work again (exact doc-sync passed preserving
+edits). New restart schema3 distinguishes positively verified process exit from
+unknown login; it does not auto-retry or grant new gameplay/BDS capabilities.
+See root docs/ALICE_RESTART_INCONCLUSIVE_RECOVERY_20261103.md.

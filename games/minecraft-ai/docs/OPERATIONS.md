@@ -1004,3 +1004,14 @@ not permission to replay refused h01 or uncertain operations. Healthy IDLE/no-jo
 current owner/birth token/world/17879/fresh session and final pre-stop recheck are
 mandatory; original config, one replacement, no BDS/world/auth changes. Read the
 actual lifecycle receipt; zero script exit alone is not success.
+## 2026-11-03 — Unknown restart is reviewed, not retried
+
+Read root docs/ALICE_RESTART_INCONCLUSIVE_RECOVERY_20261103.md and the OpenClaw
+ALICE_LIFECYCLE_RECOVERY_20261103 runbook. Original inconclusive receipts/logs
+stay immutable. MCP reconcile inspects while busy, then requires fresh review
+digest + rechecked exact lock/runner/settled remote evidence before release.
+Resolve never starts Alice. Only after proven offline and current user recovery
+authorization may a separate normal start run once using the original private
+configuration and BDS release gate. Do not turn offline into another restart.
+Schema3's exitVerified is positive evidence, unlike schema2 default false flags;
+known exited replacements become failed/client_exited_before_login with no retry.

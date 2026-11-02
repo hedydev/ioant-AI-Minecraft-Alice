@@ -88,6 +88,19 @@ class RestartTests(unittest.TestCase):
         self.assertFalse(result['sessionEstablished'])
         app.launch.assert_called_once()
 
+    def test_proven_exit_is_a_known_failure_without_retry(self):
+        app, before, _ = self.app()
+        verify = Mock(return_value=True)
+        with patch.object(module, 'read_live', side_effect=[before, before, ValueError('client_not_running')]):
+            result = module.perform_restart(app, Mock(), 'approved_restart_exit',
+                        pause=Mock(), clock=Mock(side_effect=[0, 1]), verify_exit=verify)
+        self.assertEqual(result['schemaVersion'], 3)
+        self.assertEqual(result['state'], 'failed')
+        self.assertEqual(result['failureReason'], 'client_exited_before_login')
+        self.assertTrue(result['exitVerified'])
+        verify.assert_called_once_with(100, 200)
+        app.launch.assert_called_once()
+
     def test_raw_status_requires_private_current_owner_exact_world_port(self):
         with tempfile.TemporaryDirectory() as root:
             app = Mock(root=Path(root))

@@ -1,5 +1,34 @@
 # Alice 17879 客户端重启结果不明：受控恢复记录（2026-11-03）
 
+## 维护端实际恢复（北京时间 04:44）
+
+本页下面的“待调查”描述是恢复前记录。现维护端已用原 status/diagnose 和固定
+脱敏检查独立确认：原3849498、新3877694都不在 /proc，无owner、无任何Alice候选；
+原Mint lifecycle claim已经结束、生命周期锁空闲。新PID启动日志32条带PID记录
+及续行出现 TypeError/fetch_failed、ECONNRESET，随后 transport_ended，没有
+start_game/spawn成功。不能把它归咎于碰撞修改或认证缓存损坏。
+
+OpenClaw维护代码644ff90加入 openclaw_project_reconcile（inspect/resolve）和同源
+维护CLI。两次独立证据一致、旧runner已退出、60秒审阅摘要有效、原回执SHA及
+active.lock operationId/digest精确匹配后，先写独立审计再用store.release受控释放。
+原回执SHA `78f6e4db6ea7bd13f520d0e7394192b2be97a4f406e63d841f733d57ecd1de28`
+保持不变，旧state仍inconclusive，未删除原日志、产物、claim，也未重放原restart。
+
+当前用户要求维护端“解决”明确授权核查后的恢复。确认离线后，另执行一次原
+alice-mac.sh start，使用原私有配置、原生产预检/BDS登出门禁，启动PID3923865。
+独立status确认current_process、心跳1.7秒、connected/sessionEstablished=true、
+start_game_received、HP20/IDLE/nojob。BDS未重启、世界/玩家/认证未清理。
+
+恢复后MCP正常接受 alice_recovery_doc_sync_20261103_k4n8v2cs_01 并passed/cached：
+原Mac精确快进e046ae1→f90c666，保留2个维护修改文件的完整校验（verified=true）。
+证明项目锁已恢复正常入场，不是仅从UI隐藏busy。同步只更新文档，不部署游戏源码。
+
+为防同类可判定退出继续无限busy，重启回执schema3加入exitVerified：有独立
+旧/新PID消失、无owner/候选证明时记failed/client_exited_before_login并正常释放锁，
+无自动重试；真正不明仍保留锁。schema2的默认false不作退出证明，历史不改写。
+生命周期10项、Mac Python321（跳过3）、MCP1386/1386回归通过。新工具正式
+服务加载/目录刷新与最终回执在后续维护记录补记。
+
 ## 现场来源和不可更改约束
 
 - 既有正式世界：Mint `192.168.0.104`、BDS UDP `17879`、世界 `Bedrock level`。**不重启 BDS，不改动/重置世界，不更换为实验世界。**

@@ -1,4 +1,17 @@
-## 2026-11-03 — Latest live client and approved restart
+## 2026-11-03 — Recovered offline client and reviewed execution lock
+
+Current verified owner is PID3923865, current_process/fresh heartbeat/game
+session connected, HP20/IDLE. Failed restart alice_r66_collision_restart_04 is
+still immutable inconclusive; independent evidence proves3877694 exited after
+fetch_failed/ECONNRESET. A reviewed compare-and-release wrote separate audit and
+released only that settled operation's lock. One distinct authorized normal
+offline start restored Alice; no repeat restart/BDS/world/auth cleanup. MCP doc
+sync passed and preserved maintenance edits. See root docs/ALICE_RESTART_INCONCLUSIVE_RECOVERY_20261103.md.
+Future schema3 reports proven exit as failed, never success or automatic retry;
+true unknowns remain locked for review. No collision/door/movement acceptance
+is inferred for the new session.
+
+## 2026-11-03 — Latest live client and approved restart (historical)
 
 MCP restart permission is now explicitly enrolled and actually accepted. Current
 verified owner is PID3633395 (replaced3521245 once), connected/current heartbeat/

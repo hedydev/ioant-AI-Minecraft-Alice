@@ -22,12 +22,13 @@ REMOTE_PINS = {
 
 
 def empty_receipt(operation):
-    return {'schemaVersion': 2, 'operationId': operation, 'state': 'blocked',
+    return {'schemaVersion': 3, 'operationId': operation, 'state': 'blocked',
             'failureReason': 'preflight_not_completed', 'oldPid': None, 'newPid': None,
             'restartAttempted': False, 'processAlive': False, 'heartbeatFresh': False,
             'connected': False, 'sessionEstablished': False, 'ownerVerified': False,
             'worldVerified': False, 'portVerified': False, 'existingTask': False,
-            'bdsRestarted': False, 'worldChanged': False, 'replacementCount': 0}
+            'bdsRestarted': False, 'worldChanged': False, 'replacementCount': 0,
+            'exitVerified': False}
 
 
 def read_live(app, status_reader):
@@ -73,7 +74,8 @@ def verify_safe_state(data):
         raise ValueError('game_safety_gate')
 
 
-def perform_restart(app, status_reader, operation, *, pause=time.sleep, clock=time.monotonic):
+def perform_restart(app, status_reader, operation, *, pause=time.sleep, clock=time.monotonic,
+                    verify_exit=lambda old_pid, new_pid: False):
     result = empty_receipt(operation)
     try:
         owner, token, env, _, data = read_live(app, status_reader)
@@ -111,6 +113,10 @@ def perform_restart(app, status_reader, operation, *, pause=time.sleep, clock=ti
             try:
                 current, _, _, live, current_data = read_live(app, status_reader)
             except (ValueError, OSError):
+                if verify_exit(result['oldPid'], result['newPid']):
+                    result.update(state='failed', failureReason='client_exited_before_login',
+                                  exitVerified=True)
+                    return result
                 continue
             if current['pid'] != result['newPid']:
                 result['failureReason'] = 'unexpected_replacement'
@@ -140,6 +146,13 @@ def private_directory(path):
     stat = path.lstat()
     if path.is_symlink() or not path.is_dir() or stat.st_uid != os.getuid() or stat.st_mode & 0o077:
         raise ValueError('unsafe_lifecycle_directory')
+
+
+def verify_client_exit(app, old_pid, new_pid):
+    from alice_operator.diagnostics import alice_processes
+    return (app.owner() is None and not alice_processes(app) and
+            not (Path('/proc')/str(old_pid)).exists() and
+            not (Path('/proc')/str(new_pid)).exists())
 
 
 def remote_run(operation, pins):
@@ -188,7 +201,8 @@ def remote_run(operation, pins):
             initial.update(state='blocked', failureReason='lifecycle_busy')
             result = initial
         else:
-            result = perform_restart(app, cli.status, operation)
+            result = perform_restart(app, cli.status, operation,
+                                     verify_exit=lambda old, new: verify_client_exit(app, old, new))
         temp = root / (operation + '.result.tmp')
         fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
         with os.fdopen(fd, 'w') as stream:
@@ -202,7 +216,7 @@ def remote_run(operation, pins):
 def remote_source(operation):
     header = ('import fcntl,hashlib,importlib.util,json,os,sys,time\nfrom pathlib import Path\n')
     functions = (empty_receipt, read_live, verify_safe_state, perform_restart,
-                 private_directory, remote_run)
+                 private_directory, verify_client_exit, remote_run)
     return header + '\n'.join(inspect.getsource(f) for f in functions) + (
         '\nprint(json.dumps(remote_run(' + repr(operation) + ',' + repr(REMOTE_PINS) + ')))\n')
 
