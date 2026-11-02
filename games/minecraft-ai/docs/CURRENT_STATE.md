@@ -1,3 +1,14 @@
+## 2026-11-02 — Alice 两格木门外完整方块阶梯与逐格跳跃（仅源码）
+
+- 用户补充现场：木门占2格高度，门外一段楼梯**由完整方块叠高**，Alice需识别且具备受控跳跃，而不能因平地路径失败一直停在IDLE。
+- 新增`src/one_block_jump.cjs` + `test/one_block_jump.test.cjs`：只认可相邻、一格高、完整可支撑方块，检查脚下与目标落脚、头顶3格净空、无危险/复杂碰撞/实体占位；初次起跳一次，离地后最多4次短时前进脉冲，实时限制一格水平/垂直走廊，始终释放`jump/forward`，没有任何拆墙/跳两格/连续自动跳的后门。尚不将本地跃起当成功。
+- 床指令`bed_task_service.cjs`及`runtime.resumeBedApproachOnWitness`可以选择`JUMP_UP`代替平地一步，沿用同生命期、同login、4s/0.75格独立BDS起步证明。每次物理动作完成后在`pendingBedStep`等待**动作之后**的独立BDS双样本验证完整x/y/z一格上升，才准继续。支持显式控制台/聊天指令即使companion模式，也保留STOP/FOLLOW/危险抢占。修复`startJob`成功后返回undefined却被床任务误判为失败的根因：现在看实际job.type/action.source，测试模拟void返回。
+- 新增`src/door_crossing_witness.cjs`：过去`escape_crossing`把客户端move packet当独立服务端穿门证明，现统一降级为诊断。仅真正全新、后于**全部实际前进输入完成**的独立BDS双样本能够确认门对面坐标；无法证明“户外”。`runtime.crossObservedDoor`不允许以没有独立BDS起步证据、还需额外接近门的A*绕行直接穿门，scout门降级路径使用同一安全入口。待验收期间不会自动重穿门。
+- `escape_survey`增门外`beyondDoorTerrain='observed_one_full_block_rise'`，`escape_crossing`发现两格木门**紧接完整方块抬升一级**时明确返回`crossing_raised_full_block_landing_requires_jump`，绝不将其误作平地，也不在无法安全完成分阶段门槛+跃上台阶时强制通过。`bed_task_service`向控制台反馈`bed_route_requires_door_then_jump`，控制台`world.js`区分WALK/JUMP_UP待验收状态。
+- 实际独立源码级V8检查：`one_block_jump`7/7、`bed_jump_runtime`3/3、`door_stair_survey`3/3；直接调用真实`validatePassageGeometry`和`crossDoor`，对门外整方块上升场景2/2正确拒绝错误的平地运动；`door_crossing_witness`8/8。15份相关JS文件语法通过。**未运行Mint Node24全量回归、没有真实BDS跳跃落点或穿门成功证据、尚未部署到当前进程**。
+- **仍未完成的重要动作链**：如果第一块上升方块就在门的紧外侧，需先独立确认Alice已站到打开的门槛内，之后才能受控跳到门外高一级的落点。目前只识别该组合且禁止原平地穿门，无可靠自动“进门槛→跳一级→持续上台阶”完整闭环。其他阶梯类型和半砖按复杂碰撞处理，不强行按完整方块运动。BDS原世界17879不重启、不新建存档、无强制移动/坐标伪造。
+- 本轮GitHub/main已更改，但Mac本地HEAD仍为9189d2b clean；OpenClaw每项目500历史记录导致`execution_history_full`阻断源码同步，不绕过阻断/不拿隔离测试冒充游戏效果。下一步优先解决OpenClaw容量并保留回执，正常部署与Node24全量回归、现场门槛跳跃双BDS验证。
+
 ## 2026-11-02 — 床指令远距逐格接近 + BDS 延迟终点验收（仅源码）
 
 - 继47交接的聊天/控制台床指令之后，新增Bedrock源模块`src/bed_step_witness.cjs`和`src/bed_directional_step.cjs`。原`resumeBedApproachOnWitness`在4.5s移动超时后要求两份新独立BDS样本，但见证约180s才一轮，导致无法验收。现改成在4s/0.75格原起步门禁后仅启动**一格**，物理任务结束时`ok=false`，待下轮同登录/生命阶段且移动**之后**产生的独立BDS双样本验证一格终点；没独立证据绝不宣称已移动、不连续发送下一格。
