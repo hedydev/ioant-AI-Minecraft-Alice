@@ -15,7 +15,7 @@ function fixture(){
   bot:{health:20,isSleeping:false,entity:{position:vec(.5,65,.5),onGround:true},
     game:{dimension:'overworld'},parseBedMetadata:()=>({occupied:0}),
     activateBlock:async()=>{},findBlocks:()=>[bed.position],
-    blockAt(p)=>Math.floor(p.x)===1&&Math.floor(p.y)===65&&Math.floor(p.z)===0?
+    blockAt:p=>Math.floor(p.x)===1&&Math.floor(p.y)===65&&Math.floor(p.z)===0?
       bed:{name:'air',position:vec(Math.floor(p.x),Math.floor(p.y),Math.floor(p.z)),
         boundingBox:'empty'}},
   clock:()=>now,ready:()=>true,safetyBusy:false,threat:()=>null,
