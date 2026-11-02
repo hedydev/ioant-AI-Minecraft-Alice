@@ -47,13 +47,53 @@ def summarize(view):
         if any(c['dx']==e['dx'] and c['dz']==e['dz'] for c in bed_columns):continue
         bed_columns.append({'dx':e['dx'],'dz':e['dz'],'dy':e['dy'],'type':e['type']})
         if len(bed_columns)>=3:break
-    return {'state':'observed','source':'client_chunk_cache_not_bds',
+    result={'state':'observed','source':'client_chunk_cache_not_bds',
         'doorVoxelCount':len(doors),'doorWithinSurvey7':sum(e['dist']<=7.5 and abs(e['dy'])<=2 for e in doors),
         'nearestDoorHorizontal':nearest(doors),'relativeDoorColumns':columns,
         'bedVoxelCount':len(beds),'bedWithin12':sum(e['dist']<=12.5 for e in beds),
         'nearestBedHorizontal':nearest(beds),
         'relativeBedColumns':bed_columns,
         'unknownCells':view.get('unknown') if type(view.get('unknown')) is int else None}
+    # Read-only, names-only map. This does NOT claim collision-box, door
+    # open-bit, BDS endpoint, or any movement authority.
+    # A full dense scan and zero unknowns are required before inferring air.
+    if view.get('scanned')==11532 and view.get('unknown')==0:
+        cells={(dx,dy,dz):palette[ix].removeprefix('minecraft:')
+               for dx,dy,dz,ix in voxels}
+        air={'air','cave_air','void_air'}
+        def name(x,y,z):return cells.get((x,y,z),'air')
+        def role(x,z):
+            floor,feet,head,above,top=[name(x,y,z) for y in (-1,0,1,2,3)]
+            blocks=(feet,head)
+            if any('_door' in b for b in blocks):return 'D'
+            if any(b=='bed' or b.endswith('_bed') for b in blocks):return 'B'
+            if any(any(q in b for q in ('lava','water','fire','cactus','magma','powder_snow','campfire')) for b in (floor,feet,head)):return '!'
+            if feet in air and head in air:
+                if floor in air:return '.'
+                if any(q in floor for q in ('slab','stairs','trapdoor','carpet','fence','wall','glass_pane','leaves')):return ':'
+                return '+'
+            if feet not in air and head in air and above in air and top in air:return '^'
+            return '#'
+        xmin,xmax,zmin,zmax=-12,3,-14,3
+        result['terrainGrid']={'xRange':[xmin,xmax],'zRange':[zmin,zmax],
+           'rows':[{'z':z,'cells':''.join('A' if x==0 and z==0 else role(x,z)
+                    for x in range(xmin,xmax+1))}
+                   for z in range(zmin,zmax+1)],
+           'legend':{'A':'Alice floor-cell','+':'nominal clear flat',
+             ':':'non-full support requires collision inspection',
+             '.':'no floor','^':'raised block candidate (not approved)',
+             '#':'occupied or insufficient headroom','D':'door, state unknown',
+             'B':'bed','!':'hazard'}}
+        # Bounded exact names near feet, door and bed to investigate support
+        # / ceiling; do not expose absolute locations.
+        columns=[(0,0),(-1,0),(1,0),(0,-1),(0,1),
+                 (-3,-5),(-3,-4),(-3,-6),(-2,-5),(-4,-5),
+                 (-9,-11),(-10,-11)]
+        result['terrainColumns']=[{'dx':x,'dz':z,
+             'blocks':[[y,name(x,y,z)] for y in (-2,-1,0,1,2,3)
+                       if name(x,y,z) not in air]}
+             for x,z in columns]
+    return result
 
 REMOTE=r"""
 import json,math,os,re,subprocess,sys,time
@@ -95,7 +135,7 @@ def selftest():
     assert x['doorVoxelCount']==1 and x['doorWithinSurvey7']==1
     assert x['bedVoxelCount']==1 and x['nearestDoorHorizontal']==3.0
     assert x['relativeBedColumns']==[{'dx':1,'dz':0,'dy':0,'type':'red_bed'}]
-    assert x['relativeDoorColumns']==[{'dx':3,'dz':0,'dyLevels':[0],'type':'oak_door'}]
+    assert x['relativeDoorColumns']==[{'dx':3,'dz':0,'dyLevels':[0],'type':'oak_door'}]\n    assert 'terrainGrid' not in x\n    v['scanned']=11532\n    t=summarize(v)\n    assert len(t['terrainGrid']['rows'])==18\n    assert t['terrainGrid']['rows'][14]['cells'][12]=='A'\n    assert t['terrainGrid']['rows'][14]['cells'][13]=='B'
     assert 'def summarize(view):' in build_remote()
     assert 'import json,math,os,re,subprocess,sys,time' in build_remote()
     compile(build_remote(),'<reviewed-remote-readonly>','exec')
@@ -110,11 +150,11 @@ def run(folder):
         p=subprocess.run(['/usr/bin/ssh','-T','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','-o','ConnectTimeout=8',
           'tedz@192.168.0.104','/usr/bin/python3 -c '+shlex.quote(build_remote())],
           capture_output=True,text=True,timeout=35,check=False)
-        if p.returncode==0 and len(p.stdout)<1800:
+        if p.returncode==0 and len(p.stdout)<12000:
             x=json.loads(p.stdout)
             if x.get('state') in ('observed','unverified') and set(x)<={
                 'state','reason','source','doorVoxelCount','doorWithinSurvey7','nearestDoorHorizontal',
-                'bedVoxelCount','bedWithin12','nearestBedHorizontal','relativeBedColumns','unknownCells','relativeDoorColumns'}:obs=x
+                'bedVoxelCount','bedWithin12','nearestBedHorizontal','relativeBedColumns','unknownCells','relativeDoorColumns','terrainGrid','terrainColumns'}:obs=x
     except (OSError,ValueError,subprocess.SubprocessError):pass
     report={'audit':'ALICE_HOME_DOOR_VOXEL_READONLY','schemaVersion':1,
       'bdsCommandsSent':False,'movementAttempted':False,'observation':obs}
