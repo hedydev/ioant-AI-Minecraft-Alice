@@ -1807,7 +1807,10 @@ test('A* failed wooden door with CLOSED state or blocked far side never sends fo
    assert.equal(result.serverMovementVerified,false)
    assert(!keys.some(([k,v])=>k==='forward'&&v))
    // The upstream independent-BDS entry gate is stricter than geometry inspection.
-   assert.equal(result.reason,'scout_bds_position_unavailable')
+   // CLOSED is rejected by observed geometry; an otherwise OPEN path
+   // must still be refused when fresh independent BDS start proof is absent.
+   assert.equal(result.reason,blocked==='closed'?
+     'crossing_open_door_state_unverified':'scout_bds_position_unavailable')
    e.job=null;e.stop()
  }
 })
@@ -3178,7 +3181,8 @@ test('fresh aligned pair may arm EXACTLY one flat bed step but never records unv
  const v=e.resumeBedApproachOnWitness()
  assert.equal(v.state,'started',JSON.stringify(v))
  assert.equal(started,1)
- assert.equal(e.resumeBedApproachOnWitness().reason,'one_cell_step_cooldown')
+ // An active owned EXPLORE job is a stronger blocker than the step cooldown.
+ assert.equal(e.resumeBedApproachOnWitness().reason,'unsafe_bed_approach_context')
  assert.equal(started,1)
  assert.equal(e.lastBedApproachAction.attempted,false)
  const result=await task(e.job.signal)
