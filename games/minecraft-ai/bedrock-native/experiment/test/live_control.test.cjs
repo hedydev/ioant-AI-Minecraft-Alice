@@ -433,3 +433,34 @@ test('production oversized current-session heartbeat falls back to owner-bound m
  assert.equal(JSON.parse(fs.readFileSync(file,'utf8')).movementEvidence.independentSamples,13)
  assert.equal(fs.statSync(file).mode&0o777,0o600)
 }))
+
+test('minimal oversized status retains a bounded bed-admission hold reason',()=>withDir(root=>{
+ const pub=new LiveStatus({root})
+ pub.publish({connected:true,sessionEstablished:true,producerPid:12345,
+   producerStartToken:'a'.repeat(40),world:'Bedrock level',serverPort:17879,
+   state:'IDLE',health:20,food:20,settings:{...DEFAULTS,agentMode:'autonomous'},
+   movementEvidence:{independentSamples:4,independentSource:'bds_querytarget',
+     independentAt:100000,independentPreviousAt:99000,
+     independentLatestFeet:{x:1.5,y:65,z:.5}},
+   worldRoutine:{phase:'night',tick:13000,
+     decision:{goal:'SECURE_SHELTER',action:'WAIT',reason:'position_witness_unverified'},
+     terrainAdaptation:{oversize:'z'.repeat(16000)},
+     rememberedBeds:{knownBeds:2},
+     homeBed:{status:'not_verified'},
+     homeBase:{status:'not_established'},
+     lastSpawnpointAttempt:{reason:'bed_needs_verified_approach',
+       bedReach:'bed_needs_verified_approach'},
+     bedApproachAction:{status:'held',
+       reason:'directional_bed_no_safe_closer_flat_cell',
+       attempted:false,serverMovementVerified:false}}})
+ const data=JSON.parse(fs.readFileSync(path.join(root,'status.json'),'utf8'))
+ assert.equal(data.statusMinimal,true)
+ assert.equal(data.connected,true)
+ assert.equal(data.movementEvidence.independentSamples,4)
+ assert.equal(data.worldRoutine.rememberedBeds.knownBeds,2)
+ assert.equal(data.worldRoutine.homeBed.status,'not_verified')
+ assert.equal(data.worldRoutine.lastSpawnpointAttempt.reason,'bed_needs_verified_approach')
+ assert.equal(data.worldRoutine.bedApproachAction.status,'held')
+ assert.equal(data.worldRoutine.bedApproachAction.reason,'directional_bed_no_safe_closer_flat_cell')
+ assert(Buffer.byteLength(JSON.stringify(data))<=4096)
+}))

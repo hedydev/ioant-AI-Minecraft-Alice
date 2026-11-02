@@ -266,6 +266,38 @@ function compactStatus(state){
         nextReviewAt:num(w.idleHold.nextReviewAt)},
       nightSurvival:w.nightSurvival&&{reason:str(w.nightSurvival.reason,80)}}
   }
+  // The 4 KiB emergency heartbeat must also preserve bounded, actionable
+  // BED admission reasons. Without this, an apparently healthy autonomous
+  // client reports "unknown" and hides why it cannot reach its known bed.
+  // No coordinates, raw terrain or player names are copied into this view.
+  const bedAction=w.bedApproachAction
+  const bedAttempt=w.lastSpawnpointAttempt
+  const bedCompact={...essential,worldRoutine:{...essential.worldRoutine,
+    rememberedBeds:w.rememberedBeds&&{
+      knownBeds:num(w.rememberedBeds.knownBeds)},
+    homeBed:w.homeBed&&{status:str(w.homeBed.status,54)},
+    homeBase:w.homeBase&&{status:str(w.homeBase.status,54)},
+    lastSpawnpointAttempt:bedAttempt&&{reason:str(bedAttempt.reason,80),
+      bedReach:str(bedAttempt.bedReach,80)},
+    bedApproachAction:bedAction&&{status:str(bedAction.status,38),
+      reason:str(bedAction.reason,80),
+      attempted:bedAction.attempted===true,
+      serverMovementVerified:bedAction.serverMovementVerified===true}}}
+  if(Buffer.byteLength(JSON.stringify(bedCompact))<=STATUS_MAX_BYTES)
+    return JSON.stringify(bedCompact)
+  // On unusually large mandatory identity/witness fields, prefer keeping
+  // the concise admission cause over optional idle explanation text.
+  const bedPrioritized={...bedCompact,worldRoutine:{
+    phase:essential.worldRoutine.phase,
+    idleGate:essential.worldRoutine.idleGate,
+    decision:essential.worldRoutine.decision,
+    rememberedBeds:bedCompact.worldRoutine.rememberedBeds,
+    homeBed:bedCompact.worldRoutine.homeBed,
+    homeBase:bedCompact.worldRoutine.homeBase,
+    lastSpawnpointAttempt:bedCompact.worldRoutine.lastSpawnpointAttempt,
+    bedApproachAction:bedCompact.worldRoutine.bedApproachAction}}
+  if(Buffer.byteLength(JSON.stringify(bedPrioritized))<=STATUS_MAX_BYTES)
+    return JSON.stringify(bedPrioritized)
   if(Buffer.byteLength(JSON.stringify(essential))<=STATUS_MAX_BYTES)
     return JSON.stringify(essential)
   throw Error('Alice essential status too large even after bounded fallback')
