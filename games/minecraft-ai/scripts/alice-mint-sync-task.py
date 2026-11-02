@@ -44,6 +44,19 @@ def parse_failed_test_names(output):
     return names
 
 
+def parse_failure_assertion_lines(output):
+    # Stack source line numbers only, never paths, log text, assertion values,
+    # credentials or full stack traces. Restrict to known tracked test file.
+    found=[]
+    for number in re.findall(r'(?m)^\s+at .{0,160}[/\\]runtime\.test\.cjs:(\d+):\d+', output):
+        line=int(number)
+        if 1<=line<=100000 and line not in found:
+            found.append(line)
+        if len(found)>=8:
+            break
+    return found
+
+
 def parse_python_summary(output):
     matches=re.findall(r'Ran (\d+) tests? in [0-9.]+s',output)
     if not matches:
@@ -60,7 +73,8 @@ def emit(output,report):
         file.write('\n')
     print(json.dumps({'state':report['state'],'node24':report['mintNode24'],
                       'localPythonTests':report['macPythonTests'],
-                      'failedTestNames':report['failedTestNames']}))
+                      'failedTestNames':report['failedTestNames'],
+                      'failureAssertionLines':report['failureAssertionLines']}))
 
 def selftest():
     data='\nℹ tests 652\nℹ pass 650\nℹ fail 0\nℹ skipped 2\n'
@@ -69,6 +83,7 @@ def selftest():
     assert parse_node_summary('tests unclear') is None
     assert parse_python_summary('Ran 227 tests in 19.1s\n\nOK (skipped=3)')==227
     assert parse_failed_test_names('✖ one-cell door approach (3.50ms)\n✖ failing tests:\n') == ['one-cell door approach']
+    assert parse_failure_assertion_lines('    at TestContext.<anonymous> (/mint/test/runtime.test.cjs:2448:9)\n') == [2448]
     print('ALICE_SYNC_REPORT_SELFTEST_PASS')
 
 def sync(output,target):
@@ -92,7 +107,7 @@ def sync(output,target):
             'aliceRestarted':False,'bdsRestarted':False,
             'worldModifiedByTask':False,'consoleCommandSent':False,
             'macPythonTests':None,'mintNode24':None,'syncExitCode':None,
-            'failedTestNames':[]}
+            'failedTestNames':[],'failureAssertionLines':[]}
     env={**os.environ,'ALICE_SSH_TARGET':target}
     try:
         proc=subprocess.run(['/bin/bash',str(wrapper),'sync'],cwd=repo,
@@ -103,6 +118,7 @@ def sync(output,target):
         report['macPythonTests']=parse_python_summary(all_output)
         report['mintNode24']=parse_node_summary(all_output)
         report['failedTestNames']=parse_failed_test_names(all_output)
+        report['failureAssertionLines']=parse_failure_assertion_lines(all_output)
         report['state']=('passed' if proc.returncode==0 and
                          report['mintNode24'] is not None and
                          report['mintNode24']['fail']==0 else
