@@ -7,7 +7,7 @@ const rootDefault=()=>path.join(os.homedir(),'.alice-bedrock-control')
 const {selectProbeRoute}=require('./operator_step_probe.cjs')
 const {scoutStartProof}=require('./scout_start_proof.cjs')
 const ID=/^[a-f0-9]{32}$/,PLAYER=/^[A-Za-z0-9_]{3,16}$/
-const ACTIONS=new Set(['stop','follow','guard','gather_wood','craft_sword','eat','status','probe_step'])
+const ACTIONS=new Set(['stop','follow','guard','gather_wood','craft_sword','eat','status','probe_step','sleep','set_spawnpoint'])
 const STATUS=new Set(['received','started','completed','failed','rejected'])
 function cleanCommand(x,now=Date.now()){
   if(!x||typeof x!=='object'||Array.isArray(x)||
@@ -62,6 +62,10 @@ function runCommand(runtime,command,report){
   }
   if(!runtime.ready())
     return response('rejected','alice_not_ready','Alice 尚未完成生命/背包同步，暂不执行该任务')
+  if(action==='sleep'||action==='set_spawnpoint'){
+    const r=runtime.requestBedTask(action,'控制台',report)
+    return response(r.status,r.reason,r.message)
+  }
   if(action==='status')return response('completed','status_available',
     String(core.state||'unknown').slice(0,32)+' · '+(runtime.action?.label||'空闲'))
   if(action==='follow'||action==='guard'){
