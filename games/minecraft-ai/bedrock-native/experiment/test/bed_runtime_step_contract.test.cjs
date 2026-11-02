@@ -42,7 +42,10 @@ function fixture({autonomous=false,blocked=false}={}){
   homeBase:{last:null},
   api:{Movements:class{constructor(){this.openable=new Set()}},GoalNear:class{}},
   log:{log(){}}})
- r.startJob=function(type,source,job){this.epoch++;this.job={type};this.task=job;return true}
+ r.startJob=function(type,source,job){
+  this.epoch++;this.job={type};this.action={source};this.task=job
+  // The actual runtime successfully creates a job but returns undefined.
+ }
  return {r,inputs:()=>inputs,advance:ms=>{now+=ms},
   arrive(){
    r.bot.entity.position=vec(1.5,65,.5)
