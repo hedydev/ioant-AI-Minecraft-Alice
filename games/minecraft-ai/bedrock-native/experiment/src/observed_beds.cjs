@@ -48,12 +48,12 @@ class ObservedBeds{
   if(!cell(here)||dim!=='overworld'||typeof bot.findBlocks!=='function'||
      typeof bot.blockAt!=='function')return {changed:false,reason:'scan_unavailable'}
   let found
-  try{found=bot.findBlocks({matching:b=>bed(b?.name),maxDistance:12,count:24})||[]}
+  try{found=bot.findBlocks({matching:b=>bed(b?.name),maxDistance:16,count:24})||[]}
   catch{return {changed:false,reason:'scan_failed'}}
   let added=0
   for(const point of found.slice(0,24)){
    const pos=cell(point)
-   if(!pos||Math.hypot(pos.x+.5-here.x,pos.y-here.y,pos.z+.5-here.z)>13)continue
+   if(!pos||Math.hypot(pos.x+.5-here.x,pos.y-here.y,pos.z+.5-here.z)>17)continue
    let block
    try{block=bot.blockAt(point)}catch{}
    if(!bed(block?.name))continue
@@ -71,7 +71,7 @@ class ObservedBeds{
   }
   return {changed:added>0,added,known:this.records.length}
  }
- nearby(bot,{radius=12}={}){
+ nearby(bot,{radius=16}={}){
   const here=bot?.entity?.position,dim=dimension(bot)
   if(!cell(here)||typeof bot?.blockAt!=='function')return []
   return this.records.filter(r=>r.dimension===dim&&
