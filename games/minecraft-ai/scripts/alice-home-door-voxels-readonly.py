@@ -135,7 +135,13 @@ def selftest():
     assert x['doorVoxelCount']==1 and x['doorWithinSurvey7']==1
     assert x['bedVoxelCount']==1 and x['nearestDoorHorizontal']==3.0
     assert x['relativeBedColumns']==[{'dx':1,'dz':0,'dy':0,'type':'red_bed'}]
-    assert x['relativeDoorColumns']==[{'dx':3,'dz':0,'dyLevels':[0],'type':'oak_door'}]\n    assert 'terrainGrid' not in x\n    v['scanned']=11532\n    t=summarize(v)\n    assert len(t['terrainGrid']['rows'])==18\n    assert t['terrainGrid']['rows'][14]['cells'][12]=='A'\n    assert t['terrainGrid']['rows'][14]['cells'][13]=='B'
+    assert x['relativeDoorColumns']==[{'dx':3,'dz':0,'dyLevels':[0],'type':'oak_door'}]
+    assert 'terrainGrid' not in x
+    v['scanned']=11532
+    t=summarize(v)
+    assert len(t['terrainGrid']['rows'])==18
+    assert t['terrainGrid']['rows'][14]['cells'][12]=='A'
+    assert t['terrainGrid']['rows'][14]['cells'][13]=='B'
     assert 'def summarize(view):' in build_remote()
     assert 'import json,math,os,re,subprocess,sys,time' in build_remote()
     compile(build_remote(),'<reviewed-remote-readonly>','exec')
