@@ -9,6 +9,31 @@ const TIMEOUT=240000
 const TYPES=new Set(['sleep','set_spawnpoint'])
 const hasSpawn=r=>r.currentRespawnStatus?.()==='observed_server_player_spawn_packet'||
   r.homeBed.summary().status==='server_confirmed_current_session'
+// An explicit request gets one bounded, read-only live world scan. The
+// passive 60-second remembered-bed timer must not hide a newly visible bed.
+function observedBedPositions(r){
+ const bot=r.bot,self=bot?.entity?.position
+ const found=new Map()
+ const add=p=>{
+  if(!p||![p.x,p.y,p.z].every(Number.isFinite)||!self||
+     Math.hypot(p.x-self.x,p.y-self.y,p.z-self.z)>17)return
+  const c={x:Math.floor(p.x),y:Math.floor(p.y),z:Math.floor(p.z)}
+  if(found.size>=24)return
+  const loc=typeof self.offset==='function'?
+    self.offset(c.x-self.x,c.y-self.y,c.z-self.z):c
+  let b
+  try{b=bot.blockAt?.(loc)}catch{return}
+  if(!(b?.name==='bed'||String(b?.name||'').endsWith('_bed')))return
+  found.set([c.x,c.y,c.z].join(','),c)
+ }
+ for(const p of r.observedBeds.nearby(bot,{radius:16})||[])add(p)
+ try{
+  for(const p of (bot.findBlocks?.({
+    matching:b=>b?.name==='bed'||String(b?.name||'').endsWith('_bed'),
+    maxDistance:16,count:24})||[]).slice(0,24))add(p)
+ }catch{}
+ return [...found.values()]
+}
 function cancelBed(r,reason='bed_request_cancelled'){
  const p=r.pendingBedRequest
  if(!p)return false
@@ -31,8 +56,8 @@ function requestBed(r,action,source,report=null){
  if(action==='set_spawnpoint'&&hasSpawn(r))
    return reply('completed','existing_personal_spawn','已有服务器确认过的重生点')
  // Only loaded, verified bed cells; a farther candidate is NOT a safe route.
- const positions=r.observedBeds.nearby(r.bot,{radius:12})
- const choice=selectAdjacentBed(r.bot,positions,{radius:12})
+ const positions=observedBedPositions(r)
+ const choice=selectAdjacentBed(r.bot,positions,{radius:16})
  if(!choice.bed)return reply('rejected',choice.reason,message({reason:choice.reason}))
  const now=r.clock(),ev=r.movementEvidence?.get?.()
  const p={action,source,report,at:now,expiresAt:now+TIMEOUT,
@@ -130,4 +155,4 @@ function resumeBed(r){
  }
  return {state:'started',reason:'bed_interaction_started'}
 }
-module.exports={requestBed,resumeBed,cancelBed,TIMEOUT}
+module.exports={requestBed,resumeBed,cancelBed,observedBedPositions,TIMEOUT}
