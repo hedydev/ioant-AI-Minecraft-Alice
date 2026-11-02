@@ -91,7 +91,9 @@ function requestBed(r,action,source,report=null){
    r.lastBedApproach=survey?.bedApproach||null
    if(survey?.doorCandidates?.length){
     r.lastEscapeSurvey=survey
-    obstacleReason='bed_route_requires_door'
+    obstacleReason=survey.doorCandidates.some(d=>
+      d.beyondDoorTerrain==='observed_one_full_block_rise')?
+      'bed_route_requires_door_then_jump':'bed_route_requires_door'
    }else if(survey?.verticalObstacles?.length){
     r.lastEscapeSurvey=survey
     obstacleReason='bed_route_requires_shape_navigation'
