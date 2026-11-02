@@ -4,6 +4,29 @@
 const fs=require('node:fs'),path=require('node:path')
 const RADIUS=15,BELOW=6,ABOVE=5,MAX_BYTES=512*1024
 const SAFE_NAMES=/^[a-z0-9_:.-]{1,64}$/
+// Bounded, read-only collision metadata from the SAME 3D scan. It is not a
+// movement permit or a reliable BDS endpoint. Preserve unknown/invalid shapes
+// explicitly: never infer open air from the block name alone.
+const COLLISION_RADIUS=7,COLLISION_BELOW=2,COLLISION_ABOVE=3
+function observedCollision(block){
+  const boundingBox=block?.boundingBox==='empty'?'empty':
+    block?.boundingBox==='block'?'block':'unverified'
+  const raw=block?.shapes
+  let shapes=null
+  if(Array.isArray(raw)&&raw.length<=12&&raw.every(shape=>
+     Array.isArray(shape)&&shape.length===6&&
+     shape.every(v=>Number.isFinite(v)&&v>=0&&v<=1)&&
+     shape.slice(0,3).every((v,i)=>v<shape[i+3])))
+    shapes=raw.map(shape=>shape.slice())
+  return {boundingBox,shapes}
+}
+function doorBitsForView(block){
+  if(!/_door$/.test(cleanBlockName(block)))return [null,null]
+  let props=null
+  try{props=block?.getProperties?.()}catch{}
+  const bit=v=>v===true||v===1?true:v===false||v===0?false:null
+  return [bit(props?.open_bit),bit(props?.upper_block_bit)]
+}
 const isFiniteXYZ=p=>!!p&&[p.x,p.y,p.z].every(Number.isFinite)
 const coord=p=>[Number(p.x.toFixed(2)),Number(p.y.toFixed(2)),Number(p.z.toFixed(2))]
 const inside=(p,center,radius)=>Math.abs(p.x-center[0])<=radius+1&&
@@ -38,7 +61,8 @@ function snapshot(bot,{connected=false,movement=null,state='IDLE',job=null,jobSt
       food:Number.isFinite(bot?.food)?bot.food:null,
     },
     palette:['air'],voxels:[],unknown:0,unknownCells:[],scanned:0,entities:[],
-    events:Array.isArray(events)?events.slice(-24):[],terrainAt:null
+    events:Array.isArray(events)?events.slice(-24):[],terrainAt:null,
+    collisionSurvey:null
   }
   if(!ready||typeof bot.blockAt!=='function'||typeof self.offset!=='function')return data
   if(cachedTerrain&&cachedTerrain.dimension===data.dimension&&
@@ -46,12 +70,30 @@ function snapshot(bot,{connected=false,movement=null,state='IDLE',job=null,jobSt
      Number.isFinite(cachedTerrain.terrainAt)&&now()-cachedTerrain.terrainAt<4000){
     data.palette=cachedTerrain.palette;data.voxels=cachedTerrain.voxels
     data.scanned=cachedTerrain.scanned;data.unknown=cachedTerrain.unknown
+    data.collisionSurvey=cachedTerrain.collisionSurvey||null
     data.unknownCells=cachedTerrain.unknownCells
     data.terrainAt=cachedTerrain.terrainAt
     // Position, nearby entities and behavior updates still refresh each tick.
   }
   if(data.terrainAt===null){
   const ids=new Map([['air',0]])
+  const probe={source:'client_chunk_cache_not_bds',
+    radius:COLLISION_RADIUS,below:COLLISION_BELOW,above:COLLISION_ABOVE,
+    shapes:[{boundingBox:'unverified',shapes:null}],cells:[],unknown:0}
+  const collisionIds=new Map(),probeCell=(dx,dy,dz,b,nameIndex)=>{
+    if(Math.abs(dx)>COLLISION_RADIUS||Math.abs(dz)>COLLISION_RADIUS||
+       dy< -COLLISION_BELOW||dy>COLLISION_ABOVE)return
+    if(!b){probe.unknown++;probe.cells.push([dx,dy,dz,nameIndex,0,null,null]);return}
+    const geometry=observedCollision(b)
+    const label=JSON.stringify(geometry)
+    let shapeIndex=collisionIds.get(label)
+    if(shapeIndex===undefined){
+      if(probe.shapes.length>=128)shapeIndex=0
+      else{shapeIndex=probe.shapes.length;probe.shapes.push(geometry);collisionIds.set(label,shapeIndex)}
+    }
+    const [open,upper]=doorBitsForView(b)
+    probe.cells.push([dx,dy,dz,nameIndex,shapeIndex,open,upper])
+  }
   // Relative coordinates fit a tiny bounded payload. Air isn't drawn.
   for(let dy=-BELOW;dy<=ABOVE;dy++)for(let dz=-RADIUS;dz<=RADIUS;dz++)
     for(let dx=-RADIUS;dx<=RADIUS;dx++){
@@ -59,14 +101,16 @@ function snapshot(bot,{connected=false,movement=null,state='IDLE',job=null,jobSt
       let block
       try{block=bot.blockAt(p)}catch{}
       data.scanned++
-      if(!block){data.unknown++;data.unknownCells.push([dx,dy,dz]);continue}
+      if(!block){data.unknown++;data.unknownCells.push([dx,dy,dz]);probeCell(dx,dy,dz,null,0);continue}
       const name=cleanBlockName(block)
-      if(name==='air'||name==='cave_air'||name==='void_air')continue
       let id=ids.get(name)
       if(id==null){id=data.palette.length;ids.set(name,id);data.palette.push(name)}
+      probeCell(dx,dy,dz,block,id)
       // Invisible decorative plants are still represented as their own voxels.
-      data.voxels.push([dx,dy,dz,id])
+      if(name!=='air'&&name!=='cave_air'&&name!=='void_air')
+        data.voxels.push([dx,dy,dz,id])
     }
+  data.collisionSurvey=probe
   data.terrainAt=now()
   }
   for(const entity of Object.values(bot.entities||{})){
