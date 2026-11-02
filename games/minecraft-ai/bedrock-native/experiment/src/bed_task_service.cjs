@@ -118,10 +118,13 @@ function resumeBed(r){
     (ev?.loginAt??null)!==p.loginAt||
     (ev?.lifeEpochAt??null)!==p.lifeEpochAt)
    return deny('bed_request_context_changed')
- if(!r.ready()||r.closed||r.job||r.bot.isSleeping||r.safetyBusy||
+ if(!r.ready()||r.closed||r.bot.isSleeping||r.safetyBusy||
     r.threat()||r.core.hasFollowIntent()||
     r.goalPlanner.stoppedByHuman||r.bot.health<14)
    return deny('bed_safety_or_follow_priority')
+ if(r.job)return p.stage==='awaiting_step'?
+   {state:'waiting',reason:'bed_step_in_flight'}:
+   deny('bed_other_job_in_progress')
  const proof=scoutStartProof(r.bot,r.movementEvidence,r.clock)
  if(!proof.ok)return proof.reason==='scout_bds_position_unavailable'?
    {state:'waiting',reason:proof.reason}:deny(proof.reason)
