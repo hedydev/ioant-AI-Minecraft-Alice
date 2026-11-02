@@ -14,6 +14,7 @@ const {ContinuousGoal}=require('./continuous_goal.cjs')
 const {evaluateShelter,placeShelterBlock}=require('./night_shelter.cjs')
 const {ObservedBeds}=require('./observed_beds.cjs')
 const {HomeBedMemory,selectAdjacentBed,useBedForSpawn}=require('./bed_spawnpoint.cjs')
+const {verifyBedStep}=require('./bed_step_witness.cjs')
 const {requestBed,resumeBed,cancelBed}=require('./bed_task_service.cjs')
 const {HomeBaseMemory,homeAgenda}=require('./home_base.cjs')
 const {planNightReposition,nightConditions}=require('./night_survival.cjs')
@@ -137,7 +138,7 @@ class AliceBedrockRuntime {
     this.followGoalRadius=this.liveBehavior.settings.followDistance;this.lastFollowRadiusChange=0
     this.nextSleepAt=0;this.nextEquipAt=0;this.maintenanceBusy=false
     this.nextSpawnpointAt=0;this.pendingBedRequest=null;this.lastSpawnpointAttempt=null;this.lastBedApproach=null
-    this.lastBedApproachAction=null;this.nextBedApproachStepAt=0
+    this.lastBedApproachAction=null;this.pendingBedStep=null;this.nextBedApproachStepAt=0
     this.lastEquipObservation=null
     this.lastSleepOpportunity=null;this.lastSleepOpportunityKey=null
     this.observedBeds=new ObservedBeds({clock,log,
@@ -498,6 +499,7 @@ class AliceBedrockRuntime {
     this.cancelActive(reason);this.plannerAbort?.abort();this.log.log('[Alice Bedrock] controllers stopped:',reason)
   }
   cancelActive(reason='cancel') {
+    this.pendingBedStep=null
     cancelBed(this,'bed_request_cancelled')
     this.preparedScout.clear()
     this.stopDirectFollow(reason)
@@ -1551,6 +1553,37 @@ class AliceBedrockRuntime {
     return !!this.job
   }
 
+  // Finish ONE attempted bed cell only from an independently witnessed
+  // BDS double sample issued AFTER the movement input. An earlier local
+  // A* completion/packet correction does not complete the task.
+  settlePendingBedStepOnWitness(){
+    const step=this.pendingBedStep
+    if(!step)return {state:'none'}
+    const now=this.clock()
+    if(step.epoch!==this.epoch||this.closed||
+       this.bot.game?.dimension!=='overworld'||
+       now<step.createdAt||now-step.createdAt>240000){
+      this.pendingBedStep=null
+      return {state:'rejected',reason:'bed_step_epoch_or_deadline_changed'}
+    }
+    if(!Number.isSafeInteger(step.startedAt))
+      return {state:'waiting',reason:'bed_step_no_input_started'}
+    const out=verifyBedStep(step,this.movementEvidence?.get?.(),
+      this.bot.entity?.position,now)
+    if(out.reason==='bed_step_new_independent_pair_missing')
+      return {state:'waiting',reason:out.reason}
+    this.pendingBedStep=null
+    this.lastBedApproachAction={
+      status:out.ok?'verified':'unverified',reason:out.reason,
+      attempted:true,serverMovementVerified:out.ok,
+      at:now,serverMovedBlocks:out.ok?
+        Math.round(out.travelledBlocks*100)/100:null}
+    this.log.log('[Alice home] independent bed-step endpoint:',
+      JSON.stringify(this.lastBedApproachAction))
+    return {state:out.ok?'verified':'rejected',reason:out.reason,
+      serverMovementVerified:out.ok}
+  }
+
   // Called only on a newly accepted independent BDS witness-file event, not
   // from IDLE timers, local physics or unsolicited packet corrections.
   // The source provides coordinates, NOT movement permission. Revalidate
@@ -1577,6 +1610,7 @@ class AliceBedrockRuntime {
        Math.hypot(e.position.x-here.x,e.position.y-here.y,e.position.z-here.z)<12))
       return fail('hostile_within_twelve_blocks')
     if(this.homeBed.summary().status!=='not_verified')return fail('already_has_personal_bed')
+    if(this.pendingBedStep)return fail('bed_step_waiting_for_independent_endpoint')
     if(now<this.nextBedApproachStepAt)return fail('one_cell_step_cooldown')
     const home=this.homeBase.last
     if(home?.status!=='observed_indoor_home_candidate'||!home.bed||
@@ -1613,6 +1647,11 @@ class AliceBedrockRuntime {
     const initialFeet=initial?.independentLatestFeet
     const initialAt=initial?.independentAt
     const initialCount=initial?.independentSamples
+    const oneStep={createdAt:now,startedAt:null,epoch:this.epoch+1,
+      independentAt:initialAt,independentSamples:initialCount,
+      loginAt:initial?.loginAt??null,lifeEpochAt:initial?.lifeEpochAt??null,
+      from:initialFeet&&{x:initialFeet.x,y:initialFeet.y,z:initialFeet.z},
+      target:first}
     this.lastBedApproachAction={status:'starting',reason:'fresh_bds_one_cell_admitted',
       attempted:false,serverMovementVerified:false,at:now}
     const accepted=this.startJob('EXPLORE','自主生存',async signal=>{
@@ -1644,43 +1683,34 @@ class AliceBedrockRuntime {
           timer.unref?.()
         })
         result.attempted=true
+        oneStep.startedAt=this.clock()
+        this.pendingBedStep=oneStep
         await Promise.race([
           Promise.resolve().then(()=>this.bot.pathfinder.goto(
             new this.api.GoalNear(first.x,first.y,first.z,0))),
           aborted
         ]).catch(()=>{})
-        // Two NEW, post-start independent BDS samples and endpoint alignment
-        // are mandatory. Local path completion, generic correction packets,
-        // or queued inputs cannot prove server movement.
-        const post=this.movementEvidence?.get?.()
-        const end=post?.independentLatestFeet
-        const from=initialFeet
-        const travelled=from&&end?Math.hypot(end.x-from.x,end.y-from.y,end.z-from.z):0
-        const close=end?Math.hypot(end.x-(first.x+.5),end.y-first.y,end.z-(first.z+.5)):Infinity
-        const local=end?Math.hypot(this.bot.entity.position.x-end.x,
-          this.bot.entity.position.y-end.y,this.bot.entity.position.z-end.z):Infinity
-        const verified=!signal.aborted&&
-          Number.isSafeInteger(post?.independentSamples)&&
-          post.independentSamples>=initialCount+2&&
-          Number.isSafeInteger(post.independentPreviousAt)&&post.independentPreviousAt>initialAt&&
-          Number.isSafeInteger(post.independentAt)&&this.clock()>=post.independentAt&&
-          this.clock()-post.independentAt<=4000&&travelled>=.25&&travelled<=1.8&&
-          close<=1.25&&local<=.75
-        result={ok:verified,attempted:true,serverMovementVerified:verified,
-          reason:verified?'bed_first_cell_bds_verified':'bed_one_cell_bds_endpoint_unconfirmed',
-          serverMovedBlocks:verified?Math.round(travelled*100)/100:null}
+        // Ordinary querytarget witnesses may arrive ~180s apart. Do not
+        // mislabel local path completion as verified or demand a new pair
+        // inside the 4.5s physical movement deadline; settle asynchronously
+        // in settlePendingBedStepOnWitness after the NEXT real BDS pair.
+        result={ok:false,attempted:true,serverMovementVerified:false,
+          reason:'bed_step_waiting_for_new_independent_endpoint'}
         return result
       }finally{
+        if(!result.attempted&&this.pendingBedStep===oneStep)this.pendingBedStep=null
         if(timer)clearTimeout(timer)
         if(abortHandler)signal.removeEventListener('abort',abortHandler)
         try{this.bot.pathfinder.setGoal(null)}catch{}
-        this.lastBedApproachAction={status:result.ok?'verified':'unverified',
+        this.lastBedApproachAction={status:this.pendingBedStep===oneStep?'awaiting_bds_endpoint':
+          result.ok?'verified':'unverified',
           reason:result.reason,attempted:result.attempted,
           serverMovementVerified:result.serverMovementVerified===true,
           at:this.clock()}
       }
     },{label:'接近观察到的床：一格安全步行',announce:false})
     if(!accepted){
+      if(this.pendingBedStep===oneStep)this.pendingBedStep=null
       this.lastBedApproachAction={status:'blocked',reason:'bed_step_start_denied',
         attempted:false,serverMovementVerified:false,at:now}
       return fail('bed_step_start_denied')
