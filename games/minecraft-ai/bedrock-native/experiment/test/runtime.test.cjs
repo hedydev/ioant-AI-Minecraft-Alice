@@ -1050,7 +1050,7 @@ test('enclosed Alice opens a known wooden door and attempts observed passage wit
  e.stop()
 })
 
-test('already open wood door triggers safe crossing without a second activation',async()=>{
+test('already open wood door refuses physical crossing without fresh independent BDS admission',async()=>{
  let now=100000,opens=0
  const f=fixture(()=>now),e=new AliceBedrockRuntime({...f,policies:await policies()})
  f.bot.entity.position=vec(.5,65,.5);f.bot.entity.onGround=true
@@ -1086,8 +1086,10 @@ test('already open wood door triggers safe crossing without a second activation'
  assert(e.lastEscapePassageAction,'bounded crossing must settle before assertions')
  assert.equal(opens,0)
  assert.equal(f.calls.filter(x=>x[0]==='goto').length,0)
- assert(f.calls.some(x=>x[0]==='control'&&x[1]==='forward'&&x[2]===true))
- assert.equal(e.lastEscapePassageAction?.reason,'door_passage_local_only_server_unverified')
+ assert.equal(f.calls.filter(x=>x[0]==='control'&&x[1]==='forward'&&x[2]===true).length,0,
+   'a door visually open does not authorize input without independent BDS proof')
+ assert.equal(e.lastEscapePassageAction?.reason,'scout_bds_position_unavailable')
+ assert.equal(e.lastEscapePassageAction?.serverMovementVerified,false)
  e.stop()
 })
 
