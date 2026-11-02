@@ -16,6 +16,7 @@ const {ObservedBeds}=require('./observed_beds.cjs')
 const {HomeBedMemory,selectAdjacentBed,useBedForSpawn}=require('./bed_spawnpoint.cjs')
 const {verifyBedStep}=require('./bed_step_witness.cjs')
 const {verifyDoorCrossing}=require('./door_crossing_witness.cjs')
+const {verifyRaisedDoorLanding}=require('./raised_door_landing_witness.cjs')
 const {planRaisedDoorThreshold,performRaisedDoorThreshold,verifyRaisedDoorThreshold}=require('./raised_door_threshold.cjs')
 const {selectDirectionalBedStep}=require('./bed_directional_step.cjs')
 const {chooseAdjacentMovement}=require('./adjacent_motion_decision.cjs')
@@ -178,7 +179,7 @@ class AliceBedrockRuntime {
     this.lastEscapeDoorAttemptKey=null
     this.lastEscapeApproachAt=Number.NEGATIVE_INFINITY;this.lastEscapeApproachKey=null
     this.lastEscapeApproachRetryAt=Number.NEGATIVE_INFINITY
-    this.lastEscapePassageAction=null;this.pendingDoorCrossing=null;this.lastEscapePassageAttemptKey=null
+    this.lastEscapePassageAction=null;this.pendingDoorCrossing=null;this.verifiedRaisedThreshold=null;this.lastEscapePassageAttemptKey=null
     this.lastEscapePassageRetryAt=Number.NEGATIVE_INFINITY
     this.driveJournal=new SelfDriveJournal({clock,log})
     this.followProgress=new FollowProgress({safeRadius:this.liveBehavior.settings.followDistance})
@@ -505,6 +506,7 @@ class AliceBedrockRuntime {
   }
   cancelActive(reason='cancel') {
     this.pendingDoorCrossing=null
+    this.verifiedRaisedThreshold=null
     this.pendingBedStep=null
     cancelBed(this,'bed_request_cancelled')
     this.preparedScout.clear()
@@ -2295,19 +2297,32 @@ class AliceBedrockRuntime {
     const verdict=p.kind==='raised_threshold'?
       verifyRaisedDoorThreshold(p,this.movementEvidence?.get?.(),
         this.bot.entity?.position,now):
-      verifyDoorCrossing(p,this.movementEvidence?.get?.(),
-        this.bot.entity?.position,now)
+      p.kind==='raised_landing'?
+        verifyRaisedDoorLanding(p,this.movementEvidence?.get?.(),
+          this.bot.entity?.position,now):
+        verifyDoorCrossing(p,this.movementEvidence?.get?.(),
+          this.bot.entity?.position,now)
     if(verdict.reason==='door_crossing_post_input_pair_missing'||
-       verdict.reason==='threshold_post_input_pair_missing')
+       (verdict.reason==='threshold_post_input_pair_missing'||
+        verdict.reason==='raised_landing_post_input_pair_missing'))
       return {state:'waiting',reason:verdict.reason,
         serverMovementVerified:false,roomExitVerified:false}
     this.pendingDoorCrossing=null
+    if(p.kind==='raised_threshold'&&verdict.ok){
+      const e=this.movementEvidence?.get?.()
+      this.verifiedRaisedThreshold={epoch:this.epoch,
+        door:p.door.slice(),beyond:p.beyond.slice(),at:now,
+        independentSamples:e?.independentSamples,
+        loginAt:p.loginAt,lifeEpochAt:p.lifeEpochAt}
+    }else this.verifiedRaisedThreshold=null
     this.lastEscapePassageAction={
       reason:verdict.reason,status:verdict.ok?
         (p.kind==='raised_threshold'?'threshold_only_bds_verified':
+          p.kind==='raised_landing'?'raised_landing_bds_verified':
           'independent_bds_verified'):'unverified',
       attempted:true,door:p.door,at:now,beyond:p.beyond,
       movementKind:p.kind,thresholdVerified:verdict.thresholdVerified===true,
+      raisedLandingVerified:verdict.raisedLandingVerified===true,
       serverMovementVerified:verdict.ok,roomExitVerified:false
     }
     if(this.lastEscapeSurvey)
@@ -2321,7 +2336,84 @@ class AliceBedrockRuntime {
       JSON.stringify(this.lastEscapePassageAction))
     return {state:verdict.ok?'verified':'rejected',reason:verdict.reason,
       movementKind:p.kind,thresholdVerified:verdict.thresholdVerified===true,
+      raisedLandingVerified:verdict.raisedLandingVerified===true,
       serverMovementVerified:verdict.ok,roomExitVerified:false}
+  }
+  resumeRaisedDoorLandingOnWitness(){
+    const stage=this.verifiedRaisedThreshold
+    if(!stage)return {state:'none'}
+    this.verifiedRaisedThreshold=null // consume once; never retry on stale BDS
+    const hold=reason=>({state:'held',reason,serverMovementVerified:false})
+    const now=this.clock()
+    if(this.closed||this.epoch!==stage.epoch||now<stage.at||
+       now-stage.at>4000||this.pendingDoorCrossing||this.pendingBedRequest||
+       this.job||!this.ready()||this.goalPlanner.stoppedByHuman||
+       this.core.state!=='IDLE'||this.core.hasFollowIntent()||
+       this.threat()||this.safetyBusy||this.verticalWatch.active()||
+       this.bot.health<16||this.bot.entity?.onGround!==true||
+       this.bot.isSleeping||!this.liveBehavior.settings.autonomyEnabled||
+       this.liveBehavior.settings.agentMode!=='autonomous')
+      return hold('raised_landing_safety_or_epoch_changed')
+    const proof=scoutStartProof(this.bot,this.movementEvidence,this.clock)
+    if(!proof.ok)return hold(proof.reason)
+    const e=this.movementEvidence.get(),p=e?.independentLatestFeet
+    if(!p||[p.x,p.y,p.z].some(x=>!Number.isFinite(x))||
+       e.independentSamples<stage.independentSamples||
+       (e.loginAt??null)!==stage.loginAt||
+       (e.lifeEpochAt??null)!==stage.lifeEpochAt||
+       Math.floor(p.x)!==stage.door[0]||
+       Math.floor(p.y)!==stage.door[1]||
+       Math.floor(p.z)!==stage.door[2]||
+       Math.hypot(p.x-stage.door[0]-.5,
+         p.y-stage.door[1],p.z-stage.door[2]-.5)>.78)
+      return hold('raised_landing_bds_takeoff_unverified')
+    const plan=chooseAdjacentMovement(this.bot,{
+      toward:{x:stage.beyond[0],y:stage.beyond[1]+1,z:stage.beyond[2]},
+      allowDirectional:true,allowJump:true})
+    if(!plan.ok)return hold(plan.reason)
+    if(plan.action!=='JUMP_UP'||plan.target.x!==stage.beyond[0]||
+       plan.target.y!==stage.beyond[1]+1||
+       plan.target.z!==stage.beyond[2])
+      return hold('raised_landing_not_expected_jump')
+    let epoch=null
+    this.startJob('EXPLORE','自主脱困',async signal=>{
+      const allowed=()=>!signal.aborted&&this.epoch===epoch&&
+        this.escapeApproachGuard(signal).ok&&
+        scoutStartProof(this.bot,this.movementEvidence,this.clock).ok&&
+        !this.goalPlanner.stoppedByHuman&&!this.verticalWatch.active()
+      if(!allowed())return {ok:false,attempted:false,serverMovementVerified:false,
+        reason:'raised_landing_start_preempted'}
+      const witness=this.movementEvidence.get()
+      const start=witness?.independentLatestFeet
+      if(!start||Math.floor(start.x)!==stage.door[0]||
+         Math.floor(start.y)!==stage.door[1]||
+         Math.floor(start.z)!==stage.door[2])
+        return {ok:false,attempted:false,serverMovementVerified:false,
+          reason:'raised_landing_takeoff_changed'}
+      const createdAt=this.clock()
+      const physical=await performOneBlockJump(this.bot,plan.jump,{
+        signal,safe:allowed})
+      if(signal.aborted||this.closed||this.epoch!==epoch)
+        return {ok:false,attempted:physical.attempted===true,
+          serverMovementVerified:false,reason:'raised_landing_interrupted'}
+      if(physical.attempted){
+        this.pendingDoorCrossing={kind:'raised_landing',epoch,
+          createdAt,startedAt:this.clock(),door:stage.door.slice(),
+          beyond:stage.beyond.slice(),
+          initialBdsFeet:{x:start.x,y:start.y,z:start.z},
+          independentSamples:witness.independentSamples,
+          loginAt:witness.loginAt??null,lifeEpochAt:witness.lifeEpochAt??null}
+      }
+      return {ok:false,attempted:physical.attempted===true,
+        serverMovementVerified:false,roomExitVerified:false,
+        reason:physical.attempted?
+          'raised_landing_waiting_for_post_input_independent_bds':physical.reason}
+    },{label:'门槛BDS确认后跳上一级',announce:false})
+    epoch=this.epoch
+    if(this.job?.type!=='EXPLORE'||this.action?.source!=='自主脱困')
+      return hold('raised_landing_job_not_admitted')
+    return {state:'started',reason:'raised_landing_one_jump_admitted',
+      serverMovementVerified:false}
   }
   recordEscapePassage(door,outcome){
     this.lastEscapePassageAction={
