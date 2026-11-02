@@ -1682,7 +1682,7 @@ class AliceBedrockRuntime {
         const proof=scoutStartProof(this.bot,this.movementEvidence,this.clock)
         if(!proof.ok||signal.aborted||this.threat()||this.core.hasFollowIntent()||
            this.bot.health<16||this.goalPlanner.stoppedByHuman||
-           !this.liveBehavior.settings.autonomyEnabled||
+           !explicitBed&&!this.liveBehavior.settings.autonomyEnabled||
            this.bot.entity?.onGround!==true)
           return {...result,reason:proof.ok?'bed_one_cell_safety_preempted':proof.reason}
         const fresh=surveyEscape(this.bot,{radius:7,maxNodes:100,bedPositions:selected})
