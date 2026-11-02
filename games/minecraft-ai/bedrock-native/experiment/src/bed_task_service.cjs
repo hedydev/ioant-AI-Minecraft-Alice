@@ -10,6 +10,28 @@ const TIMEOUT=240000
 const TYPES=new Set(['sleep','set_spawnpoint'])
 const hasSpawn=r=>r.currentRespawnStatus?.()==='observed_server_player_spawn_packet'||
   r.homeBed.summary().status==='server_confirmed_current_session'
+// A discovered bed behind a door, step, wall, water or unknown geometry
+// must never be treated as an ordinary flat WALK path. Validate the whole
+// grid chain AND the exact intended bed-side standing cell before staging.
+function flatBedRoute(plan,position){
+ if(!plan||plan.status!=='observed_route_candidate'||
+    plan.routeComplete!==true||plan.permitted!==false||
+    plan.serverVerified!==false||!Number.isSafeInteger(plan.steps)||
+    plan.steps<1||plan.steps>8||
+    !Array.isArray(plan.waypoints)||plan.waypoints.length!==plan.steps||
+    !Array.isArray(plan.bed)||plan.bed.length!==3||
+    !plan.bed.every(Number.isSafeInteger)||!position)return false
+ let prev=[Math.floor(position.x),Math.floor(position.y),Math.floor(position.z)]
+ for(const point of plan.waypoints){
+  if(!Array.isArray(point)||point.length!==3||!point.every(Number.isSafeInteger)||
+     point[1]!==prev[1]||
+     Math.abs(point[0]-prev[0])+Math.abs(point[2]-prev[2])!==1)
+    return false
+  prev=point
+ }
+ return Math.hypot(prev[0]+.5-plan.bed[0],
+   prev[1]-plan.bed[1],prev[2]+.5-plan.bed[2])<=1.95
+}
 // An explicit request gets one bounded, read-only live world scan. The
 // passive 60-second remembered-bed timer must not hide a newly visible bed.
 function observedBedPositions(r){
@@ -65,13 +87,7 @@ function requestBed(r,action,source,report=null){
    const survey=surveyEscape(r.bot,{radius:7,maxNodes:100,bedPositions:positions})
    r.lastBedApproach=survey?.bedApproach||null
    const plan=r.lastBedApproach
-   if(plan?.status==='observed_route_candidate'&&plan.routeComplete===true&&
-      plan.permitted===false&&plan.serverVerified===false&&
-      plan.steps>=1&&plan.steps<=8&&Array.isArray(plan.bed)&&
-      plan.bed.length===3&&plan.bed.every(Number.isSafeInteger)&&
-      Array.isArray(plan.waypoints)&&plan.waypoints.length===plan.steps&&
-      plan.waypoints.every(p=>Array.isArray(p)&&p.length===3&&
-        p.every(Number.isSafeInteger))){
+   if(flatBedRoute(plan,r.bot.entity?.position)){
     bedPosition={x:plan.bed[0],y:plan.bed[1],z:plan.bed[2]}
     needsApproach=true
    }
@@ -213,4 +229,4 @@ function resumeBed(r){
  }
  return {state:'started',reason:'bed_interaction_started'}
 }
-module.exports={requestBed,resumeBed,cancelBed,observedBedPositions,TIMEOUT}
+module.exports={requestBed,resumeBed,cancelBed,observedBedPositions,flatBedRoute,TIMEOUT}
