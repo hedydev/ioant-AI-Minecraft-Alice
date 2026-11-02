@@ -9,6 +9,14 @@ const DOOR=/^(?:oak|spruce|birch|jungle|acacia|dark_oak|mangrove|cherry|bamboo|c
 const PARTIAL=/(?:_stairs|_slab|_trapdoor|_fence_gate|_fence|_wall|ladder|vine|scaffolding)$/
 const BUILT=/(_planks|_wood|_log|_door|_brick|_glass|_fence|_slab|_stairs|_wall|_trapdoor|_button|_pressure_plate|_sign|_chest|_barrel|_bed|_concrete|_terracotta|redstone|furnace|crafting_table)/
 const name=b=>String(b?.name||'').replace(/^minecraft:/,'')
+const OBSERVED_TORCH=/^(?:torch|wall_torch|soul_torch|soul_wall_torch|redstone_torch|redstone_wall_torch)$/
+const knownWalkingClear=b=>knownAir(b)||!!b&&
+  OBSERVED_TORCH.test(name(b))&&b.boundingBox==='empty'&&
+  (b.shapes===undefined||Array.isArray(b.shapes)&&b.shapes.length===0)
+// A passive torch does not occupy the player's body volume. This rule is
+// ONLY for the read-only walking-room survey; an actual WALK still requires
+// independent swept collision checks and post-input BDS coordinates.
+
 const finite=p=>!!p&&[p.x,p.y,p.z].every(Number.isFinite)
 const key=(x,y,z)=>[x,y,z].join(',')
 const vec=p=>[p.x,p.y,p.z]
@@ -51,7 +59,7 @@ function surveyEscape(bot,{radius=6,maxNodes=MAX_NODES,bedPositions=[]}={}){
     if(cellCache.has(k))return cellCache.get(k)
     const f=block(x,y-1,z),feet=block(x,y,z),head=block(x,y+1,z)
     const known=!!(f&&feet&&head)
-    const safe=known&&fullSupport(f)&&knownAir(feet)&&knownAir(head)
+    const safe=known&&fullSupport(f)&&knownWalkingClear(feet)&&knownWalkingClear(head)
     if(known&&!safe)data.blockedCells++
     const result={safe:!!safe,known,floor:f,feet,head}
     cellCache.set(k,result)
