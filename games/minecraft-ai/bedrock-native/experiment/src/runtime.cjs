@@ -1506,12 +1506,13 @@ class AliceBedrockRuntime {
     if(freshBdsWitness&&!scoutStartProof(this.bot,this.movementEvidence,this.clock).ok)
       return false
     if(!this.ready()||this.bot.isSleeping||this.job||this.maintenanceBusy||
+       this.pendingBedRequest||
        this.safetyBusy||this.threat()||this.core.hasFollowIntent()||
        this.goalPlanner.stoppedByHuman||this.bot.health<16||
        (!freshBdsWitness&&this.clock()<this.nextSpawnpointAt))return false
     // The existing personal spawn packet proves an already active point.
     if(this.currentRespawnStatus?.()==='observed_server_player_spawn_packet'||
-       this.homeBed.summary().status!=='not_verified')return false
+       this.homeBed.summary().status==='server_confirmed_current_session')return false
     // Observe bed reach before independent BDS admission; neither observation
     // authorizes an interaction or bypasses the existing movement safety gate.
     const positions=this.observedBeds.nearby(this.bot,{radius:12})
