@@ -58,8 +58,9 @@ function fixture({roof=false,blocked=false,companion=true}={}){
   this.epoch++
   const controller=new AbortController()
   this.job={type,signal:controller.signal,abort:controller}
+  this.action={source}
   this.work=work
-  return true
+  // Deliberately return undefined: the real startJob API is void on success.
  }
  return {r,presses:()=>presses,advance:ms=>{now+=ms},
   arrive(){
