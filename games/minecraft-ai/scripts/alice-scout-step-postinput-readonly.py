@@ -115,7 +115,14 @@ def run(output):
    '-o','ConnectTimeout=8','-o','StrictHostKeyChecking=yes',
    'tedz@192.168.0.104','/usr/bin/python3 -c '+shlex.quote(source)],
    capture_output=True,text=True,timeout=55,check=False)
- if process.returncode or len(process.stdout)>7000:raise ValueError('remote_unavailable')
+ if process.returncode or len(process.stdout)>7000:
+  errors=('SyntaxError','NameError','ImportError','TypeError','ValueError',
+    'PermissionError','FileNotFoundError','SSH','Permission denied',
+    'Host key verification failed','Connection refused','Connection timed out')
+  marker=next((e.replace(' ','_') for e in errors if e in process.stderr),
+              'remote_error_unknown')
+  raise ValueError('remote_unavailable_rc'+str(process.returncode)+'_'+
+                   marker+'_stdoutbytes'+str(len(process.stdout)))
  result=json.loads(process.stdout)
  if result.get('audit')!='ALICE_SCOUT_POSTINPUT_READONLY' or result.get('readOnly') is not True or result.get('bdsCommandSent') is not False or result.get('worldModified') is not False:raise ValueError('untrusted_report')
  f=out/'scout_postinput.json'
