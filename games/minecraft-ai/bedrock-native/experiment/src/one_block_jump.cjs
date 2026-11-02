@@ -65,6 +65,29 @@ async function performOneBlockJump(bot,candidate,{
    return deny('jump_landing_changed')
  if(typeof bot.lookAt!=='function'||typeof bot.setControlState!=='function')
    return deny('jump_physical_input_unavailable')
+ const start={...bot.entity.position}
+ const direction={x:target.x+.5-start.x,z:target.z+.5-start.z}
+ const axis=Math.hypot(direction.x,direction.z)
+ if(axis<.5||axis>1.8)return deny('jump_takeoff_not_adjacent')
+ const unit={x:direction.x/axis,z:direction.z/axis}
+ const corridor=p=>{
+   if(!finite(p))return false
+   const dx=p.x-start.x,dz=p.z-start.z
+   const along=dx*unit.x+dz*unit.z,
+     side=Math.abs(dx*unit.z-dz*unit.x)
+   return along>=-.20&&along<=axis+.35&&side<=.32&&
+     p.y>=start.y-.3&&p.y<=start.y+1.8
+ }
+ const geometryUnchanged=()=>{
+   // Re-evaluate the ORIGINAL surveyed origin/landing while airborne.
+   // In-flight local onGround=false is expected and not a new failure.
+   const original={...bot.entity,position:start,onGround:true}
+   const view={...bot,entity:original}
+   const current=candidateOneBlockJump(view,
+     {toward:{x:target.x+.5,y:target.y,z:target.z+.5}})
+   return current.ok&&current.target.x===target.x&&
+     current.target.y===target.y&&current.target.z===target.z
+ }
  const permitted=()=>{
    if(signal?.aborted)return false
    try{const r=safe();return r===true||r?.ok===true}
@@ -80,25 +103,26 @@ async function performOneBlockJump(bot,candidate,{
   const ms=Math.min(160,Math.max(65,pulseMs))
   for(let i=0;i<n;i++){
    if(!permitted())return deny('jump_safety_preempted',attempted)
-   const fresh=candidateOneBlockJump(bot,
-     {toward:{x:target.x+.5,y:target.y,z:target.z+.5}})
-   if(!fresh.ok||fresh.target.x!==target.x||
-      fresh.target.y!==target.y||fresh.target.z!==target.z)
+   if(!corridor(bot.entity?.position))
+     return deny('jump_left_one_cell_corridor',attempted)
+   if(!geometryUnchanged())
      return deny('jump_landing_changed',attempted)
+   // The first pulse triggers takeoff; subsequent pulses supply a bounded
+   // forward carry while airborne. Never require onGround in mid-jump.
    attempted=true
    try{
-    bot.setControlState('jump',true)
+    if(i===0)bot.setControlState('jump',true)
     bot.setControlState('forward',true)
     await sleep(ms)
    }finally{
     bot.setControlState('forward',false)
     bot.setControlState('jump',false)
    }
-   // Local ascent may change the observed starting floor. Do not try again
-   // after local physics has changed tile/height: wait for independent BDS.
-   const p=bot.entity?.position
-   if(!finite(p)||Math.floor(p.y)!==plan.from.y||
-      Math.floor(p.x)!==plan.from.x||Math.floor(p.z)!==plan.from.z)break
+   if(!corridor(bot.entity?.position))
+     return deny('jump_left_one_cell_corridor',attempted)
+   const p=bot.entity.position
+   if(Math.floor(p.x)===target.x&&Math.floor(p.z)===target.z&&
+      Math.abs(p.y-target.y)<=.3&&bot.entity.onGround===true)break
   }
   return deny('jump_input_sent_endpoint_requires_new_bds_pair',attempted)
  }catch{
