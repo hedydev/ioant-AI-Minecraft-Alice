@@ -2110,13 +2110,10 @@ class AliceBedrockRuntime {
               failedWaypoint:doorway,serverMovementVerified:false,
               target:candidate.target,elevationChanges:candidate.elevationChanges}
           }
-          const crossed=await crossDoor(this.bot,door,{
-            signal,movementEvidence:this.movementEvidence,clock:this.clock,
-            safe:()=>!this.verticalWatch.active()&&
-              this.escapeApproachGuard(signal).ok&&
-              environment(this.bot).safeToExplore===true&&
-              this.liveBehavior.settings.agentMode==='autonomous'
-          })
+          // The scout/noPath doorway fallback uses EXACTLY the same
+          // independent-BDS gated one-crossing executor as indoor escape.
+          // No second unguarded physical entry is allowed.
+          const crossed=await this.crossObservedDoor(door,signal)
           this.recordEscapePassage(door,crossed)
           this.log.log('[Alice exploration] scout door passage:',
             JSON.stringify({reason:crossed.reason,attempted:crossed.attempted===true,
