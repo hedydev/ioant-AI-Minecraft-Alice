@@ -1,8 +1,7 @@
 'use strict'
 // Carefully bounded, non-destructive walk toward one observed indoor doorway.
 // A connected local route is a proposal, NOT proof of server movement or exit.
-const {knownAir}=require('./scout_routes.cjs')
-const {fullSupport}=require('./escape_survey.cjs')
+const {fullSupport,knownWalkingClear}=require('./escape_survey.cjs')
 const {verifyFlatFirstStep}=require('./direct_flat_step.cjs')
 const {scoutStartProof}=require('./scout_start_proof.cjs')
 // Survey may observe up to 12 cells, while the physical executor still
@@ -49,16 +48,16 @@ function validateApproach(bot,door,{maxSteps=MAX_WAYPOINTS}={}){
  let previous=origin
  try{
    if(!fullSupport(at(bot,origin[0],origin[1]-1,origin[2]))||
-     !knownAir(at(bot,origin[0],origin[1],origin[2]))||
-     !knownAir(at(bot,origin[0],origin[1]+1,origin[2])))
+     !knownWalkingClear(at(bot,origin[0],origin[1],origin[2]))||
+     !knownWalkingClear(at(bot,origin[0],origin[1]+1,origin[2])))
      return fail('approach_current_cell_unverified')
    for(const cell of route){
      if(cell[1]!==previous[1]||
         Math.abs(cell[0]-previous[0])+Math.abs(cell[2]-previous[2])!==1)
        return fail('approach_nonadjacent_or_vertical_segment')
      if(!fullSupport(at(bot,cell[0],cell[1]-1,cell[2]))||
-       !knownAir(at(bot,cell[0],cell[1],cell[2]))||
-       !knownAir(at(bot,cell[0],cell[1]+1,cell[2])))
+       !knownWalkingClear(at(bot,cell[0],cell[1],cell[2]))||
+       !knownWalkingClear(at(bot,cell[0],cell[1]+1,cell[2])))
        return fail('approach_cell_blocked_or_unloaded')
      previous=cell
    }
