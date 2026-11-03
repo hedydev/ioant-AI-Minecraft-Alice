@@ -3189,9 +3189,14 @@ class AliceBedrockRuntime {
         this.clock()-this.lastEscapeSurveyAt<=25000&&
         Math.hypot(pos.x-(origin[0]+0.5),pos.y-origin[1],
           pos.z-(origin[2]+0.5))<=2.25?survey:null
+      // A narrow loaded room can have a surveyed edge frontier without
+      // there being a verified outdoor exit. Keep its wooden door eligible
+      // for strict one-cell BDS navigation; wide reachable areas still scout.
       const enclosedCandidate=firstDoorReview&&nearbySurvey?.door&&
-        nearbySurvey.status==='door_interaction_candidate'&&
-        !nearbySurvey.openFrontier
+        (nearbySurvey.status==='door_interaction_candidate'||
+          nearbySurvey.openFrontier&&
+          Number.isSafeInteger(nearbySurvey.reachableCells)&&
+          nearbySurvey.reachableCells<32)
       // Preserve the originally authorized short-reach (up to two observed
       // steps) door interaction and long-route validation separately.
       // A reachable wooden handle is not a BDS-confirmed passage.
