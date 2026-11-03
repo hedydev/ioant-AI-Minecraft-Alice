@@ -73,6 +73,12 @@ class BedCommandOnceTest(unittest.TestCase):
         calls = []
         state = self.state()
         state['runtime']['secret'] = 'must_not_export'
+        state['runtime']['movementEvidence'] = {'witnessDemand': {
+            'state': 'needs_two_fresh_samples', 'positionGateSatisfied': False,
+            'private': 'must_not_export'}}
+        state['runtime']['worldRoutine'].update(idleGate='work_cooldown',
+            escapeSurvey={'doorAction': {'reason': 'door_retry_cooldown'},
+                          'passageAction': {'reason': 'private message'}})
         state['commandResult'] = {'id': 'b' * 32, 'status': 'started',
                                   'reason': 'awaiting_bds_bed_proof', 'message': 'private message'}
         def api(route, payload=None):
@@ -82,6 +88,11 @@ class BedCommandOnceTest(unittest.TestCase):
             result = bed.inspect_state(Path(tmp), api)
             self.assertTrue(result['readOnly'])
             self.assertEqual(result['commandId'], 'b' * 32)
+            self.assertEqual(result['idleGate'], 'work_cooldown')
+            self.assertEqual(result['witnessDemandState'], 'needs_two_fresh_samples')
+            self.assertFalse(result['positionGateSatisfied'])
+            self.assertEqual(result['doorActionReason'], 'door_retry_cooldown')
+            self.assertIsNone(result['passageActionReason'])
             self.assertNotIn('secret', json.dumps(result))
             self.assertNotIn('private message', json.dumps(result))
             self.assertEqual(calls, [('/api/control/status', None)])

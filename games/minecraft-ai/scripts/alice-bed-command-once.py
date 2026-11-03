@@ -79,12 +79,19 @@ def inspect_state(folder, api=request):
     r = data.get('runtime') or {}
     w = r.get('worldRoutine') or {}
     command = data.get('commandResult') or {}
+    witness = (r.get('movementEvidence') or {}).get('witnessDemand') or {}
+    door = w.get('escapeSurvey') or {}
     safe = lambda value: value if isinstance(value, str) and re.fullmatch('[a-zA-Z0-9_]{1,90}', value) else None
     result = {'readOnly': True, 'online': data.get('online') is True,
               'producerPid': r.get('producerPid'), 'state': safe(r.get('state')),
               'bedLogicVersion': w.get('bedLogicVersion'), 'isSleeping': r.get('isSleeping'),
               'canSleep': w.get('canSleep'), 'personalBedStatus': safe((w.get('homeBed') or {}).get('status')),
               'bedRequestStage': safe((w.get('bedRequest') or {}).get('stage')),
+              'idleGate': safe(w.get('idleGate')),
+              'witnessDemandState': safe(witness.get('state')),
+              'positionGateSatisfied': witness.get('positionGateSatisfied') is True,
+              'doorActionReason': safe((door.get('doorAction') or {}).get('reason')),
+              'passageActionReason': safe((door.get('passageAction') or {}).get('reason')),
               'bedStepStatus': safe((w.get('bedApproachAction') or {}).get('status')),
               'bedStepReason': safe((w.get('bedApproachAction') or {}).get('reason')),
               'sleepOpportunity': safe((w.get('sleepOpportunity') or {}).get('status')),

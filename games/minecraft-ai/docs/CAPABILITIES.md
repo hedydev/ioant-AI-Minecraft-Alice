@@ -1,3 +1,13 @@
+## 2026-11-04 — 床版本3实机结果与未完成阻塞
+
+源码 `384b444` 已通过 Mint Node24 984/984、Mac Python326项（3 skip、其余通过）。已通过原批准的 Alice-only lifecycle 加载：PID1380268，bedLogicVersion=3，owner/心跳/游戏连接/会话确认；未重启BDS或修改世界。
+
+版本2请求被 `bed_route_requires_door` 明确拒绝。版本3真实请求 commandId `f4827b1e503b48c4a20da8b5be2346a9` 曾 started/awaiting_bds_bed_approach，但只读回执17确认已 failed/bed_request_expired。有限观察16（210秒/835读）没有新鲜独立BDS窗口；床步骤最近原因是 jump_origin_support_or_headroom_unverified，该字段可能是旧尝试，不能替代当前门阶段回执。个人床仍not_verified，isSleeping=false。**床到达、重生点和睡眠均未通过实机验收，禁止重发该请求或宣布已修复。**
+
+只读回执19确认定时器active/enabled、owner有效、预算22/40、无退避、lastBatchAge168.4秒、lastServiceResult=cooldown_or_budget、检查时demandNow=false（床请求此时已过期，不能反推它当时的需求）。待查：显式床意图被普通自主准入暂停后，是否仍能进入取证定时器；bedRequest在4KiB压缩中缺失；初始240秒意图期限与自然冷却/退避是否冲突。以上仍是待核实路径，不是已证实根因。
+
+本次仅增强既有只读bed_state输出：idleGate、witnessDemandState、positionGateSatisfied及门/穿越原因，匿名枚举过滤保留；不提交命令、不触发BDS查询、不修改运行时策略。5项专项测试通过。最新MCP任务历史达到500，经现有Web控制台正式归档399条已结束回执、保留100条近期记录，历史/报告保留，无执行任务、无服务重启。
+
 ## 2026-11-04 — 床目标经原木门执行器分阶段接续（版本3，待实机验收）
 
 真实版本2床命令`4c1ecaf627f74174b78b2d3ea338efea`被`bed_route_requires_door`拒绝（没有直走/使用床）。新`features/bed/door_stage.cjs`保留显式床意图，通过同一新鲜BDS见证优先接近床方向的已观察木门；复用原door_strategy、approachDoor、crossObservedDoor及高一级落点执行器，各段等待原独立BDS终点，不把门路线冒充床路线。短门路线若因火把等碰撞/把手条件不能直接开门，则继续原逐格接近，而不是永久停在两格外。STOP/FOLLOW/危险、autonomy开关、任务owner、4s/.75门禁和查询预算不变。`bedLogicVersion=3`只作加载证据，不代表重生点/睡眠通过。
