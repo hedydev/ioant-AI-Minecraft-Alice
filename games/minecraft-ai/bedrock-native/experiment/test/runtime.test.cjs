@@ -936,6 +936,49 @@ test('blocked Alice autonomously opens one nearby observed door without digging 
  e.stop()
 })
 
+test('daylight autonomous resource goal prioritizes enclosed wooden exit before any wood failure',async()=>{
+ let now=100000,activations=0,digs=0
+ let evidenceState={independentSource:'bds_querytarget',independentSamples:3,
+  independentAt:99980,independentPreviousAt:99950,loginAt:90000,lifeEpochAt:null,
+  independentLatestFeet:{x:.5,y:65,z:.5}}
+ const movementEvidence={get:()=>evidenceState}
+ const f=fixture(()=>now),e=new AliceBedrockRuntime({...f,policies:await policies(),movementEvidence})
+ f.bot.entity.position=vec(.5,65,.5);f.bot.entity.onGround=true
+ f.bot.time={timeOfDay:6000} // Daylight isolates doorway from independent night-reposition priority
+ f.api.GoalNear=class{constructor(x,y,z){this.x=x;this.y=y;this.z=z}}
+ f.api.Movements=class{constructor(){this.openable=new Set()}}
+ f.bot.pathfinder.goto=async g=>{
+   f.calls.push(['goto',g.x,g.y,g.z])
+   f.bot.entity.position=vec(g.x+.5,g.y,g.z+.5)
+ }
+ f.bot.activateBlock=()=>{activations++}
+ f.bot.dig=()=>{digs++}
+ f.bot.blockAt=p=>{
+   const x=Math.floor(p.x),y=Math.floor(p.y),z=Math.floor(p.z)
+   if(x===0&&z===5&&y===65)return {name:'oak_door',boundingBox:'block',
+     getProperties:()=>({open_bit:0,upper_block_bit:0})}
+   if(x===0&&z>=0&&z<=4)return y===64?
+     {name:'oak_planks',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}:
+     {name:'air',boundingBox:'empty',shapes:[]}
+   return {name:'stone_bricks',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}
+ }
+ e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+ e.lastHumanAt=0;e.nextIdleAt=0
+ assert.equal(e.failureMemory.blocked('wood',f.bot.entity.position),false)
+ await e.idleTick()
+ assert.equal(e.lastEscapeSurvey?.door?.approach?.steps,4)
+ for(let i=0;i<15&&!e.lastEscapeDoorAction;i++)await new Promise(r=>setImmediate(r))
+ assert.equal(f.calls.filter(x=>x[0]==='goto').length,1)
+ assert.equal(e.lastEscapeDoorAction?.reason,'approach_first_cell_awaits_independent_bds_pair')
+ assert.equal(e.pendingDoorApproachStep?.target.z,1)
+ // Door preference does not complete any route or interact with a door.
+ assert.equal(e.lastEscapeDoorAction?.serverMovementVerified,false)
+ assert.equal(e.pendingDoorApproachStep?.target.z,1)
+ assert.equal(activations,0)
+ assert.equal(digs,0)
+ e.stop()
+})
+
 test('indoor WAIT approaches a four-cell doorway without opening or mining until resurvey',async()=>{
  let now=100000,activations=0,digs=0
  let evidenceState={independentSource:'bds_querytarget',independentSamples:3,
