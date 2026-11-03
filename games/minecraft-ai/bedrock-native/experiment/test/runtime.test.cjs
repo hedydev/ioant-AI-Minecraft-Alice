@@ -1214,7 +1214,10 @@ test('failed protected-tree gather schedules bounded indoor observation instead 
  assert.equal(e.failureMemory.blocked('wood',f.bot.entity.position).reason,'no_verified_natural_tree')
  assert.equal(e.nextIdleAt,now+5000,'failure advances only the next autonomous eligibility')
  assert(f.calls.some(x=>x[1]==='[Alice exploration] blocked resource site; indoor survey scheduled:'))
- assert.equal(e.lastEscapeSurvey,null,'a finished gather alone cannot perform a world action')
+ // Indoor observation can now run BEFORE a wood failure. It is strictly
+ // read-only: a finished gather never opens, digs, or walks by itself.
+ assert.equal(e.lastEscapeSurvey?.canModifyWorld??false,false,
+   'early room inspection must not perform a world modification')
  now+=5001
  await e.idleTick()
  assert(e.lastEscapeSurvey,'next safe autonomy evaluation surveys the enclosed room')
