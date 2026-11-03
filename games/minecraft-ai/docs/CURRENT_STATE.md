@@ -1,3 +1,7 @@
+## 2026-11-03 — 第四批最终结构约束已验收
+
+提交 `8cc17fd51963fe9ebb8dbc5640a144d0615f2a81` 已实际通过固定 OpenClaw MCP 执行器：`alice_r78_size_guard_mac_08` Mac Python 321项，3 skip，0 fail；`alice_r78_size_guard_mint_09` Mint Node24 **964/964**，0 skip/fail。新门禁主 runtime 不超过800行、单 feature 不超过650行已被完整 Node24 测试覆盖。执行器回执 `aliceRestarted=false`，`bdsRestarted=false`，`worldModifiedByTask=false`，`consoleCommandSent=false`，Mac/Git工作区保持干净。第四批最终 main 源码687行、IDLE动作592行、同步准入180行、survival149行、terrain48行。原运行进程未热加载新模块；这只是自动化回归通过，不等于原世界门/床/HOME真实行为验收。
+
 ## 2026-11-03 — 第四批最终模块大小与测试结果
 
 本次完成两阶段：自主 IDLE 同步安全准入拆分（950ad29：Mint Node24 960/960，Mac Python321 skip3），生存维护和地形执行拆分（00d854b：Mint Node24 964/964，Mac Python321 skip3）。核心 runtime.cjs 从最初 3566 行降为 **687 行**（约 41.9KiB），autonomy/idle_methods.cjs 592 行，idle_admission.cjs 180 行，survival/maintenance_methods.cjs 149 行，navigation/terrain_methods.cjs 48 行。严格约束继续保留 4s/0.75m 独立BDS、40/h/180s、单格240s、STOP/FOLLOW/危险抢占；不重启 Alice/BDS、不更改正式世界。新增结构预算加严：主文件最多800行，每个feature最多650行；本提交仅更改结构测试和文档，需新测试回执证明。详见 docs/RUNTIME_MODULARIZATION_20261103.md。

@@ -1,3 +1,7 @@
+## 2026-11-03 — 第四批最终结构约束已验收
+
+提交 `8cc17fd51963fe9ebb8dbc5640a144d0615f2a81` 已实际通过固定 OpenClaw MCP 执行器：`alice_r78_size_guard_mac_08` Mac Python 321项，3 skip，0 fail；`alice_r78_size_guard_mint_09` Mint Node24 **964/964**，0 skip/fail。新门禁主 runtime 不超过800行、单 feature 不超过650行已被完整 Node24 测试覆盖。执行器回执 `aliceRestarted=false`，`bdsRestarted=false`，`worldModifiedByTask=false`，`consoleCommandSent=false`，Mac/Git工作区保持干净。第四批最终 main 源码687行、IDLE动作592行、同步准入180行、survival149行、terrain48行。原运行进程未热加载新模块；这只是自动化回归通过，不等于原世界门/床/HOME真实行为验收。
+
 ## 2026-11-03 — 第四批结构与保护上限
 
 功能代码行数由 runtime.cjs 3566 降至687，并且将 IDLE 证据准入、睡眠/食物/装备/HOME维护及地形施工拆为独立feature。现有 Node24 964/964 和 Mac Python321(skip3) 已通过，新增更严格行数结构测试等待本提交验收。无新的游戏动作许可或实机完成证明。

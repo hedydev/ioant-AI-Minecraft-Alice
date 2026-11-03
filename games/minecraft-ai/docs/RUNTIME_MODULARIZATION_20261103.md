@@ -59,3 +59,10 @@ Root runtime maintenance/home and vertical/earthwork methods now live in surviva
 ## Tightened growth budgets and final validation plan
 
 After the fourth wave, source dimensions are root runtime **687 lines**, autonomy IDLE work **592**, synchronous admission **180**, survival maintenance **149**, and navigation terrain **48**. The architecture growth guard now caps the root at **800 lines** and each feature module at **650 lines** (previously 1000/800). Future changes must split cohesive functionality before exceeding those ceilings. This is a source-maintainability constraint only; it cannot authorize game movement or relax the existing BDS evidence contract.
+
+## Fourth-wave final fixed-executor receipts
+
+- Code + strict budget commit `8cc17fd51963fe9ebb8dbc5640a144d0615f2a81`.
+- OpenClaw Mac `alice_r78_size_guard_mac_08`: 321 Python tests, 3 skipped, 0 failed; tracked worktree clean.
+- OpenClaw Mint `alice_r78_size_guard_mint_09`: Node24 **964/964**, 0 failures, 0 skipped; nonrestart source sync PASSED, 321 Mac Python tests (3 skipped), `aliceRestarted=false`, `bdsRestarted=false`, `worldModifiedByTask=false`, `consoleCommandSent=false`.
+- This confirms maintained source-test compatibility, not a live module reload, game movement or door/bed success. Exact stage receipts and historical failures remain in prior docs and MCP project operations.
