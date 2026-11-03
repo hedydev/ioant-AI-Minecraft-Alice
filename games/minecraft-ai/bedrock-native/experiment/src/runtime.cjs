@@ -3171,51 +3171,49 @@ class AliceBedrockRuntime {
       if(!walkGate.candidate&&verticalGate.candidate)candidate=verticalGate.candidate
       let decision=decideAutonomousResponse({plan,woodCount:wood,
         woodFailure,movementFailure,world:this.lastWorldRoutine,scoutCandidate:candidate})
-      // A verified indoor door is a survival exit worth observing even
-      // BEFORE a failed wood-gathering attempt. Without this, Alice repeatedly
-      // scouts the small built room because woodFailure never becomes true.
-      // The survey is read-only, rate-limited, and never grants movement.
+      // Preserve the earlier failed-resource observation behavior, including
+      // night and movement-evidence cooldowns: observation is READ ONLY.
+      // Also review a built-room exit before any wood-gathering failure when
+      // natural resources are unavailable. A discovered exit is NOT a permit.
       const firstDoorReview=!night&&resourceNeed&&observedTree?.ok!==true&&
-        this.lastWorldRoutine.safeToExplore===true
-      if((woodFailure||firstDoorReview)&&!movementFailure&&
-          ['WAIT','SCOUT','WORK','OBSERVE'].includes(decision.action)&&
+        this.lastWorldRoutine.safeToExplore===true&&!movementFailure
+      const traditionalDoorReview=woodFailure&&
+        ['WAIT','SCOUT'].includes(decision.action)
+      if((traditionalDoorReview||firstDoorReview)&&
           this.clock()-this.lastEscapeSurveyAt>=90000)
         this.observeBlockedRoom()
-      // Require an enclosed, still-nearby CURRENT room observation; do not
-      // chase an old door behind Alice or any door visible outdoors.
+      // An older door must not follow Alice after her actual position changes.
       const survey=this.lastEscapeSurvey
       const origin=survey?.center,pos=this.bot.entity?.position
       const nearbySurvey=survey&&Array.isArray(origin)&&pos&&
         this.clock()-this.lastEscapeSurveyAt<=25000&&
         Math.hypot(pos.x-(origin[0]+0.5),pos.y-origin[1],
           pos.z-(origin[2]+0.5))<=2.25?survey:null
-      const observedDoor=nearbySurvey?.door||null
-      const proposedRoute=observedDoor?.approach?.waypoints
-      const safeObservedDoor=!!observedDoor&&
+      const enclosedCandidate=firstDoorReview&&nearbySurvey?.door&&
         nearbySurvey.status==='door_interaction_candidate'&&
-        !nearbySurvey.openFrontier&&
-        Array.isArray(proposedRoute)&&
-        proposedRoute.length===observedDoor.approach?.steps&&
-        observedDoor.approach?.routeComplete===true&&
-        observedDoor.approach?.elevationChanges===0
-      const doorExecutable=safeObservedDoor&&
-        (proposedRoute.length>0?
-          validateApproach(this.bot,observedDoor).ok===true:
-          (()=>{
-            const gate=planDoorOpen(this.bot,{doorCandidates:[observedDoor]})
-            return gate.ok===true||gate.reason==='door_already_open'
-          })())
-      const indoorDoorPriority=firstDoorReview&&safeObservedDoor&&doorExecutable
-      if(indoorDoorPriority){
-        // The LLM still selects long-term goals. A clearly observed, enclosed
-        // wooden exit is a bounded physical safety skill, not an LLM-invented
-        // position or permission to dig/player-teleport.
+        !nearbySurvey.openFrontier
+      // Preserve the originally authorized short-reach (up to two observed
+      // steps) door interaction and long-route validation separately.
+      // A reachable wooden handle is not a BDS-confirmed passage.
+      const freshDoor=(woodFailure||enclosedCandidate)&&!movementFailure&&
+        this.clock()-this.lastEscapeSurveyAt<=25000
+          ?this.lastEscapeSurvey?.door||null:null
+      let doorExecutable=false
+      if(freshDoor){
+        const door=freshDoor,route=door.approach?.waypoints
+        if(Array.isArray(route)&&route.length>2)
+          doorExecutable=validateApproach(this.bot,door).ok===true
+        else if(Array.isArray(route)&&route.length<=2){
+          const doorGate=planDoorOpen(this.bot,{doorCandidates:[door]})
+          doorExecutable=doorGate.ok===true||doorGate.reason==='door_already_open'
+        }
+      }
+      const indoorDoorPriority=!!enclosedCandidate&&doorExecutable
+      if(indoorDoorPriority)
         decision={action:'WAIT',goal:'FIND_ROOM_EXIT',
           reason:'observed_indoor_exit_before_resource_scout'}
-      }
       const doorDriven=woodFailure||indoorDoorPriority
-      const freshDoor=doorDriven&&!movementFailure&&
-        nearbySurvey?observedDoor:null
+      const proposedRoute=freshDoor?.approach?.waypoints||[]
       const drive=selectDrive({decision,world:this.lastWorldRoutine,
         survey:nearbySurvey,doorExecutable,woodFailure:!!doorDriven,
         movementFailure:!!movementFailure,
@@ -3372,10 +3370,11 @@ class AliceBedrockRuntime {
           const doorKey=door.position?.join(',')
           const attemptedRecently=doorKey===this.lastEscapeDoorAttemptKey&&
             this.clock()-this.lastEscapeDoorAttemptAt<600000
-          // Even a ONE- or TWO-cell route needs a physical approach first.
-          // Only a zero-step adjacent door can be interacted with.
+          // A wooden handle within the original strictly validated short
+          // interaction range may be opened without walking. Longer routes
+          // still require BDS-proven single-cell approaches.
           const needApproach=Array.isArray(door.approach?.waypoints)&&
-            door.approach.waypoints.length>0
+            door.approach.waypoints.length>2
           const approachRecently=doorKey===this.lastEscapeApproachKey&&
             this.clock()<this.lastEscapeApproachRetryAt
           if(needApproach&&!approachRecently){
