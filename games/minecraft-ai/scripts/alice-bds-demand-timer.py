@@ -114,7 +114,7 @@ def safe_night_witness_need(d):
         d.get("job") is None and
         d.get("followTarget") is None and
         isinstance(goal, dict) and
-        goal.get("phase") not in ("PAUSED", "ACTING") and
+        goal.get("phase") in ("WAITING", "READY", "BLOCKED") and
         goal.get("reason") not in ("user_stop", "player_override")
     )
 
@@ -414,6 +414,7 @@ def selftest():
     assert not demand_now({**night,"worldRoutine":{**night["worldRoutine"],
        "nightSurvival":{"reason":"no_safe_shelter"}}})
     assert not demand_now({**night,"longTermGoal":{"phase":"PAUSED","reason":"user_stop"}})
+    assert not demand_now({**night,"longTermGoal":None})
     assert not demand_now({**night,"followTarget":"Steve"})
     assert not demand_now({**night,"job":"EXPLORE"})
     assert not demand_now({**night,"movementEvidence":{**night["movementEvidence"],
