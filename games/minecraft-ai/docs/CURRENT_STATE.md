@@ -1,3 +1,7 @@
+## 2026-11-03 — 三批模块化完成 + 代码增长结构门禁
+
+自主生存 Bedrock 源码已按功能分离：runtime.cjs 从3566行（204.5KiB）降到855行（52.2KiB），10个 feature CJS 文件分别承担床、门、护卫安全、跟随、夜间、模型、IDLE决策、指令、工作、受控探索。第一批Node943/943、第二批Node948/948、第三批Node952/952；Mac Python321(skip3) 全部通过，原Mint源码均以不重启方式同步。详情见 docs/RUNTIME_MODULARIZATION_20261103.md。新增纯源码结构测试 runtime_modularization_structure.test.cjs，以主文件1000行、单feature800行为明确维护上限，要求7个业务目录齐全，防止未来重复堆成单体。该新结构测试需在本次提交经Mac和Mint全量回归后方能称通过，不代替真实游戏实机验收。未重启当前Alice/BDS，不改世界，不发送游戏命令；旧进程未热加载。
+
 ## 2026-11-03 — 第三批模块化源码（玩家命令、作业与 BDS scout）
 
 在前两批 1667 行主调度器和 Node24 948/948 基线上，新增 features/commands/runtime_methods.cjs（5方法）、features/tasks/work_methods.cjs（4方法）、features/navigation/scout_methods.cjs（2方法），共迁出812行，runtime.cjs 最终855行；所有方法体按原逻辑抽取、实例状态和 BDS authority 仍由 AliceBedrockRuntime 持有，直接返回原 async Promise，不新增异步桥。旧 scout_step_runtime_contract 静态证据测试改为读取真实 scout/work/idle 功能文件，测试断言原样保留，新增 runtime_third_wave_modules.test.cjs 覆盖先前移动等待时拒绝开始新 job、无待结算 endpoint 与关闭时命令无副作用。改动仅结构重排，不放宽 BDS 4s/0.75m、40/h、180s、240s、安全/STOP/FOLLOW/地形准入。需在 Mint Node24 + Mac Python 全量回归完成前视作 staged；原游戏进程不重载、BDS/世界不操作。
