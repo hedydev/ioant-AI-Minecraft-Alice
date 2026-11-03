@@ -38,7 +38,7 @@ try:
  result['connected']=d.get('connected') is True
  result['sessionEstablished']=d.get('sessionEstablished') is True
  result['autonomyEnabled']=(d.get('settings') or {}).get('autonomyEnabled') is True
- result['coreState']=valid_text(d.get('state'))
+ result['coreState']=valid_text(str(d.get('state') or '').lower())
  result['jobActive']=d.get('job') is not None
  h=d.get('health')
  if type(h) in (int,float) and 0<=h<=20:result['health']=h
