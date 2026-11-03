@@ -1,3 +1,7 @@
+## 2026-11-04 — 待加载：压缩心跳保留显式床意图
+
+已复核真实回执20：work_cooldown、needs_two_fresh_samples、positionGateSatisfied=false；床指令仍为原f482…且已expired。源码确认pendingBedRequest会提前暂停普通自主准入，而定时器没有专门的显式床需求分支；4KiB压缩还会丢掉bedRequest，导致无法从只读状态判断等待阶段。先修复诊断：每一层压缩均保留有界action/stage/steps/expiresAt及serverMovementVerified=false，不带目标坐标、原始消息或移动权限。本地心跳27/27通过；尚未在Mint全量验收或加载，运行PID1380268仍旧诊断实现。下一步在保留40/h、180秒、10分钟退避、STOP/FOLLOW/危险/生命owner检查的前提下，设计独立明确的床取证需求；不能直接开放work_cooldown或延长BDS样本有效期。
+
 ## 2026-11-04 — 床版本3实机结果与未完成阻塞
 
 源码 `384b444` 已通过 Mint Node24 984/984、Mac Python326项（3 skip、其余通过）。已通过原批准的 Alice-only lifecycle 加载：PID1380268，bedLogicVersion=3，owner/心跳/游戏连接/会话确认；未重启BDS或修改世界。
