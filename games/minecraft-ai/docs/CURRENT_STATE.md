@@ -1,3 +1,9 @@
+## 2026-11-04 — 自身权限来源继续分辨
+
+只读49确认观察器已加载在PID1507358（原批准restart48成功），但未取得匹配自身ID的update_abilities；其role=unknown是缺证据，不是权限被拒。对照公开协议，start_game.permission_level本身就是该登录玩家角色。补充读取此初始自身字段（source=start_game_self）及原始block_network_ids_are_hashes/server_authoritative_inventory布尔标志；对实际已有click_block仅记录公开方块ID、客户端状态ID与注册表network_id，避免猜测新版本网络ID映射是否一致。仍只观察，不改包/不申请权限/不增加点击。Node30项通过，完整测试与加载待回执。原1bb…命令在46已明确failed/bed_request_expired，不重做。
+
+协议参考：https://github.com/PrismarineJS/minecraft-data/blob/master/data/bedrock/latest/proto.yml （只用于字段语义；实际使用已安装协议编解码，不升级服务端或依赖）。
+
 ## 2026-11-04 — 原服默认member；增加只读自身交互诊断
 
 固定只读45确认原17879/Bedrock level的默认角色member、gamemode=survival。这不能证明Alice当前实际角色；实际安装abilities.js接受update_abilities且未按玩家ID筛选，不能直接把bot.abilities认作自身权限。新增被动interaction_audit：仅接受与自己start_game唯一ID精确匹配的权限包，输出匿名角色和门/容器布尔权限；未知不冒充允许。记录已有click_block成功序列化计数、错误计数及面/槽位匹配/空手/堆栈标记/本地眼睛位置一致性等有限诊断。queue包装保持原this、参数、返回值和异常，不增加发送或修改包；明确queueOnlyNotNetworkProof，不把序列化当服务器执行。只读床回执保留这些诊断，日志仅识别真实行首标记。

@@ -14,13 +14,19 @@ function uniqueId(v){
 function attachInteractionAudit(bot){
  const client=bot._client,original=client.queue
  let own=null,closed=false,permission=null,clicks=0,errors=0,last=null
- const start=p=>{own=uniqueId(p?.entity_id);permission=null;clicks=0;errors=0;last=null}
+ let policy={blockNetworkIdsHashed:null,authoritativeInventory:null}
+ const roleOf=level=>typeof level==='string'&&['visitor','member','operator','custom'].includes(level)?level:
+  Number.isSafeInteger(level)?['visitor','member','operator','custom'][level]??'unknown':'unknown'
+ const start=p=>{
+  own=uniqueId(p?.entity_id);clicks=0;errors=0;last=null
+  const role=roleOf(p?.permission_level)
+  permission=role==='unknown'?null:{source:'start_game_self',role,doorsAndSwitches:null,openContainers:null}
+  policy={blockNetworkIdsHashed:bit(p?.block_network_ids_are_hashes),authoritativeInventory:bit(p?.server_authoritative_inventory)}
+ }
  const abilities=p=>{
   const self=own??uniqueId(bot.entity?.uniqueId)
   if(!self||uniqueId(p?.entity_unique_id)!==self)return
-  const level=p.permission_level
-  const role=typeof level==='string'&&['visitor','member','operator','custom'].includes(level)?level:
-   Number.isSafeInteger(level)?['visitor','member','operator','custom'][level]??'unknown':'unknown'
+  const role=roleOf(p.permission_level)
   const layers=Array.isArray(p.abilities)?p.abilities:[]
   const flags=(layers.find(x=>x.type==='base')||layers[0])?.enabled||{}
   permission={source:'self_update_abilities',role,
@@ -34,7 +40,12 @@ function attachInteractionAudit(bot){
   if(click)try{
    const d=transaction.transaction_data,pos=bot.entity?.position
    const eye=bot.entity?.eyeHeight||1.62,p=d.player_pos
+   const bp=d.block_position,block=pos?.offset&&bp&&bot.blockAt?.(pos.offset(bp.x-pos.x,bp.y-pos.y,bp.z-pos.z))
+   const state=block?.stateId,registryState=bot.registry?.blockStates?.[state]
+   const id=v=>Number.isSafeInteger(v)&&v>=0&&v<=0xffffffff?v:null
    summary={face:Number.isInteger(d.face)&&d.face>=0&&d.face<=5?d.face:null,
+    blockRuntimeId:id(d.block_runtime_id),localBlockStateId:id(state),
+    registryStateNetworkId:id(registryState?.network_id??registryState?.networkId),
     hotbarMatchesLocal:Number.isInteger(d.hotbar_slot)&&d.hotbar_slot===bot.quickBarSlot,
     heldEmpty:d.held_item?.network_id===0,
     hasStackId:bit(d.held_item?.has_stack_id),
@@ -53,6 +64,7 @@ function attachInteractionAudit(bot){
   if(client.queue===tapped)client.queue=original}
  client.once('close',close)
  return {get:()=>({version:1,queueOnlyNotNetworkProof:true,
+   serverPolicy:policy,
    permissions:permission||{source:'unobserved',role:'unknown',doorsAndSwitches:null,openContainers:null},
    sneaking:bit(bot.controlState?.sneak),usingItem:bit(bot.usingHeldItem),
    blockClicksSerialized:clicks,blockClickErrors:errors,lastClick:last}),close}

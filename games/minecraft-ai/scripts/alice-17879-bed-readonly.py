@@ -99,18 +99,22 @@ def validate(x):
     if type(x['bedLogRead']) is not bool or not isinstance(x['bedEvents'],list) or len(x['bedEvents'])>12:return None
     a=x['interactionStatus']
     if a is not None:
-        if not isinstance(a,dict) or set(a)!={'version','queueOnlyNotNetworkProof','permissions','sneaking','usingItem','blockClicksSerialized','blockClickErrors','lastClick'}:return None
+        if not isinstance(a,dict) or set(a)!={'version','queueOnlyNotNetworkProof','serverPolicy','permissions','sneaking','usingItem','blockClicksSerialized','blockClickErrors','lastClick'}:return None
         if a['version']!=1 or a['queueOnlyNotNetworkProof'] is not True:return None
         p=a['permissions']
         if not isinstance(p,dict) or set(p)!={'source','role','doorsAndSwitches','openContainers'}:return None
-        if p['source'] not in ('unobserved','self_update_abilities') or p['role'] not in ('unknown','visitor','member','operator','custom'):return None
+        if p['source'] not in ('unobserved','start_game_self','self_update_abilities') or p['role'] not in ('unknown','visitor','member','operator','custom'):return None
+        s=a['serverPolicy']
+        if not isinstance(s,dict) or set(s)!={'blockNetworkIdsHashed','authoritativeInventory'} or any(v is not None and type(v) is not bool for v in s.values()):return None
         if any(v is not None and type(v) is not bool for v in (p['doorsAndSwitches'],p['openContainers'],a['sneaking'],a['usingItem'])):return None
         if any(type(a[k]) is not int or not 0<=a[k]<=1000000 for k in ('blockClicksSerialized','blockClickErrors')):return None
         q=a['lastClick']
         if q is not None:
-            if not isinstance(q,dict) or set(q)!={'face','hotbarMatchesLocal','heldEmpty','hasStackId','eyePositionMatchesLocal'}:return None
+            if not isinstance(q,dict) or set(q)!={'face','blockRuntimeId','localBlockStateId','registryStateNetworkId','hotbarMatchesLocal','heldEmpty','hasStackId','eyePositionMatchesLocal'}:return None
             if q['face'] is not None and (type(q['face']) is not int or not 0<=q['face']<=5):return None
-            if any(v is not None and type(v) is not bool for k,v in q.items() if k!='face'):return None
+            ids={'blockRuntimeId','localBlockStateId','registryStateNetworkId'}
+            if any(v is not None and (type(v) is not int or not 0<=v<=4294967295) for k,v in q.items() if k in ids):return None
+            if any(v is not None and type(v) is not bool for k,v in q.items() if k not in ids|{'face'}):return None
     for event in x['bedEvents']:
         if not isinstance(event,dict) or set(event)-{'kind','reason','attempted','serverMovementVerified','ok','steps'}:return None
         if event.get('kind') not in ('bed_admission','door_approach','door_approach_gate','door_interaction','door_interaction_gate','door_passage','door_endpoint','passage_endpoint','bed_endpoint','job_result'):return None

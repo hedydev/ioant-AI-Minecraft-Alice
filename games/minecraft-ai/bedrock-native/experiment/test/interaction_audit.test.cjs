@@ -28,3 +28,12 @@ test('click observation preserves original queue identity, payload and returned 
  assert.equal(f.audit.get().blockClicksSerialized,1);assert.equal(f.audit.get().blockClickErrors,1)
  f.audit.close();assert.equal(f.client.queue,f.original)
 })
+test('self start-game role and block-network hash mode are not inferred from server defaults',()=>{
+ const f=fixture()
+ f.client.emit('start_game',{entity_id:-7n,permission_level:1,block_network_ids_are_hashes:true,server_authoritative_inventory:false})
+ assert.equal(f.audit.get().permissions.source,'start_game_self')
+ assert.equal(f.audit.get().permissions.role,'member')
+ assert.equal(f.audit.get().permissions.doorsAndSwitches,null)
+ assert.deepEqual(f.audit.get().serverPolicy,{blockNetworkIdsHashed:true,authoritativeInventory:false})
+ assert.equal(f.calls(),0)
+})
