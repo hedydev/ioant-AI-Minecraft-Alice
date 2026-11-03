@@ -19,3 +19,8 @@ Keep stable AliceBedrockRuntime instance APIs for all consumers. Add and preserv
 Module factories are not independent controllers: no extra event loops, actor instances or BDS queries. Source-structure tests must read the owning feature, not search the root runtime source for moved method bodies. Asynchronous wrappers return the original feature Promise directly to avoid an extra microtask boundary.
 
 - autonomy/idle_admission.cjs: synchronous server-evidence, STOP/FOLLOW, danger, day/night and HOME admission gates; no extra Promise or action.
+
+- survival/maintenance_methods.cjs: periodic read-only beds, HOME observation, inventory equipment, sleep opportunities and safe food recovery.
+- navigation/terrain_methods.cjs: BDS-authorized vertical candidate verification and bounded earthwork/bridge requests.
+
+Maintenance and terrain method bodies continue executing with the original Alice runtime state. Async maintenance proxies must return their original Promise directly.

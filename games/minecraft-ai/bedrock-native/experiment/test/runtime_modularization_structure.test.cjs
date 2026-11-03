@@ -25,7 +25,7 @@ test('feature files stay within eight hundred lines, not new monoliths',()=>{
  }
 })
 test('named domain folders and architecture ownership guide are tracked',()=>{
- for(const name of ['autonomy','bed','commands','door','navigation','safety','tasks']){
+ for(const name of ['autonomy','bed','commands','door','navigation','safety','survival','tasks']){
   assert(fs.statSync(path.join(features,name)).isDirectory(),name)
  }
  assert(fs.statSync(path.join(features,'README.md')).isFile())

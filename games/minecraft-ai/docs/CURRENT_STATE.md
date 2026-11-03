@@ -1,3 +1,7 @@
+## 2026-11-03 — 第四批第二阶段：生存维护与地形动作再拆分
+
+在同步 IDLE 准入模块 Node24 960/960 的基础上，将 runtime.cjs 中 observeHomeTick/maintenanceTick（140行）迁至 features/survival/maintenance_methods.cjs，将 verifyVerticalTransition/maybeStartEarthwork（39行）迁至 features/navigation/terrain_methods.cjs；原 Alice runtime 方法名与 this 不变，异步方法薄代理直接返回模块的 Promise，不新增微任务。runtime.cjs 从855行降至687行。生存维护仍保留装备、床睡眠、进食、HOME观察原顺序，地形工作依然经独立 BDS proof、危险与玩家意图保护。新增定向回归，扩展结构测试要求 survival 目录；改动仅代码结构，当前原服 Alice 不重启/不热加载，Mint/Node24 全量通过前不宣称验收。
+
 ## 2026-11-03 — IDLE admission 第一轮回归失败根因与精确修复
 
 初版 af43f0b Mint Node24 958/959，失败测试为 fresh aligned BDS evidence wakes the next decision。只读原错误堆栈发现未转换的单行 `if(!proof.ok){this.holdNavigation(proof);return}`，使新同步准入模块返回 undefined，不能被消费者判为 `{allowed:false}`。不是可以跳过的时序差异。该提交仅把这一个内联早退转换为显式 `{allowed:false}`，仍先执行原 holdNavigation，补 startup 无独立 BDS proof 回归测试，其他证据/时序/安全逻辑不变。初轮失败回执保留；需复验 Mac321 和完整 Mint Node24 后才接受。

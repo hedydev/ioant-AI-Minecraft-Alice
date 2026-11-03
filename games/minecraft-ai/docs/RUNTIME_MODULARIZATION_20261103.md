@@ -48,3 +48,7 @@ Three consecutive, behavior-preserving extraction waves reduced `bedrock-native/
 ## Fourth wave: decision admission extraction
 
 Synchronous preflight is now at `src/features/autonomy/idle_admission.cjs` and is called from the original async IDLE method before model/work execution. The original async method remains one Promise layer; do not convert the preflight into a new async wrapper. Receipt pending.
+
+## Wave 4.2: maintenance and terrain extraction
+
+Root runtime maintenance/home and vertical/earthwork methods now live in survival/maintenance_methods.cjs and navigation/terrain_methods.cjs. Root remains sole state owner, no additional async adoption or gameplay privilege. Final Node24/Python acceptance pending.

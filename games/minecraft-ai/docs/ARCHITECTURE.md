@@ -1,3 +1,7 @@
+## 2026-11-03 — Survival 与 Terrain 模块职责
+
+新增 features/survival/maintenance_methods.cjs 持有定期装备、安全进食、床位机会观察及 HOME 结构只读观察；features/navigation/terrain_methods.cjs 持有受服务器证据与空间碰撞约束的单格上下行/地形土工动作请求。方法体从 runtime.cjs 原样抽出，原实例 API 通过普通同步代理返回原 async Promise。runtime 独占 bot/epoch/job/clock/BDS state，不给功能模块添加独立计时器或任何 MC 管理命令。
+
 ## 2026-11-03 — autonomy 读状态准入与执行阶段
 
 `src/features/autonomy/idle_admission.cjs` 同步执行 IDLE 决策的证据门禁与环境判断，返回 `{allowed:false}` 或只读工作上下文；`idle_methods.cjs` 保留原 async 动作与等待语句，避免增加 Promise 调度微任务。所有客户端、时钟、操作和 BDS 见证仍使用原 AliceBedrockRuntime.this；严禁让准入函数创建新 job、改变证明条件或自行查询 BDS。
