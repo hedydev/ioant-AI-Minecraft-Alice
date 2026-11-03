@@ -97,24 +97,49 @@ def active_owner():
         raise ValueError("wrong_owner")
     return s, d
 
+def safe_night_witness_need(d):
+    # Night survival can be waiting for a fresh server position while the
+    # regular raw-materials job is in work_cooldown. That cooldown must not
+    # suppress the independent evidence needed for NON-DESTRUCTIVE survival.
+    # Never convert a generic work cooldown or historical night status into
+    # permission. Human STOP/FOLLOW, current jobs and paused goals fail closed.
+    wr = d.get("worldRoutine") or {}
+    night = wr.get("nightSurvival") or {}
+    goal = d.get("longTermGoal") or {}
+    return bool(
+        wr.get("phase") in ("night", "dusk") and
+        wr.get("idleGate") == "work_cooldown" and
+        isinstance(night, dict) and
+        night.get("reason") == "scout_bds_position_unavailable" and
+        d.get("job") is None and
+        d.get("followTarget") is None and
+        isinstance(goal, dict) and
+        goal.get("phase") not in ("PAUSED", "ACTING") and
+        goal.get("reason") not in ("user_stop", "player_override")
+    )
+
+
 def demand_now(d):
     e = d.get("movementEvidence") or {}
     settings = d.get("settings") or {}
+    wr = d.get("worldRoutine") or {}
+    need = e.get("witnessDemand") or {}
     return bool(
         d.get("state") == "IDLE" and
         d.get("connected") is True and d.get("sessionEstablished") is True and
         d.get("health", 0) >= 16 and
         settings.get("autonomyEnabled") is True and
         settings.get("agentMode") == "autonomous" and
-        # The 5s idle controller may have cleared navigationHold during
-        # a brief proof window, leaving "eligible_for_work" while the BDS
-        # pair has expired. That is still a real pending autonomy need,
-        # whereas STOP, threats, FOLLOW, cooldowns and jobs are excluded.
-        (d.get("worldRoutine") or {}).get("idleGate") in
-            ("position_witness_unverified", "eligible_for_work") and
-        isinstance(e.get("witnessDemand"), dict) and
-        e["witnessDemand"].get("state") in ("needs_two_fresh_samples", "needs_second_fresh_sample") and
-        e["witnessDemand"].get("positionGateSatisfied") is False and
+        # Regular autonomy is admitted only on its original idle gates.
+        # A separate narrowly proven night-survival demand is allowed while
+        # raw-material work cools down; NEVER admit arbitrary cooldowns.
+        (wr.get("idleGate") in
+            ("position_witness_unverified", "eligible_for_work") or
+         safe_night_witness_need(d)) and
+        isinstance(need, dict) and
+        need.get("state") in
+            ("needs_two_fresh_samples", "needs_second_fresh_sample") and
+        need.get("positionGateSatisfied") is False and
         e.get("awaitingVerifiedRespawn") is not True and
         isinstance(e.get("loginAt"), int)
     )
@@ -375,6 +400,25 @@ def selftest():
       "movementEvidence":{"loginAt":1000,"awaitingVerifiedRespawn":False,
       "witnessDemand":{"state":"needs_two_fresh_samples","positionGateSatisfied":False}}})
     assert not demand_now({"state":"IDLE"})
+    night={"state":"IDLE","connected":True,"sessionEstablished":True,
+       "health":20,"job":None,"followTarget":None,
+       "longTermGoal":{"phase":"WAITING","reason":"waiting_for_daylight"},
+       "settings":{"autonomyEnabled":True,"agentMode":"autonomous"},
+       "worldRoutine":{"phase":"night","idleGate":"work_cooldown",
+          "nightSurvival":{"reason":"scout_bds_position_unavailable"}},
+       "movementEvidence":{"loginAt":1000,"awaitingVerifiedRespawn":False,
+          "witnessDemand":{"state":"needs_two_fresh_samples",
+             "positionGateSatisfied":False}}}
+    assert safe_night_witness_need(night) and demand_now(night)
+    assert not demand_now({**night,"worldRoutine":{**night["worldRoutine"],"phase":"day"}})
+    assert not demand_now({**night,"worldRoutine":{**night["worldRoutine"],
+       "nightSurvival":{"reason":"no_safe_shelter"}}})
+    assert not demand_now({**night,"longTermGoal":{"phase":"PAUSED","reason":"user_stop"}})
+    assert not demand_now({**night,"followTarget":"Steve"})
+    assert not demand_now({**night,"job":"EXPLORE"})
+    assert not demand_now({**night,"movementEvidence":{**night["movementEvidence"],
+       "witnessDemand":{"state":"fresh_pair_aligned","positionGateSatisfied":True}}})
+
     assert MAX_HOURLY==40 and MIN_BATCH_SECONDS>=55 and SUSTAINED_BATCH_SECONDS>=180
     print("ALICE_BDS_DEMAND_TIMER_SELFTEST_PASS")
 
