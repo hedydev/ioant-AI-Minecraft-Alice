@@ -1119,8 +1119,8 @@ class AliceBedrockRuntime {
 
   // Follow feature: retains original Alice instance and safety policy.
   stopDirectFollow(...args){return followRuntimeMethods.stopDirectFollow.apply(this,args)}
-  async tryShortFollow(...args){return followRuntimeMethods.tryShortFollow.apply(this,args)}
-  async followTick(...args){return followRuntimeMethods.followTick.apply(this,args)}
+  tryShortFollow(...args){return followRuntimeMethods.tryShortFollow.apply(this,args)}
+  followTick(...args){return followRuntimeMethods.followTick.apply(this,args)}
   // Bed/spawnpoint implementation is delegated to features/bed/.
   requestBedTask(...args){return bedRuntimeMethods.requestBedTask.apply(this,args)}
   resumeBedRequestOnWitness(...args){return bedRuntimeMethods.resumeBedRequestOnWitness.apply(this,args)}
@@ -1648,7 +1648,7 @@ class AliceBedrockRuntime {
   }
   // Model feature: retains original Alice instance and safety policy.
   recordAutonomousDecision(...args){return modelRuntimeMethods.recordAutonomousDecision.apply(this,args)}
-  async runAutonomousModelStep(...args){return modelRuntimeMethods.runAutonomousModelStep.apply(this,args)}
+  runAutonomousModelStep(...args){return modelRuntimeMethods.runAutonomousModelStep.apply(this,args)}
   // Door passage, witness and room surveys are delegated to features/door/.
   async crossObservedDoor(...args){return doorRuntimeMethods.crossObservedDoor.apply(this,args)}
   settlePendingDoorCrossingOnWitness(...args){return doorRuntimeMethods.settlePendingDoorCrossingOnWitness.apply(this,args)}
@@ -1660,7 +1660,7 @@ class AliceBedrockRuntime {
   // Night feature: retains original Alice instance and safety policy.
   tryNightReposition(...args){return nightRuntimeMethods.tryNightReposition.apply(this,args)}
   // Idle feature: retains original Alice instance and safety policy.
-  async idleTick(...args){return idleRuntimeMethods.idleTick.apply(this,args)}
-  async runIdleDecision(...args){return idleRuntimeMethods.runIdleDecision.apply(this,args)}
+  idleTick(...args){return idleRuntimeMethods.idleTick.apply(this,args)}
+  runIdleDecision(...args){return idleRuntimeMethods.runIdleDecision.apply(this,args)}
 }
 module.exports={AliceBedrockRuntime,recognize,parseTask}

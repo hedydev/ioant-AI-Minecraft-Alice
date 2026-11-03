@@ -1,3 +1,7 @@
+## 2026-11-03 — 第二批模块化：异步入口时序忠实度修复
+
+首次提取安全/跟随/模型/IDLE 模块提交334410e后，Mint Node24 为946/948（一个旧 scout 测试仍读取 runtime.cjs 文本，另一个 startup witness 等待严格冷却断言失败）；a5b9edc 修复 scout 测试模块路径并为后者增加有限的无个人数据诊断，Mint 947/948。证据显示后者 BDS 恢复后 startupPending=false、homeObjective=none、phase=unknown，但 nextIdleAt 为短重试而非原预期 120s。由于 module runtime 原方法体逐语句不变，额外 async 代理可能引入一轮微任务调度，故将 5 个新增异步入口（tryShortFollow/followTick/runAutonomousModelStep/idleTick/runIdleDecision）改为普通转发方法直接返回功能模块的真实 async Promise，避免二次 async adoption。原独立 BDS/安全/STOP/FOLLOW/预算门禁完全不动，保留原 Node 严格断言，仍需重新通过完整 Mint Node24 回归才能接受。
+
 ## 2026-11-03 — Runtime 第二批模块化（功能源码待 Mint/Node24 回归）
 
 延续 bed/door 首批拆分，此次将 11 个方法按职责迁至 safety、navigation/follow、autonomy/model、autonomy/night、autonomy/idle 五个功能模块，方法体原样迁移、原实例 API 使用 .apply(this,args) 转发、同一 Alice bot/job/epoch/BDS 证据 owner 不变。runtime.cjs 2965 行降至 1667 行，迁出约 1298 行，新增 runtime_second_wave_modules.test.cjs 检查模块签名和安全/跟随/夜间/IDLE 门禁。源重构没有放宽 4s/0.75m、独立 BDS 后验、40/h 查询预算/180秒间隔、240秒单格等待、STOP/FOLLOW/战斗威胁/防撞规则。生产 Alice 未重启，不能据此认定原服行为已加载；需完整验收。
