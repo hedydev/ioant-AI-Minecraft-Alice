@@ -1,3 +1,9 @@
+## 2026-11-04 — 额度交接：仍未完成，在线方块映射待核实
+
+运行PID1513191/version5，最后加载638e31f；sync50为Mint996/996、Mac334（3 skip）。床、个人重生点、睡眠均未通过实机验收。代码/只读审计已推送a891c26，接手详见BED_REPAIR_CHECKPOINT_20261104.md，该文已替换过期运行状态与额度自动恢复规则。
+
+只读54发现在线注册表handleStartGame会按哈希模式调用loadHashedRuntimeIds，故53离线顺序stateId不能证明交易ID错误。下一步有界检查helper、初始化调用和world/chunk/blockAt转换链；禁止猜哈希或反复点击。54已passed，无已知在途任务，下一新后缀55。旧typed睡眠1bb…已在46明确expired，不重发。用户将交给其他AI，交接后暂停alice-2，不在下轮额度自动争抢开发；旧网页监督继续暂停。
+
 ## 2026-11-04 — 已安装注册表使用顺序stateId，继续核对映射
 
 只读53成功加载实际bedrock_1.26.51注册表：spruce_door状态范围7870～7901，blockStates条目仅name/states/version，无network_id字段。结合52的真实blockNetworkIdsHashed=true与实际interact.js直接写referenceBlock.stateId，构成网络ID语义不一致的强线索，尚未证明实际bot.blockAt返回ID或某个中间层没有转换。因此禁止直接猜哈希算法或声称根因已经解决。
