@@ -1,7 +1,36 @@
 #!/usr/bin/env python3
 """Read only owner-verified current 17879 bed/night/witness state; no queries."""
-import json,os,shlex,subprocess,sys
+import inspect,json,os,re,shlex,subprocess,sys
 from pathlib import Path
+def summarize_bed_log(text):
+    markers={
+      '[Alice bed] explicit witnessed bed task:':'bed_admission',
+      '[Alice exploration] doorway approach outcome:':'door_approach',
+      '[Alice exploration] doorway approach gated:':'door_approach_gate',
+      '[Alice exploration] door interaction outcome:':'door_interaction',
+      '[Alice exploration] door interaction gated:':'door_interaction_gate',
+      '[Alice exploration] doorway passage outcome:':'door_passage',
+      '[Alice exploration] door first-cell BDS endpoint:':'door_endpoint',
+      '[Alice exploration] independent BDS door endpoint:':'passage_endpoint',
+      '[Alice home] independent bed-step endpoint:':'bed_endpoint',
+      '[Alice Bedrock] verified job result:':'job_result'}
+    events=[]
+    for line in text[-120000:].splitlines():
+        for marker,kind in markers.items():
+            if marker not in line:continue
+            try: value=json.JSONDecoder().raw_decode(line.split(marker,1)[1].strip())[0]
+            except (ValueError,TypeError):break
+            if not isinstance(value,dict):break
+            reason=value.get('reason')
+            if isinstance(reason,str):reason=reason.split(':',1)[0]
+            reason=reason if isinstance(reason,str) and re.fullmatch('[A-Za-z0-9_]{1,110}',reason) else None
+            event={'kind':kind,'reason':reason}
+            for key in ('attempted','serverMovementVerified','ok'):
+                if type(value.get(key)) is bool:event[key]=value[key]
+            if type(value.get('steps')) is int and 0<=value['steps']<=24:event['steps']=value['steps']
+            events.append(event)
+            break
+    return events[-12:]
 REMOTE=r"""
 import json,os,re,subprocess,time
 from pathlib import Path
@@ -12,7 +41,7 @@ out={'state':'unverified','connected':False,'health':None,
  'bedLogicVersion':None,'producerPid':None,'isSleeping':None,'personalBedStatus':'unknown',
  'sleepOpportunity':'unknown','lastBedFailure':'unknown',
  'nightSurvival':'unknown','idleGate':'unknown',
- 'hasFollowTarget':False,'jobActive':False}
+ 'hasFollowTarget':False,'jobActive':False,'bedLogRead':False,'bedEvents':[]}
 try:
  p=subprocess.run(['/usr/bin/python3',str(status_tool),'status'],capture_output=True,text=True,timeout=12,check=False)
  if p.returncode!=0 or len(p.stdout)>20000:raise ValueError('status')
@@ -48,12 +77,29 @@ try:
  if isinstance(a,str) and re.fullmatch('[A-Za-z0-9_]{1,75}',a):out['idleGate']=a
  out['hasFollowTarget']=bool(d.get('followTarget'))
  out['jobActive']=bool(d.get('job'))
+ location=(Path('/proc')/str(t['pid'])/'fd/1').resolve(strict=True)
+ if (location.parent!=root or not location.name.startswith('operator-') or
+     not location.is_file() or location.stat().st_uid!=os.getuid() or
+     location.stat().st_mode&0o077):raise ValueError('unsafe_log')
+ with open(location,'rb') as stream:
+  stream.seek(0,2);size=stream.tell();stream.seek(max(0,size-120000))
+  out['bedEvents']=summarize_bed_log(stream.read(120000).decode('utf-8','replace'))
+  out['bedLogRead']=True
 except (OSError,ValueError,TypeError,KeyError,subprocess.SubprocessError):pass
 print(json.dumps(out,separators=(',',':')))
 """
+REMOTE=inspect.getsource(summarize_bed_log)+'\n'+REMOTE
 def validate(x):
-    keys={'bedLogicVersion','producerPid','isSleeping','personalBedStatus','state','connected','health','phase','canSleep','rememberedBeds','sleepOpportunity','lastBedFailure','nightSurvival','idleGate','hasFollowTarget','jobActive'}
+    keys={'bedLogRead','bedEvents','bedLogicVersion','producerPid','isSleeping','personalBedStatus','state','connected','health','phase','canSleep','rememberedBeds','sleepOpportunity','lastBedFailure','nightSurvival','idleGate','hasFollowTarget','jobActive'}
     if not isinstance(x,dict) or set(x)!=keys or x['state'] not in ('observed','unverified'):return None
+    if type(x['bedLogRead']) is not bool or not isinstance(x['bedEvents'],list) or len(x['bedEvents'])>12:return None
+    for event in x['bedEvents']:
+        if not isinstance(event,dict) or set(event)-{'kind','reason','attempted','serverMovementVerified','ok','steps'}:return None
+        if event.get('kind') not in ('bed_admission','door_approach','door_approach_gate','door_interaction','door_interaction_gate','door_passage','door_endpoint','passage_endpoint','bed_endpoint','job_result'):return None
+        if event.get('reason') is not None and not re.fullmatch('[A-Za-z0-9_]{1,110}',event['reason']):return None
+        for field in ('attempted','serverMovementVerified','ok'):
+            if field in event and type(event[field]) is not bool:return None
+        if 'steps' in event and (type(event['steps']) is not int or not 0<=event['steps']<=24):return None
     return x
 def run(out):
     d=Path(out)
@@ -61,13 +107,15 @@ def run(out):
     obs=None
     try:
         p=subprocess.run(['/usr/bin/ssh','-T','-o','BatchMode=yes','-o','ConnectTimeout=8','-o','StrictHostKeyChecking=yes','tedz@192.168.0.104','/usr/bin/python3 -c '+shlex.quote(REMOTE)],capture_output=True,text=True,timeout=32,check=False)
-        if p.returncode==0 and len(p.stdout)<=1800:obs=validate(json.loads(p.stdout))
+        if p.returncode==0 and len(p.stdout)<=6000:obs=validate(json.loads(p.stdout))
     except (OSError,ValueError,subprocess.SubprocessError):pass
     data={'audit':'ALICE_EXISTING17879_SLEEP_READONLY','schemaVersion':1,'readOnly':True,'worldModified':False,'querytargetSent':False,'observation':obs}
     fd=os.open(d/'alice_current_sleep.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL|getattr(os,'O_NOFOLLOW',0),0o600)
     with os.fdopen(fd,'w') as f:json.dump(data,f,separators=(',',':'));f.write('\n')
     print(json.dumps({'state':obs['state'] if obs else 'unavailable'}))
 if __name__=='__main__':
-    if sys.argv[1:]==['--self-test']:print('ALICE_SLEEP_READONLY_SELFTEST_PASS')
+    if sys.argv[1:]==['--self-test']:
+        compile(REMOTE,'<bed-log-readonly>','exec')
+        print('ALICE_SLEEP_READONLY_SELFTEST_PASS')
     elif len(sys.argv)==3 and sys.argv[1]=='--inspect':run(sys.argv[2])
     else:raise SystemExit('usage: --self-test | --inspect OUTPUT_DIR')

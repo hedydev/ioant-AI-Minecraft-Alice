@@ -1,3 +1,11 @@
+## 2026-11-04 — 取证准入已接通，继续审计门阶段
+
+首次生命兼容源码8ce3cd3实际通过非重启sync26：Mint990/990、Mac327 skip3；批准restart27完成PID1471802→1475661，owner/连接/会话正常。新的一次性sleep验收29（与旧set_spawnpoint不同的新版本测试）commandId60fa201b1a6e4ab7b63cd49716f6bd83曾started，读回30已出现door阶段、bedWitness=intent/needs_evidence；只读31实际demandNow=true，说明床取证需求已进入原定时器。
+
+后续只读33确认新sleep请求也已bed_request_expired，不重发。只读34确认position_pair_verified、独立样本4、预算4/40、无退避、BDS位移0；说明取证确实成功，但不能证明门前输入或到床。有限观察32的210秒未捕捉到合格坐标窗口，仅是该观察器结果，不能推断定时器没查询。下一步必须读取当前PID真实门阶段结果，不能继续猜测。
+
+扩展原alice_17879_bed_readonly固定任务：只读当前owner日志最后120KB，仅输出最近12个床/门/任务原因枚举与布尔结果，不输出坐标、玩家名、原始日志、凭证；bedLogRead明确区分未读日志。没有运行时变更、重启、游戏指令或BDS查询。新增3项解析/隐私/长度测试，完整Mac回归待记录。
+
 ## 2026-11-04 — 首次生命的取证边界兼容修正
 
 版本4源码8fffbeb已经实际通过非重启sync23（Mint989/989，Mac327 skip3），原批准restart24完成PID1380268→1471802，加载读回25确认bedLogicVersion=4/连接正常。只读bedWitness仍为空。审查真实movement_evidence.cjs确认首次登录的lifeEpochAt=null，仅死亡重生后才有数字；初版bed需求只接受整数，错误地拒绝首次生命。修正为明确null或整数，并要求描述和当前observer精确相等；缺字段、换生命/登录/epoch、STOP/危险仍拒绝。压缩心跳和Python定时器同步遵循相同语义，不增加查询量或放宽门禁。Node31项及Python取证12项专项通过，完整Mint/加载待新回执；这是实现缺陷修正，仍未证明床实机成功。没有发送新的床指令。
