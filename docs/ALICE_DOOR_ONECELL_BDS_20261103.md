@@ -154,3 +154,8 @@
 - `alice_r75_nav_05`：本生命 acceptance journal `partialEndpointCount=2`、`confirmedEndpointCount=0`、`unverifiedEndpointCount=0`；`alice_r75_door_03` 木门优先/接近/开门/门口 BDS 事件均为 0。`alice_r75_home_04` 白天、记忆两床，但无加载的可用床、个人重生点和 HOME 均未验证；当前床步骤没有真实 BDS 终点。
 - `alice_r75_collision_06` 为 **client_chunk_cache_not_bds**：相对(-3,-3)云杉门上下半均关闭；名义中心线 5 格，首格两个候选、并非实际 BDS 可执行路线。`alice_r75_voxels_07`：最近门约4.2格；两床相对(-9,-9)、(-10,-9)，最近约12.7格，不能把床当作当前可立即交互。
 - 为区分“实时门优先分支未进入”与“进入后缺少合法 BDS 起点”，本次只扩展既有 `alice-door-lifecycle-readonly.py` 对**现存 owner 进程有限日志和当前 status**的去标识化枚举：当前 PID、昼夜/决策/idleGate、最近已有逃生扫描是否观察到门及路点数、资源机会和 idle gate 的既有事件。绝不输出原始日志或坐标、不追加任何 BDS 查询或游戏输入；此诊断修改**仅为脚本，不要求重启 Alice**，需后续固定 MCP 实测。保留 40/h、180s、240s 和 STOP/FOLLOW 全部原安全条件。
+
+### rev75 日志统计器时间戳修正（只读，无客户端重启）
+
+- `alice_r75_door_diag_live_09` 实际执行了扩展版只读报告，验证PID1008401、当前独立样本16和 night、历史 `WAIT/FIND_ROOM_EXIT/observed_indoor_wooden_door_first`，但发现扫描、资源、idle gate日志全部为0，不能据此得出运行期从未发生这些事件。
+- 源码 `src/main.cjs` 的 `--production-start` 在任何业务日志前通过 `timestamped_stdio.cjs` 给每行加上 `[ISO8601 PID=N] ` 前缀。原脚本用 `line.startswith('[Alice ...')` 全部漏计，属于**证据读取器假阴性**。修订为只接受与 owner PID 完全一致的时间戳前缀，在有界250KB已有日志尾内去前缀后再按原枚举事件解析；增加 `scannedLogLines`、`ownerStampedLogLines` 用于识别日志为空与解析失败；自测同时覆盖正确时间戳与无前缀反例。只有后续真实新报告才可确定门事件是否发生，历史0次计数不得作为否定性证据。不读取私有世界、不会请求BDS/走动/重启。

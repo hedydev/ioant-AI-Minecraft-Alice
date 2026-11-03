@@ -24,7 +24,8 @@ result={'state':'unverified','currentOwner':False,'connected':False,'sessionEsta
  'decisionAgeBand':'unknown','surveyLogCount':0,'lastSurveyLogStatus':'unknown',
  'lastSurveyLogReason':'unknown','lastSurveyLogDoor':False,'lastSurveyLogSteps':None,
  'resourceLogCount':0,'lastResourceLogAction':'unknown','lastResourceLogReason':'unknown',
- 'idleGateLogCount':0,'lastIdleGateLog':'unknown'}
+ 'idleGateLogCount':0,'lastIdleGateLog':'unknown',
+ 'scannedLogLines':0,'ownerStampedLogLines':0}
 valid_text=lambda v: v if isinstance(v,str) and re.fullmatch('[a-z][a-z0-9_:]{0,89}',v) else 'unknown'
 try:
  script=Path.home()/'minecraft-ai/scripts/alice-mint.py'
@@ -81,6 +82,7 @@ try:
  with open(log,'rb') as fp:
   fp.seek(0,2);size=fp.tell();fp.seek(max(0,size-250000))
   lines=fp.read(250000).decode('utf-8','replace').splitlines()
+ result['scannedLogLines']=len(lines)
  types={
   '[Alice exploration] enclosed-door priority:':'doorPriorityCount',
   '[Alice exploration] doorway approach outcome:':'doorApproachOutcomeCount',
@@ -88,6 +90,13 @@ try:
   '[Alice exploration] door interaction outcome:':'doorOpenOutcomeCount',
   '[Alice exploration] doorway approach gated:':'doorApproachGatedCount'}
  for line in lines:
+  # Production stdout is timestamped BEFORE all Alice log labels.
+  # Reject unprefixed/other-owner records rather than miscounting as zero
+  # or accepting data from a prior process in a reused log file.
+  stamp=re.match(r'^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2} PID=(\d+)\] ',line)
+  if stamp is None or int(stamp.group(1))!=pid:continue
+  result['ownerStampedLogLines']+=1
+  line=line[stamp.end():]
   # Read only anonymized enums, never emit raw operator log or coordinates.
   for prefix,kind in (('[Alice exploration] escape survey:','survey'),
                       ('[Alice mission] resource opportunity:','resource'),
@@ -142,7 +151,8 @@ KEYS={'state','currentOwner','connected','sessionEstablished','autonomyEnabled',
       'currentPid','worldPhase','idleGate','lastDecisionAction','lastDecisionGoal',
       'lastDecisionReason','decisionAgeBand','surveyLogCount','lastSurveyLogStatus',
       'lastSurveyLogReason','lastSurveyLogDoor','lastSurveyLogSteps','resourceLogCount',
-      'lastResourceLogAction','lastResourceLogReason','idleGateLogCount','lastIdleGateLog'}
+      'lastResourceLogAction','lastResourceLogReason','idleGateLogCount','lastIdleGateLog',
+      'scannedLogLines','ownerStampedLogLines'}
 
 def valid(row):
     if not isinstance(row,dict) or set(row)!=KEYS or row['state'] not in ('observed','unverified'):
@@ -156,7 +166,8 @@ def valid(row):
     for k in ('doorPriorityCount','doorApproachOutcomeCount','doorApproachBdsVerifiedCount',
               'doorApproachBdsRejectedCount','doorOpenOutcomeCount','doorApproachGatedCount'):
         if type(row[k]) is not int or not 0<=row[k]<=10000000:return None
-    for k in ('surveyLogCount','resourceLogCount','idleGateLogCount'):
+    for k in ('surveyLogCount','resourceLogCount','idleGateLogCount',
+              'scannedLogLines','ownerStampedLogLines'):
         if type(row[k]) is not int or not 0<=row[k]<=10000000:return None
     if row['currentPid'] is not None and (type(row['currentPid']) is not int or row['currentPid']<=0):return None
     for k in ('independentSamples','doorApproachSteps','lastDoorPrioritySteps','lastSurveyLogSteps'):
@@ -206,6 +217,13 @@ def selftest():
     assert "'[Alice exploration] escape survey:'" in REMOTE
     assert "'currentPid'" in REMOTE
     assert 'bdsCommandSent' not in REMOTE
+    # Production output is prefixed by timestamped_stdio.cjs, not marker at column zero.
+    pattern=r'^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2} PID=(\d+)\] '
+    sample='[2026-11-03T22:01:08.123+08:00 PID=1008401] [Alice exploration] escape survey: {}'
+    stamp=re.match(pattern,sample)
+    assert stamp and stamp.group(1)=='1008401' and sample[stamp.end():].startswith('[Alice exploration] escape survey:')
+    assert re.match(pattern,'[Alice exploration] escape survey: {}') is None
+    assert 'ownerStampedLogLines' in REMOTE and 'line=line[stamp.end():]' in REMOTE
     print('ALICE_DOOR_AUTONOMY_READONLY_SELFTEST_PASS')
 
 if __name__=='__main__':
