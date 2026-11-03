@@ -3,7 +3,7 @@
 // itself a staircase, and neither a visual step nor local jump physics
 // provides independent Bedrock server movement proof.
 const {knownAir}=require('./scout_routes.cjs')
-const {fullSupport}=require('./escape_survey.cjs')
+const {fullSupport,knownWalkingClear}=require('./escape_survey.cjs')
 const {observedDoorBits}=require('./escape_door_action.cjs')
 const {planOpenDoorLane}=require('./door_lane.cjs')
 const WOOD_DOOR=/^(oak|spruce|birch|jungle|acacia|dark_oak|mangrove|cherry|bamboo|crimson|warped|pale_oak|wooden)_door$/
@@ -23,7 +23,7 @@ function candidateOneBlockJump(bot,{toward=null}={}){
   try{return bot.blockAt(pos.offset(x-pos.x,y-pos.y,z-pos.z))||null}
   catch{return null}
  }
- // The start cell needs solid support and three known-clear blocks of
+ // Passive torches with VERIFIED empty collision boxes are valid body/jump\n // clearance, just like in the swept flat/door checks. Unknown blocks, roof\n // shapes, and unsupported collision boxes still fail closed.\n // The start cell needs solid support and three known-clear blocks of
  // vertical jump clearance, not just normal 2-block walking clearance.
  const origin=read(root.x,root.y,root.z),upper=read(root.x,root.y+1,root.z)
  const lowBits=observedDoorBits(origin),upBits=observedDoorBits(upper)
@@ -31,8 +31,8 @@ function candidateOneBlockJump(bot,{toward=null}={}){
    normal(origin)===normal(upper)&&
    lowBits.open===true&&lowBits.upper===false&&upBits.upper===true
  if(!fullSupport(read(root.x,root.y-1,root.z))||
-    !(openDoorOrigin?[2,3].every(d=>knownAir(read(root.x,root.y+d,root.z))):
-      [0,1,2,3].every(d=>knownAir(read(root.x,root.y+d,root.z)))))
+    !(openDoorOrigin?[2,3].every(d=>knownWalkingClear(read(root.x,root.y+d,root.z))):
+      [0,1,2,3].every(d=>knownWalkingClear(read(root.x,root.y+d,root.z)))))
    return fail('jump_origin_support_or_headroom_unverified')
  const steps=[]
  for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){
@@ -47,7 +47,7 @@ function candidateOneBlockJump(bot,{toward=null}={}){
   }
   // The top of the raised block becomes the new floor; two-block body
   // clearance plus extra rise headroom are required.
-  if(![1,2,3].every(d=>knownAir(read(x,y+d,z))))continue
+  if(![1,2,3].every(d=>knownWalkingClear(read(x,y+d,z))))continue
   // Do not enter a space occupied by a monster, player, or other entity,
   // regardless of whether that entity is currently attacking.
   if(Object.values(bot.entities||{}).some(e=>finite(e?.position)&&
