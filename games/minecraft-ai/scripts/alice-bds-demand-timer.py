@@ -119,6 +119,35 @@ def safe_night_witness_need(d):
     )
 
 
+def safe_daytime_door_witness_need(d, now_ms=None):
+    # A recently ADMITTED, non-destructive enclosed-door goal may be waiting
+    # for a fresh BDS origin when the unrelated raw-material work timer is
+    # cooling down. This ONLY enables the pre-existing bounded witness timer,
+    # not any movement/door act or exception to STOP/FOLLOW/safety checks.
+    wr = d.get("worldRoutine") or {}
+    decision = wr.get("decision") or {}
+    goal = d.get("longTermGoal") or {}
+    if now_ms is None:
+        now_ms = int(time.time() * 1000)
+    at = decision.get("at") if isinstance(decision, dict) else None
+    return bool(
+        wr.get("phase") == "day" and
+        wr.get("idleGate") == "work_cooldown" and
+        isinstance(decision, dict) and
+        decision.get("phase") == "day" and
+        decision.get("action") == "WAIT" and
+        decision.get("goal") == "FIND_ROOM_EXIT" and
+        decision.get("reason") == "observed_indoor_wooden_door_first" and
+        type(at) is int and type(now_ms) is int and
+        0 <= now_ms - at <= 90000 and
+        d.get("job") is None and
+        d.get("followTarget") is None and
+        isinstance(goal, dict) and
+        goal.get("phase") in ("WAITING", "READY", "BLOCKED") and
+        goal.get("reason") not in ("user_stop", "player_override")
+    )
+
+
 def demand_now(d):
     e = d.get("movementEvidence") or {}
     settings = d.get("settings") or {}
@@ -135,7 +164,8 @@ def demand_now(d):
         # raw-material work cools down; NEVER admit arbitrary cooldowns.
         (wr.get("idleGate") in
             ("position_witness_unverified", "eligible_for_work") or
-         safe_night_witness_need(d)) and
+         safe_night_witness_need(d) or
+         safe_daytime_door_witness_need(d)) and
         isinstance(need, dict) and
         need.get("state") in
             ("needs_two_fresh_samples", "needs_second_fresh_sample") and
@@ -419,6 +449,39 @@ def selftest():
     assert not demand_now({**night,"job":"EXPLORE"})
     assert not demand_now({**night,"movementEvidence":{**night["movementEvidence"],
        "witnessDemand":{"state":"fresh_pair_aligned","positionGateSatisfied":True}}})
+
+    door={**night,
+       "longTermGoal":{"phase":"WAITING","reason":"waiting_for_safe_route"},
+       "worldRoutine":{"phase":"day","idleGate":"work_cooldown",
+         "decision":{"action":"WAIT","goal":"FIND_ROOM_EXIT",
+           "reason":"observed_indoor_wooden_door_first","phase":"day","at":1000000}}}
+    assert safe_daytime_door_witness_need(door,now_ms=1000000)
+    assert safe_daytime_door_witness_need(door,now_ms=1090000)
+    assert not safe_daytime_door_witness_need(door,now_ms=1090001)
+    assert not safe_daytime_door_witness_need(door,now_ms=999999)
+    assert not safe_daytime_door_witness_need({**door,
+       "worldRoutine":{**door["worldRoutine"],"phase":"night"}},now_ms=1000000)
+    assert not safe_daytime_door_witness_need({**door,
+       "worldRoutine":{**door["worldRoutine"],
+         "decision":{**door["worldRoutine"]["decision"],"reason":"site_not_rejected"}}},
+         now_ms=1000000)
+    assert not safe_daytime_door_witness_need({**door,
+       "worldRoutine":{**door["worldRoutine"],"idleGate":"vertical_hold"}},
+       now_ms=1000000)
+    assert not safe_daytime_door_witness_need({**door,"job":"EXPLORE"},now_ms=1000000)
+    assert not safe_daytime_door_witness_need({**door,"followTarget":"Steve"},now_ms=1000000)
+    assert not safe_daytime_door_witness_need({**door,"longTermGoal":None},now_ms=1000000)
+    assert not safe_daytime_door_witness_need({**door,
+       "longTermGoal":{"phase":"PAUSED","reason":"user_stop"}},now_ms=1000000)
+    # Independent witness demand and autonomy remain the outer authoritative
+    # gates; this helper cannot itself issue an unbounded BDS query.
+    now=int(time.time()*1000)
+    current={**door,"worldRoutine":{**door["worldRoutine"],
+       "decision":{**door["worldRoutine"]["decision"],"at":now}}}
+    assert demand_now(current)
+    assert not demand_now({**current,"movementEvidence":{**current["movementEvidence"],
+       "witnessDemand":{"state":"fresh_pair_aligned","positionGateSatisfied":True}}})
+    assert not demand_now({**current,"settings":{"autonomyEnabled":False,"agentMode":"autonomous"}})
 
     assert MAX_HOURLY==40 and MIN_BATCH_SECONDS>=55 and SUSTAINED_BATCH_SECONDS>=180
     print("ALICE_BDS_DEMAND_TIMER_SELFTEST_PASS")
