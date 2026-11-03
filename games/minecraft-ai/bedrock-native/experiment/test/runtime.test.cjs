@@ -979,7 +979,7 @@ test('daylight autonomous resource goal prioritizes enclosed wooden exit before 
  e.stop()
 })
 
-test('narrow six-cell corridor frontier does not suppress daylight wooden door priority',async()=>{
+test('narrow corridor with radius-edge frontier retains a side wooden-door priority',async()=>{
  let now=100000,opened=0,dug=0
  const evidence={get:()=>({independentSource:'bds_querytarget',
   independentSamples:3,independentAt:99980,independentPreviousAt:99950,
@@ -997,7 +997,7 @@ test('narrow six-cell corridor frontier does not suppress daylight wooden door p
  f.bot.dig=()=>{dug++}
  f.bot.blockAt=p=>{
   const x=Math.floor(p.x),y=Math.floor(p.y),z=Math.floor(p.z)
-  if(x===0&&z===7&&y===65)return {name:'spruce_door',boundingBox:'block',
+  if(x===1&&z===4&&y===65)return {name:'spruce_door',boundingBox:'block',
     getProperties:()=>({open_bit:0,upper_block_bit:0})}
   if(x===0&&z>=0&&z<=6)return y===64?
     {name:'oak_planks',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}:
@@ -1009,7 +1009,7 @@ test('narrow six-cell corridor frontier does not suppress daylight wooden door p
  assert.equal(Boolean(e.failureMemory.blocked('wood',f.bot.entity.position)),false)
  await e.idleTick()
  assert(e.lastEscapeSurvey?.openFrontier,'the narrow corridor reaches the scan boundary')
- assert.equal(e.lastEscapeSurvey?.door?.approach?.steps,6)
+ assert.equal(e.lastEscapeSurvey?.door?.approach?.steps,4)
  assert.equal(e.lastIdleDecision?.goal,'FIND_ROOM_EXIT')
  for(let i=0;i<30&&!e.lastEscapeDoorAction;i++)await new Promise(r=>setImmediate(r))
  assert.equal(f.calls.filter(x=>x[0]==='goto').length,1)
