@@ -29,3 +29,18 @@
 3. 到达门口后，仅一次木门打开动作，独立查看上下半 `open_bit`；跨门验证 BDS 落点后，再推进已知两床的重生点设置、夜间睡眠与 HOME 回程。
 
 正式BDS仍为 Mint `192.168.0.104` UDP `17879` 世界 `Bedrock level`；没有改动世界/BDS/玩家档案/认证。原不明重启回执及已有恢复审阅链均保留。
+
+## 继续验收：真实移动与 7 格门前路线（rev71，2026-11-03）
+
+本节是在单格 BDS 验收之后的独立更新；历史失败/状态不可覆盖。
+
+- 真实上线客户端 PID `4054628`，只读 `alice_r71_live_gate_01` 和 `alice_r71_demand_audit_02` 确认独立 BDS 样本 **14**、真实本生命服务器累计行走 **3.42 格**、movingQueued=25、owner/heartbeat/connectivity 正常；注意 `independentFreshPair=false` 只意味着报告读取瞬间旧样本超过4秒。
+- `alice_r71_model_navigation_03` 从**当前生命 acceptance journal**验证 `partialEndpointCount=4`、`confirmedEndpointCount=0`；这是 BDS 认证的真实部分位移，不是任何整条目标路线成功，更不是木门/床成功。模型本生命三次 tool proposal（last=observe），无证据表明模型本身直接证明任何动作。
+- `alice_r71_home_status_04`：白天，记忆 2 张床，HOME not_established、个人重生点 not_verified、doorKnown=false、exitVerified=false；最近床动作 `jump_origin_support_or_headroom_unverified`，没有可确认的床位运动。
+- `alice_r71_door_collision_05` 用 **client_chunk_cache_not_bds** 读取 1350 碰撞记录、unknown0、实际云杉门两半均 closed，读到从名义 Alice 网格中心到门前的 **7 段**安全、平坦、0.6宽×1.8高扫掠中心线（名义相对位置门(-3,-5)，邻格(-3,-4)），有 17 个可达名义中心；不证明 Alice 真位于格心或能真实执行。
+- 根因：`src/escape_approach.cjs` 的 `MAX_WAYPOINTS=6` 会在执行前拒绝门前完整观察路线长度7，即使身体检验和执行器仍然只驱动1格。已将**观察上限**扩大为12（与 `escape_survey.cjs` 12格输出上限对齐），仍严格只输入第一格、每格独立 BDS endpoint 验证。绝无一口气行走12格或任何门/世界操作。新增 `test/escape_approach.test.cjs` 的7格观察但仅1个 goto 用例，并保留13格拒绝。
+- Git 功能提交 `2e98685c10e4c621e0ade10527cd609543094076`，Mac固定 `repository_sync`=`alice_r71_sevenstep_sync_06` PASS；非重启Mint部署回归 `alice_r71_sevenstep_mint_07` **Node24 932/932，0 fail、0 skipped**，且 BDS/world 均未改；Mac `alice_r71_sevenstep_mac_08` PASS Python 321 项（skip3，0 fail）。
+- 正式客户端按既有用户审批一次受控重启 `alice_r71_sevenstep_reload_09` PASS：旧PID4054628→**新PID4070986**，新进程 alive/fresh/connected/session/owner/world/port 全true，`replacementCount=1`、`bdsRestarted=false`、`worldChanged=false`。
+- 新登录状态 `alice_r71_sevenstep_post_status_10`：IDLE、autonomous、HP20/food20，新生命 independentSamples0（先前旧 PID 的14个样本失效），`prior_login_witness` 正常。需求服务 `alice_r71_sevenstep_post_demand_11` 只读：timer active/enabled, optedIn/ownerValid/demandNow=true, budgetUsed2/40、lastBatchAge约179秒、independentSamples0、serverTravel0，`lastServiceResult=no_navigation_demand` 是最近一次历史系统服务结果，不代表 timer 关闭。新的一轮双 BDS 见证**尚未完成**，不可以宣称已到木门。下一步应读取新生命原生 BDS witness 与逃生诊断，不重放一次性操作或人为消耗预算。
+
+所有读操作遵守固定 OpenClaw 域、执行器和原正式世界限制。新PID的前进目标必须重新扫描，不能重用旧PID(-3,-5)相对坐标。
