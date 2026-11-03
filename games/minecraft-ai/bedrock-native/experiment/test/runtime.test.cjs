@@ -964,7 +964,7 @@ test('daylight autonomous resource goal prioritizes enclosed wooden exit before 
  }
  e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
  e.lastHumanAt=0;e.nextIdleAt=0
- assert.equal(e.failureMemory.blocked('wood',f.bot.entity.position),false)
+ assert.equal(Boolean(e.failureMemory.blocked('wood',f.bot.entity.position)),false)
  await e.idleTick()
  assert.equal(e.lastEscapeSurvey?.door?.approach?.steps,4)
  for(let i=0;i<15&&!e.lastEscapeDoorAction;i++)await new Promise(r=>setImmediate(r))
