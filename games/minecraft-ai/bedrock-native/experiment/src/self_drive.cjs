@@ -8,8 +8,16 @@ function sceneFromSurvey(survey){
   if(survey.openFrontier&&survey.reachableCells>=OPEN_CELLS_MIN)
     return {kind:'open_local_area',reason:'wide_loaded_reachable_area',
       reachableCells:survey.reachableCells,frontier:survey.openFrontier.target||null}
-  if(survey.door&&!survey.openFrontier)
-    return {kind:'door_limited_area',reason:'bounded_reachable_room_with_door',
+  // A path touching the scan-radius edge is only a LOCAL frontier.
+  // In a narrow room/corridor it is not proof of a real outdoor exit;
+  // preserve a separately validated wooden-door candidate. Wide reachable
+  // ground keeps the higher-priority open-area rule above.
+  if(survey.door&&(!survey.openFrontier||
+      survey.reachableCells<OPEN_CELLS_MIN))
+    return {kind:'door_limited_area',
+      reason:survey.openFrontier?
+        'small_loaded_area_frontier_not_outdoor_proof':
+        'bounded_reachable_room_with_door',
       reachableCells:survey.reachableCells,door:survey.door.position}
   return {kind:'limited_or_unknown',reason:survey.reason||'insufficient_scene_evidence',
     reachableCells:survey.reachableCells||0}
