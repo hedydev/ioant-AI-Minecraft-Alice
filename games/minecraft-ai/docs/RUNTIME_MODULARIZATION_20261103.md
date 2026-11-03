@@ -69,4 +69,14 @@ After the fourth wave, source dimensions are root runtime **687 lines**, autonom
 
 ## 2026-11-04 — Fifth wave, staged
 
-Resource and wooden-door strategy branches moved to synchronous feature factories, with original async job closures unchanged. Final regression pending.
+Resource and wooden-door strategy branches moved to synchronous feature factories, with original async job closures unchanged. Full Mac/Mint acceptance PASS (970/970 Node24, Mac Python321 skip3).
+
+## Fifth-wave acceptance — 2026-11-04
+
+- Verified commit: `8a2a10edc24056c21bc1a7d27148695345c21932`.
+- `autonomy/idle_methods.cjs` reduced from **592 to 368 lines**. Extracted `autonomy/resource_strategy.cjs` (49 lines) and `autonomy/door_strategy.cjs` (210 lines). Existing synchronous review and job admission logic is preserved, and the one asynchronous IDLE entry remains unchanged.
+- The Mac fixed executor receipt `alice_r79_resource_door_mac_01` is PASSED: **321 Python tests / 3 skipped / 0 failures**, clean worktree.
+- The Mint fixed executor receipt `alice_r79_resource_door_mint_02` is PASSED: **970/970 Node24 tests**, 0 failures or skips; 321 Mac Python tests / 3 skipped. Non-restart source sync returned `aliceRestarted=false`, `bdsRestarted=false`, `worldModifiedByTask=false`, `consoleCommandSent=false`.
+- New `test/autonomy_resource_door_strategy.test.cjs` exercises synchronous resource admission, denied motion, stale and fresh door review, blocked door execution, and preserved async IDLE entrypoint.
+- Existing module-growth limits remain root `runtime.cjs <=800` and each feature CJS `<=650` lines. Do not weaken BDS authority, 40/hour query budget, 180s throttle, 240s single-cell post-input proof, STOP/FOLLOW/threat/collision gates.
+- Deployment/runtime boundary: the live Alice Node process was **not restarted/hot-reloaded**. Source regression success is not evidence of opening a door, crossing it, sleeping, setting spawnpoint, or returning HOME.

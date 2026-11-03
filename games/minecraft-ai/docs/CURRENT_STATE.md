@@ -1,3 +1,9 @@
+## 2026-11-04 — 第五批资源/木门策略拆分：完整 Mac/Mint 回归通过
+
+验收源码提交 `8a2a10edc24056c21bc1a7d27148695345c21932`：`autonomy/idle_methods.cjs` **592→368 行**；新增 `autonomy/resource_strategy.cjs` **49 行**和 `autonomy/door_strategy.cjs` **210 行**。三个原同步片段已按原执行顺序搬迁，资源策略保留天然树与 GATHER/CRAFT 准入，木门策略保留过期调查、门前接近/打开/穿越门任务资格及独立BDS单格检查。原 `runIdleDecision` 单一 async 入口和任务闭包未改，没有额外 await、第二套 bot/定时器或世界操作。
+
+真实固定 OpenClaw MCP 验收：`alice_r79_resource_door_mac_01` Mac Python321（3 skip、0 fail）、本地工作区干净；`alice_r79_resource_door_mint_02` Mint Node24 **970/970**、0 skip/fail，Mac Python321（3 skip），非重启同步 PASS。回执 `aliceRestarted=false`、`bdsRestarted=false`、`worldModifiedByTask=false`、`consoleCommandSent=false`。新增6项模块测试保留原 BDS/门候选/资源安全准入。生产 Alice 仍运行旧 Node 进程，未热加载本次源码；不得宣称已实机完成开门、穿门、床重生点、HOME。
+
 ## 2026-11-04 — Fifth wave: resource/door strategy source extraction (pending full regression)
 
 Verified revision79, clean matching local/remote d4432cf and previous Mint 964/964 receipts. Split original IDLE resource opportunity (natural tree, gather/craft, motion evidence, night fallback), current/stale door candidate review, and WAIT-door task admission into synchronous `resource_strategy.cjs` and `door_strategy.cjs`. Preserve old method body line order and runIdleDecision async scheduler, no extra await or new actor/timer, same BDS proof/door approach/stop/follow/safety cooldown. Added six source-level behavioral fixture tests; no Alice/BDS restart, command or world change. Mac/Mint full receipt pending.

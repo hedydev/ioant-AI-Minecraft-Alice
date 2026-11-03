@@ -1,3 +1,7 @@
+## 2026-11-04 — 资源/木门同步策略完成拆分（非实机功能升级）
+
+第五批保留旧资源/木门任务门禁，将原 `idle_methods.cjs` 缩至368行，新增49行资源策略与210行木门策略，Mint Node24 970/970、Mac Python321 skip3/0fail。未重启当前 Alice/BDS，不更改世界，不代表开门/穿门等行为实机成功。
+
 ## 2026-11-04 — Fifth wave: resource/door strategy source extraction (pending full regression)
 
 Verified revision79, clean matching local/remote d4432cf and previous Mint 964/964 receipts. Split original IDLE resource opportunity (natural tree, gather/craft, motion evidence, night fallback), current/stale door candidate review, and WAIT-door task admission into synchronous `resource_strategy.cjs` and `door_strategy.cjs`. Preserve old method body line order and runIdleDecision async scheduler, no extra await or new actor/timer, same BDS proof/door approach/stop/follow/safety cooldown. Added six source-level behavioral fixture tests; no Alice/BDS restart, command or world change. Mac/Mint full receipt pending.

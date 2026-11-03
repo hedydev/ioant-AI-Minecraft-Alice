@@ -1,3 +1,9 @@
+## 2026-11-04 — 第五批资源与木门策略职责确认
+
+`autonomy/resource_strategy.cjs` 同步返回 `{handled,place,woodFailure,movementFailure,observedTree}`，原运行时在原位置处理 `handled` 并执行同一已批准的任务闭包。
+
+`autonomy/door_strategy.cjs` 的同步 `reviewDoorStrategy` 返回原 `decision/freshDoor/indoorDoorPriority/doorDriven/proposedRoute/drive`；`runDoorWaitStrategy` 保留原 WAIT 中无异步等待的木门任务准入与内部 async task callbacks，返回布尔值标明是否由旧代码直接早退。所有函数继续通过 `.call(this)` 使用同一个 Alice 实例，既有30s/90s/180s/600s退避、BDS后验/STOP/FOLLOW/伤害与地形条件不能被模块化更改。详见 `RUNTIME_MODULARIZATION_20261103.md`，本批自动化验收 Mint970/970。
+
 ## 2026-11-04 — Resource and door strategy ownership
 
 `features/autonomy/resource_strategy.cjs` owns synchronous observed resource opportunities and existing gather/craft admission; `door_strategy.cjs` owns fresh/stale wooden-door selection and guarded WAIT-door job admission. Callers keep same Alice `this`, async IDLE body, action callbacks and BDS/collision/safety proof; no extra async boundary or second controller.
