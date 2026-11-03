@@ -1,3 +1,9 @@
+## 2026-11-04 — 已安装注册表使用顺序stateId，继续核对映射
+
+只读53成功加载实际bedrock_1.26.51注册表：spruce_door状态范围7870～7901，blockStates条目仅name/states/version，无network_id字段。结合52的真实blockNetworkIdsHashed=true与实际interact.js直接写referenceBlock.stateId，构成网络ID语义不一致的强线索，尚未证明实际bot.blockAt返回ID或某个中间层没有转换。因此禁止直接猜哈希算法或声称根因已经解决。
+
+现将同一只读源码审计限缩至已安装prismarine-chunk/block/registry的映射函数片段（最多7文件/14KB，拒绝外链及大文件），供核对已有运行时映射，不读取账号/世界/玩家资料，也不点击门或更改协议。
+
 ## 2026-11-04 — 实际自身角色member，服务端启用哈希方块ID
 
 源码638e31f经sync50通过Mint996/996、Mac334 skip3，原批准restart51完成PID1507358→1513191。只读52确认source=start_game_self、role=member、blockNetworkIdsHashed=true、authoritativeInventory=true，sneaking=false/usingItem=false；door单独权限位仍未知，不推断为允许或拒绝。当前没有新点击（blockClicksSerialized=0），个人床仍not_verified；没有为采集数据重发旧床请求。

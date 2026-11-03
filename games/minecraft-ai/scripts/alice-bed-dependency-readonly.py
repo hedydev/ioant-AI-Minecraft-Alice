@@ -40,6 +40,26 @@ def interaction_policy(home):
         result['gameMode']=props['gamemode']
     return result
 
+def mapping_sources(base):
+    base=Path(base);rows=[];budget=14000
+    for package in ('prismarine-chunk','prismarine-block','prismarine-registry'):
+        root=base/package
+        if not root.is_dir() or root.is_symlink():continue
+        files=[root/'index.js']+list((root/'src').rglob('*.js'))+list((root/'lib').rglob('*.js'))
+        for file in files[:100]:
+            if not file.is_file() or file.is_symlink() or file.stat().st_size>100000:continue
+            if not file.resolve().is_relative_to(root.resolve()):continue
+            text=file.read_text();lines=text.splitlines()
+            hits=[i for i,line in enumerate(lines) if re.search('fnv|networkId|NetworkId|runtimeIdTo|stateIdTo|blockMappings|block_network_ids_are_hashes',line)]
+            if not hits:continue
+            selected=set()
+            for i in hits[:5]:selected.update(range(max(0,i-8),min(len(lines),i+30)))
+            source='\n'.join(str(i+1)+': '+lines[i] for i in sorted(selected))[:min(budget,5000)]
+            rows.append({'plugin':str(file.relative_to(base)),'sha256':hashlib.sha256(text.encode()).hexdigest(),'source':source})
+            budget-=len(source)
+            if budget<=0 or len(rows)>=7:return rows
+    return rows
+
 NODE_REGISTRY=r'''
 const {createRequire}=require('node:module'),path=require('node:path');
 const req=createRequire(path.join(process.cwd(),'package.json'));
@@ -61,7 +81,7 @@ console.log(JSON.stringify({requested,loadedVersion:registry.version?.minecraftV
  registryKeys:Object.keys(registry).filter(k=>/block|hash|runtime/i.test(k)).slice(0,25),
  spruceDoor:block?{id:block.id,minStateId:block.minStateId,maxStateId:block.maxStateId}:null,samples}));
 '''
-REMOTE="import hashlib,json,re,subprocess\nfrom pathlib import Path\n"+inspect.getsource(read_plugins)+'\n'+inspect.getsource(interaction_policy)+"\nnode=Path.home()/'.local/share/alice-bedrock/node24/current/bin/node'\np=subprocess.run([str(node),'-'],input="+repr(NODE_REGISTRY)+",cwd=Path.home()/'minecraft-ai/bedrock-native/experiment',capture_output=True,text=True,timeout=15,check=False)\nregistry=json.loads(p.stdout) if p.returncode==0 and len(p.stdout)<6000 else {'state':'unavailable'}\nprint(json.dumps({'plugins':read_plugins(Path.home()/'minecraft-ai/bedrock-native/experiment/node_modules/mineflayer/lib/bedrock_plugins'),'serverInteractionPolicy':interaction_policy(Path.home()),'installedRegistry':registry}))\n"
+REMOTE="import hashlib,json,re,subprocess\nfrom pathlib import Path\n"+inspect.getsource(read_plugins)+'\n'+inspect.getsource(interaction_policy)+'\n'+inspect.getsource(mapping_sources)+"\nbase=Path.home()/'minecraft-ai/bedrock-native/experiment/node_modules'\nnode=Path.home()/'.local/share/alice-bedrock/node24/current/bin/node'\np=subprocess.run([str(node),'-'],input="+repr(NODE_REGISTRY)+",cwd=base.parent,capture_output=True,text=True,timeout=15,check=False)\nregistry=json.loads(p.stdout) if p.returncode==0 and len(p.stdout)<6000 else {'state':'unavailable'}\nprint(json.dumps({'plugins':mapping_sources(base),'serverInteractionPolicy':interaction_policy(Path.home()),'installedRegistry':registry}))\n"
 def run(folder):
     if folder.is_symlink() or not folder.is_dir():raise ValueError('output')
     p=subprocess.run(['/usr/bin/ssh','-T','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes',

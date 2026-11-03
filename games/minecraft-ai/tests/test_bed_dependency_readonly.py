@@ -3,6 +3,15 @@ from pathlib import Path
 spec=importlib.util.spec_from_file_location('bed_dep',Path(__file__).resolve().parents[1]/'scripts/alice-bed-dependency-readonly.py')
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 class BedDependencyReadTest(unittest.TestCase):
+    def test_mapping_sources_are_fixed_packages_and_never_follow_external_source(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base=Path(tmp);pkg=base/'prismarine-chunk'/'src';pkg.mkdir(parents=True)
+            (pkg/'hash.js').write_text('function stateIdToRuntimeId() { return 1 }')
+            (pkg/'skip.js').symlink_to(base/'credentials')
+            (base/'credentials').write_text('networkId=secret')
+            rows=m.mapping_sources(base)
+            self.assertEqual([r['plugin'] for r in rows],['prismarine-chunk/src/hash.js'])
+            self.assertNotIn('secret',str(rows))
     def test_original_server_policy_is_anonymous_and_never_reads_player_permissions(self):
         with tempfile.TemporaryDirectory() as tmp:
             home=Path(tmp);server=home/'minecraft-bedrock';server.mkdir()
