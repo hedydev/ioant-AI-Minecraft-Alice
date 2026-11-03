@@ -115,3 +115,24 @@
 - `alice_r73_postrestart_gate_13` 和 `alice_r73_postrestart_demand_14` 证实新会话独立样本**从0重新开始**，timerActive/optedIn/ownerValid/`demandNow` true。本小时预算6/40，不继承上次 PID 的75.24格作为当前会话成功。
 - 后续`alice_r73_post_bds_gate_16`：样本2、`movingQueued=6`、当前night survival等待 `scout_step_awaiting_new_bds_pair`；`alice_r73_post_bds_demand_17`：timer已取到当前2个新BDS样本、`serverTravel=0`、预算8/40、最近批次28.5s前、stalledPairs1。`alice_r73_post_bds_door_18` 门事件仍0。**没有实机门前到达证明**，不得误报打开/穿过木门、HOME、重生点成功。
 - 下一步先按当前新PID、**白天**读取现有`alice_door_autonomy_readonly.json`，检查`enclosed-door priority`是否发生，之后每走一格只认新的独立BDS双样本。夜间继续安全生存，床必须重新确认loaded_free_bed、地面和头顶空间；不重启BDS或人为补发手动querytarget、不可复制旧PID的位置/成果。
+
+## 2026-11-03 rev74：床位一格跳跃火把碰撞净空与实机回执（21:29+ Asia/Singapore）
+
+### 当前客户端在这一轮接手时的真实 BDS 状态
+
+- 接手 revision74 后，固定只读 `alice_r74_check_gate_1`、`alice_r74_check_demand_2`：旧本次客户端 PID701816（未重复重启以前）在线、自主、HP20/食物20、独立坐标 **120** 次、本登录 BDS `serverTravel=36.29` 格、`movingQueued=265`。只证明累计真实移动，不证明门/床任务完成。
+- `alice_r74_check_nav_5`：当前生命验收日志 `partialEndpointCount=25`、`confirmedEndpointCount=0`、模型提出20个建议；无完整目标端点。
+- `alice_r74_check_door_3` 门前优先/approach/开门均0；`alice_r74_check_home_4` 游戏夜晚、记忆两张床、个人重生点和 HOME均未证明，最新床接近拒绝 `jump_origin_support_or_headroom_unverified`。
+
+### 找到并修复净空误判（必须与实机 BDS 成功分开）
+
+- `src/escape_survey.cjs` 和之前 `escape_approach.cjs` 已定义严格的 `knownWalkingClear`：天然空气，或者**确知有空碰撞盒的火把**才视为身体净空。此前 `one_block_jump.cjs` 仍要求 `knownAir` 覆盖起跳和落点的完整 3格垂直空间；在真实 client-chunk-cache 曾观察到脚上方是 `torch`、`boundingBox:'empty'`、`shapes:[]`，从而出现“可走但不能跳”的假阴性。
+- 修改 `src/one_block_jump.cjs` 起跳和落点三格净空检查，统一复用已验证的 `knownWalkingClear`，并添加严格测试：起跳/落点各种高度的真空碰撞火把均允许**候选**，但假空盒、有实体碰撞、未知装饰仍不允许；每次物理操作最多一个 JUMP_UP，不宣称客户端预测是BDS位移。原有支撑完整立方体、最大1格高度、实体占位、安全STOP/危险、头顶真实石墙/未知方块和后续独立BDS起终点证明不变。
+- Git 功能提交 `7684021689a39c8f99d3ad831f7ce9486221a692`；平台 `alice_r74_torch_jump_sync_06` 已 fast-forward PASS；`alice_r74_torch_jump_mint_07` 非重启部署 Node24 **939/939、0 fail/skip**；`alice_r74_torch_jump_mac_08` Mac Python **321 项、skip3、0fail**。
+- 已使用用户以前批准、platform reviewed 的固定任务 `alice_r74_torch_jump_reload_09` **completed**，仅重启 Alice 客户端 **PID701816→1008401**。processAlive/connected/sessionEstablished/heartbeatFresh/ownerVerified/worldVerified/portVerified 均true，replacementCount=1，`bdsRestarted=false`、`worldChanged=false`。
+- 新登录后固定只读 `alice_r74_post_gate_10`：HP20、在线、自主、独立 BDS 样本0（上个PID历史全部不可继承）、`bdsWitnessStatus=prior_login_witness`，`idleGate=vertical_hold`；`alice_r74_post_demand_11` 定时器仍active/enabled/optedIn，但是 `demandNow=false`、`stalledPairs=3`、原始保护暂停剩余223.7秒、小时预算20/40，`lastServiceResult=no_navigation_demand`。`alice_r74_post_home_12` 昼间、床仍 `bed_needs_verified_approach`、没有新一格动作。**这不是新代码被证实无效，亦非重生点已经设置。**
+- `vertical_hold` 来源为 `src/vertical_motion_watch.cjs` 原有90秒急剧下坠/垂直异常抑制；没有新的 BDS 起点或真实床端点时必须保持阻断。不能重启客户端清除保护，不得关闭3 stalledPairs 保护或180秒/40次BDS限制。安全观察恢复后才对比新的跳跃候选及后续真实 BDS 端点。
+
+### 后续目标
+
+在 **PID1008401** 的当前生命等待原有安全护栏自然释放，重新只读取得2个新鲜独立 BDS 坐标和任何有界床接近/木门事件；床方向需要优先正常 WALK，仅当不存在平路且真正满足完全净空时才使用一格 JUMP_UP。完整 HOME/个人重生点需 Bedrock `set_spawn_position` 确认；仅逻辑测试、模型预测或局部距离都不算成功。不要创建新世界/重启BDS/强制reset/补发手动querytarget。
