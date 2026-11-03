@@ -3171,40 +3171,53 @@ class AliceBedrockRuntime {
       if(!walkGate.candidate&&verticalGate.candidate)candidate=verticalGate.candidate
       let decision=decideAutonomousResponse({plan,woodCount:wood,
         woodFailure,movementFailure,world:this.lastWorldRoutine,scoutCandidate:candidate})
-      // Resource failure in a player-built room must FIRST examine observed
-      // nondestructive exits, even if a natural-ground daytime SCOUT candidate
-      // happens to exist. Existing STOP/FOLLOW/hostile/health gates still own
-      // whether movement can start. WAIT's door executor below owns actions.
-      if(woodFailure&&['WAIT','SCOUT'].includes(decision.action)&&
+      // A verified indoor door is a survival exit worth observing even
+      // BEFORE a failed wood-gathering attempt. Without this, Alice repeatedly
+      // scouts the small built room because woodFailure never becomes true.
+      // The survey is read-only, rate-limited, and never grants movement.
+      const firstDoorReview=!night&&resourceNeed&&observedTree?.ok!==true&&
+        this.lastWorldRoutine.safeToExplore===true
+      if((woodFailure||firstDoorReview)&&!movementFailure&&
+          ['WAIT','SCOUT','WORK','OBSERVE'].includes(decision.action)&&
           this.clock()-this.lastEscapeSurveyAt>=90000)
         this.observeBlockedRoom()
-      // Keep the actual surveyed candidate, NOT the boolean result of
-      // the freshness comparison. A boolean has no approach.waypoints and
-      // silently prevented valid indoor doors from outranking SCOUT.
-      const freshDoor=woodFailure&&!movementFailure&&
-        this.clock()-this.lastEscapeSurveyAt<=25000
-          ?this.lastEscapeSurvey?.door||null:null
-      let doorExecutable=false
-      if(freshDoor){
-        const door=freshDoor,route=door.approach?.waypoints
-        if(Array.isArray(route)&&route.length>2)
-          doorExecutable=validateApproach(this.bot,door).ok===true
-        else if(Array.isArray(route)&&route.length<=2){
-          const doorGate=planDoorOpen(this.bot,{doorCandidates:[door]})
-          doorExecutable=doorGate.ok===true||doorGate.reason==='door_already_open'
-        }
-      }
-      // A goal persists across idle evaluations until observations change,
-      // instead of treating the last visible house door as a permanent mission.
-      // The previous survey cannot be reused after Alice moves away from it.
+      // Require an enclosed, still-nearby CURRENT room observation; do not
+      // chase an old door behind Alice or any door visible outdoors.
       const survey=this.lastEscapeSurvey
       const origin=survey?.center,pos=this.bot.entity?.position
       const nearbySurvey=survey&&Array.isArray(origin)&&pos&&
         this.clock()-this.lastEscapeSurveyAt<=25000&&
         Math.hypot(pos.x-(origin[0]+0.5),pos.y-origin[1],
           pos.z-(origin[2]+0.5))<=2.25?survey:null
+      const observedDoor=nearbySurvey?.door||null
+      const proposedRoute=observedDoor?.approach?.waypoints
+      const safeObservedDoor=!!observedDoor&&
+        nearbySurvey.status==='door_interaction_candidate'&&
+        !nearbySurvey.openFrontier&&
+        Array.isArray(proposedRoute)&&
+        proposedRoute.length===observedDoor.approach?.steps&&
+        observedDoor.approach?.routeComplete===true&&
+        observedDoor.approach?.elevationChanges===0
+      const doorExecutable=safeObservedDoor&&
+        (proposedRoute.length>0?
+          validateApproach(this.bot,observedDoor).ok===true:
+          (()=>{
+            const gate=planDoorOpen(this.bot,{doorCandidates:[observedDoor]})
+            return gate.ok===true||gate.reason==='door_already_open'
+          })())
+      const indoorDoorPriority=firstDoorReview&&safeObservedDoor&&doorExecutable
+      if(indoorDoorPriority){
+        // The LLM still selects long-term goals. A clearly observed, enclosed
+        // wooden exit is a bounded physical safety skill, not an LLM-invented
+        // position or permission to dig/player-teleport.
+        decision={action:'WAIT',goal:'FIND_ROOM_EXIT',
+          reason:'observed_indoor_exit_before_resource_scout'}
+      }
+      const doorDriven=woodFailure||indoorDoorPriority
+      const freshDoor=doorDriven&&!movementFailure&&
+        nearbySurvey?observedDoor:null
       const drive=selectDrive({decision,world:this.lastWorldRoutine,
-        survey:nearbySurvey,doorExecutable,woodFailure:!!woodFailure,
+        survey:nearbySurvey,doorExecutable,woodFailure:!!doorDriven,
         movementFailure:!!movementFailure,
         needsRawMaterials:plan==='COLLECT_WOOD'||plan==='LEARN_WEAPON'&&wood<2})
       decision=drive.decision
@@ -3215,7 +3228,14 @@ class AliceBedrockRuntime {
       if(decision.action==='WAIT')
         this.continuousGoal.wait(this.lastWorldRoutine.safeToExplore?
           'no_safe_route':'waiting_for_daylight')
-      if(this.planner?.url){
+      if(indoorDoorPriority){
+        // Prioritize already inspected non-destructive door navigation over a
+        // speculative model scout. Existing startJob and independent BDS proof
+        // still decide whether any physical action can happen.
+        this.log.log('[Alice exploration] enclosed-door priority:',
+          JSON.stringify({reason:'observed_indoor_exit_before_resource_scout',
+            steps:proposedRoute.length,serverMovementVerified:false}))
+      }else if(this.planner?.url){
         const actionEpoch=this.epoch
         const modelOutcome=await this.runAutonomousModelStep({wood,woodFailure,movementFailure,candidate,drive,terrainWork})
         // A real witnessed action or STOP may have advanced the epoch while
@@ -3277,8 +3297,8 @@ class AliceBedrockRuntime {
         }
         if(this.maybeStartEarthwork(terrainWork,candidate,movementFailure))return
         const localSkillPermitted=!movementFailure&&(
-          !!woodFailure&&decision.action==='SCOUT'&&decision.candidate?.ok===true||
-          !!woodFailure&&decision.action==='WAIT'&&!!freshDoor&&
+          !!doorDriven&&decision.action==='SCOUT'&&decision.candidate?.ok===true||
+          !!doorDriven&&decision.action==='WAIT'&&!!freshDoor&&
             ['FIND_ROOM_EXIT','OBSERVE_ROOM'].includes(drive.driveGoal))
         if(!localSkillPermitted){
           const reason=night&&this.lastNightPlan?.reason||
@@ -3330,7 +3350,7 @@ class AliceBedrockRuntime {
           }
         }
       }
-      if(this.maybeStartEarthwork(terrainWork,candidate,movementFailure))return
+      if(!indoorDoorPriority&&this.maybeStartEarthwork(terrainWork,candidate,movementFailure))return
       if(decision.action==='SCOUT'){
         this.startJob('EXPLORE','自主探索',signal=>this.boundedScout(decision.candidate,signal),{
           label:'寻找未探索的安全资源区域',announce:false,scoutCandidate:decision.candidate})
@@ -3346,14 +3366,16 @@ class AliceBedrockRuntime {
         // One observed closed wooden door, in immediate reach, with a short
         // contiguous full-block approach. No navigation, excavation or roaming.
         const door=this.lastEscapeSurvey?.door
-        if(woodFailure&&!movementFailure&&
+        if(doorDriven&&!movementFailure&&
             ['FIND_ROOM_EXIT','OBSERVE_ROOM'].includes(drive.driveGoal)&&
             door&&this.clock()-this.lastEscapeSurveyAt<=25000){
           const doorKey=door.position?.join(',')
           const attemptedRecently=doorKey===this.lastEscapeDoorAttemptKey&&
             this.clock()-this.lastEscapeDoorAttemptAt<600000
+          // Even a ONE- or TWO-cell route needs a physical approach first.
+          // Only a zero-step adjacent door can be interacted with.
           const needApproach=Array.isArray(door.approach?.waypoints)&&
-            door.approach.waypoints.length>2
+            door.approach.waypoints.length>0
           const approachRecently=doorKey===this.lastEscapeApproachKey&&
             this.clock()<this.lastEscapeApproachRetryAt
           if(needApproach&&!approachRecently){
