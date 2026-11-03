@@ -136,3 +136,13 @@
 ### 后续目标
 
 在 **PID1008401** 的当前生命等待原有安全护栏自然释放，重新只读取得2个新鲜独立 BDS 坐标和任何有界床接近/木门事件；床方向需要优先正常 WALK，仅当不存在平路且真正满足完全净空时才使用一格 JUMP_UP。完整 HOME/个人重生点需 Bedrock `set_spawn_position` 确认；仅逻辑测试、模型预测或局部距离都不算成功。不要创建新世界/重启BDS/强制reset/补发手动querytarget。
+
+### rev74 第二阶段：白天木门任务的 BDS 按需见证死锁（21:40~21:48 Asia/Singapore）
+
+- torch-safe jump 已加载 PID1008401。系统原本 `vertical_hold` 和3次无位移BDS pair触发10分钟短暂停顿；此处是**安全保护**，不可删除。只读 `alice_r74_safe_recheck_14` 后发现垂直保护自然结束，`worldRoutine.idleGate=work_cooldown` 且 `lastDecisionAction=WAIT`、`lastDecisionReason=observed_indoor_wooden_door_first`，独立 BDS样本2。下一轮 `alice_r74_safe_recheck_15` 显示**demandNow=false**，正常预算22/40、stalledPairs1、pause0。
+- 明确根因：`alice-bds-demand-timer.py` 只接收 `position_witness_unverified/eligible_for_work` 或已修复的夜间生存缺证据，但 **白天真正观察到合法室内木门的 WAIT 任务在原料`work_cooldown`期间无法补充 BDS坐标**。这会使已规划的门前单格动作无法从缺少新鲜起点中恢复。
+- 修复 `safe_daytime_door_witness_need(d)`：仅 `wr.phase=day`、`idleGate=work_cooldown`、最新决策 `action=WAIT, goal=FIND_ROOM_EXIT, reason=observed_indoor_wooden_door_first, phase=day` 且决策时间 **最多90秒**，并且无job、无FOLLOW、连续目标非PAUSED、没有user_STOP时，才为原定时器提供证据需求。实际查询仍由原 `demand_now` 过滤 `IDLE/autonomous/HP>=16/currentSession/needs_two_fresh_samples`，再由既有 180 秒节流、40次/小时和stalledPairs暂停执行；绝不执行步行、跳跃、开门或手动querytarget。对白天过时决策、夜间、vertical_hold、正在工作、人类STOP、FOLLOW及已有新鲜样本新增自测禁止。
+- Git `503bf98569a0354807fe607461725621d69e7744`，`alice_r74_day_door_sync_16` PASS；固定 `alice_r74_day_door_selftest_17` PASS；`alice_r74_day_door_mint_18` 非重启部署 PASS Mint Node24 **939/939** 和 Mac local Python321、0失败。此为Mint用户定时器脚本，不需要重复重启 Alice；上一轮客户端 PID1008401 保持运行。
+- 后续只读 `alice_r74_day_door_live_19`：timerActive/optedIn/ownerVerified 和 **demandNow=true**，budget26/40、stalledPairs0、pause0，新PID独立BDS样本 **6**、真实 `serverTravel=1.8` 格（原0）。注意：此次 `demandNow=true` 也可能由当时 `eligible_for_work` 常规门禁触发，**不能仅凭这个读数证明新增白天分支是唯一原因**。
+- `alice_r74_check_after_door_21` 本生命 acceptance journal `partialEndpointCount=1`、`confirmedEndpointCount=0`，这1.8格是 BDS证实的部分探索，**不是已经到门或床**。`alice_r74_check_after_door_20` 当前日志木门/approach/open/BDS door端点计数均0。`alice_r74_check_after_door_22` 最近决策仍显示`observed_indoor_wooden_door_first`、movingQueued19，但读取瞬间已过期；`alice_r74_check_after_door_23`游戏night、床仍 `jump_origin_support_or_headroom_unverified`，个人重生点/HOME/出门均未验证。因此 torch-safe jump 只是修复一般几何假阴性，没有证实当前床位真的可跳；不得关闭实体碰撞/实际屋顶检查。
+- **下次**：resume revision75，并用全新的conversation_key在当前PID1008401上只读检查下一次白天门优先/已验证首格/门位开关状态；床位从WALK优先、完整净空候选转到 Bedrock `set_spawn_position` 确认。保持现有正式世界、BDS保护、查询节流；无必要不得重复重启。
