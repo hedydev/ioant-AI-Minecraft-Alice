@@ -52,3 +52,27 @@
 - 固定纯 Python 测试 `alice_r71_night_gate_selftest_16` **PASSED**；非重启 Mint 部署 `alice_r71_night_gate_mint_sync_17` **PASSED**、Node24 **932/932**，无客户端重启/BDS重启/世界修改；Mac 回归 `alice_r71_night_gate_mac_20` **PASSED** Python 321、skip3。代码版本 `131d5c7fa62a2e05a2b0bc06eca40b6173bd2a44`，Python systemd timer 下一次启动直接读取新脚本，不需要重新登录。
 - 现场 `alice_r71_night_gate_live_18`：owner/timer/opt-in均有效，**demandNow=true**（原来 false），`lastServiceResult=position_pair_verified`，独立 BDS 样本 **4**、budget 6/40、stalledPairs2、当前新生命 serverTravel **0**；`alice_r71_night_gate_post_19` 确认仍夜间 WAIT defer_nonurgent_raw_materials_at_night、无活动job、HP20、独立 pair 快照时已过期。真实移动仍未确认，不能说已出门或已睡床。
 - **后续严守**：不手动高频触发见证，不能为了追样本跳过240秒的单格 BDS 终点验收或关闭安全门禁。当前下一步针对夜间有真实 pair 但仍无 movingQueued 的决策顺序/障碍做诊断；白天重新扫描当前门并尝试每次仅一格的合法入口。原世界不变。
+
+## 2026-11-03 rev72：恢复封闭房间出口优先级（实机诊断、回归、发布）
+
+### 实机只读证据（发布前 PID 4070986）
+
+- `alice_r72_live_gate_01`：当前登录会话 Alice 在线、自动生存模式、HP20/food20、核心 IDLE、已取得 **52 个独立 BDS 样本**、`movingQueued=77`，读取时旧样本超过原4秒新鲜门禁。
+- `alice_r72_demand_02`：有效定时器、owner/opt-in 正常、独立源累计 `serverTravel=10.54` 格，本小时 BDS 服务预算 `22/40`；**非门口到达证据**。
+- `alice_r72_model_nav_03`：同一生命内 acceptance journal **11 次服务器验证的 partial_endpoint，0 次 confirmed_endpoint，0 waypointFailure**，模型已建议 scout_safe，合计20次proposal；该数据证实真实局部行走，不代表整条路线或 HOME 完成。
+- `alice_r72_home_status_04`：白天，记忆 2 张床但现时没有加载的可用床，`homeStatus=not_established`，`personalBedStatus=not_verified`；不可把记忆床当作当前可睡的床。
+- `alice_r72_collision_05`：只读 client-chunk-cache、1350 records/unknown0，闭合云杉门位于相对 (-2,-3)，名义 0.6x1.8 角色扫掠安全中心路线 **4 格**；这是候选，不是服务器认定的坐标或动作。
+
+### 源码定位与修复
+
+- 原 `runIdleDecision` 只有 `woodFailure` 后才 `observeBlockedRoom()`，导致有真木门但尚未采集失败时，普通 SCOUT 优先，可能在室内反复探索。现在在**白天、资源尚不可直接取得、无运动失败、确切发现封闭房间木门且扫描结果仍与当前位置相符**时，优先非破坏性门口技能；若木材确实可采、可做紧急生存任务、已有任务或人为STOP/FOLLOW，则保留原优先级。所有实体移动仍须独立 BDS 双样本起点、0.6 宽扫掠及新双BDS终点验收。模型仍负责长期策略，不能发明坐标或代替几何/服务器证明。
+- 原 `escape_approach.validateApproach` 使用 `knownAir`，错误把碰撞形状为空的火把拒绝为不通行；复用 `escape_survey.knownWalkingClear` 只接受经过状态验证的**空碰撞盒火把**，有形状/未知碰撞仍然拒绝，`verifyFlatFirstStep` 不变。
+- 回归发现原先对短距离开门 / 只读房间观察限制过严，已恢复老规则：有旧 woodFailure 时即使夜间或因 BDS 冷却不准移动，仍能纯只读扫描；最多2格观察距离、实际3格交互范围内的木门仍使用原 `planDoorOpen` 安全门禁；更远路线才需逐格行走。不会自动穿过未证实可通行的门或挖掘。
+- 回归由 `alice_r72_indoor_door_mint_07` 的 928/935（7 fail）→ `alice_r72_door_fix_mint_09` 的 934/935（1 fail）→ 最终 `alice_r72_early_survey_mint_11` **935/935, fail=0, skipped=0**。最后一项仅修正旧测试对“不能提前只读观察”的过时断言，仍验证绝不打开门、挖掘或输入未经授权的运动。Mac `alice_r72_early_survey_mac_12` **321项, skip3, 0 fail**。
+- 功能合并测试 Git `48aae29dece564343e45a4a1330c02038a3f86eb`，`alice_r72_early_survey_sync_10` PASS，`alice_r72_early_survey_mint_11` 非重启同步 PASS，BDS/世界无改动。
+- 固定、用户之前批准的一次 Alice-only 审批生命周期任务 `alice_r72_enclosed_door_reload_13` **completed**：旧PID **4070986** → 新PID **4147538**，进程存活、新鲜心跳、游戏连接、会话、owner、世界名和端口全部 true；`replacementCount=1`，`bdsRestarted=false`、`worldChanged=false`，不使用旧不确定任务重放。
+- 新PID首检 `alice_r72_post_reload_gate_14`：HP20/food20、autonomous IDLE、独立 BDS 样本0（此前52属于旧登录，不可继承），`prior_login_witness` 是预期的生命隔离。`alice_r72_post_reload_demand_15`：BDS定时器 active/enabled、optedIn、`demandNow=true`，小时预算30/40、`lastServiceResult=position_pair_verified`（该结果可以来自上一次服务，不证明新PID已移动），当前新生命serverTravel0。
+
+### 下一轮
+
+在 PID4147538 上只读核验新的双 BDS 见证、当前门前首次一格尝试、端点复核与房间 `escapeSurvey`；不要借旧PID的(-2,-3)坐标实施导航。严格不放宽原4秒 BDS 新鲜度、180秒采样节流、40/h预算、不重复重启/BDS/世界。新代码部署成功，但**正式世界到门、开门、出门、床重生点及 HOME 返回仍待真实验收**。
