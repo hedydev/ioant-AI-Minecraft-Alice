@@ -5,7 +5,10 @@ const {knownAir}=require('./scout_routes.cjs')
 const {fullSupport}=require('./escape_survey.cjs')
 const {verifyFlatFirstStep}=require('./direct_flat_step.cjs')
 const {scoutStartProof}=require('./scout_start_proof.cjs')
-const MAX_WAYPOINTS=6
+// Survey may observe up to 12 cells, while the physical executor still
+// admits exactly ONE step per independent BDS endpoint. This bound controls
+// observation only, not the distance driven by a single action.
+const MAX_WAYPOINTS=12
 const xyz=p=>Array.isArray(p)&&p.length===3&&p.every(Number.isSafeInteger)
 // The owner may supply an {ok,reason} gate for actionable diagnostics.
 // Legacy boolean gates keep their original generic error strings.
@@ -80,7 +83,7 @@ async function approachDoor(bot,door,{
  if(signal?.aborted)return fail('approach_preempted')
  const initialDenial=safetyDenial(safe)
  if(initialDenial)return fail(deniedReason('approach_preempted',initialDenial))
- // The caller may observe up to six reachable cells, but must NEVER drive
+ // The caller may observe up to twelve reachable cells, but must NEVER drive
  // more than ONE unverified waypoint. The NEXT cell requires an entirely
  // new independent BDS post-input pair plus a new collision/goal survey.
  const witness=scoutStartProof(bot,movementEvidence,clock)
