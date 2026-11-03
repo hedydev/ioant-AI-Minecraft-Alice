@@ -1,3 +1,7 @@
+## 2026-11-03 — rev75 当前实机门/床只读验收
+
+新 OpenClaw rev75 固定任务验证 current Alice owner 在线、独立 BDS 样本12、累计 serverTravel2.62格、2次已 BDS 验证部分路线、0次完整终点。木门动作日志0；只读客户端碰撞扫描门相对(-3,-3)关闭，门前名义五格路径，记忆两床最近约12.7格但尚非可用的加载床。个人重生点/HOME未证。预算32/40、停滞2、无暂停，禁止人工追加坐标命令。新增仅诊断脚本的匿名现有日志门禁摘要用于隔离根因，无游戏副作用，未重启客户端/BDS。详见根 docs/ALICE_DOOR_ONECELL_BDS_20261103.md。
+
 ## 2026-11-03 — Recovered offline client and reviewed execution lock
 
 Current verified owner is PID3923865, current_process/fresh heartbeat/game

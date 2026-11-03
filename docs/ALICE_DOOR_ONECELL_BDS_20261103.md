@@ -146,3 +146,11 @@
 - 后续只读 `alice_r74_day_door_live_19`：timerActive/optedIn/ownerVerified 和 **demandNow=true**，budget26/40、stalledPairs0、pause0，新PID独立BDS样本 **6**、真实 `serverTravel=1.8` 格（原0）。注意：此次 `demandNow=true` 也可能由当时 `eligible_for_work` 常规门禁触发，**不能仅凭这个读数证明新增白天分支是唯一原因**。
 - `alice_r74_check_after_door_21` 本生命 acceptance journal `partialEndpointCount=1`、`confirmedEndpointCount=0`，这1.8格是 BDS证实的部分探索，**不是已经到门或床**。`alice_r74_check_after_door_20` 当前日志木门/approach/open/BDS door端点计数均0。`alice_r74_check_after_door_22` 最近决策仍显示`observed_indoor_wooden_door_first`、movingQueued19，但读取瞬间已过期；`alice_r74_check_after_door_23`游戏night、床仍 `jump_origin_support_or_headroom_unverified`，个人重生点/HOME/出门均未验证。因此 torch-safe jump 只是修复一般几何假阴性，没有证实当前床位真的可跳；不得关闭实体碰撞/实际屋顶检查。
 - **下次**：resume revision75，并用全新的conversation_key在当前PID1008401上只读检查下一次白天门优先/已验证首格/门位开关状态；床位从WALK优先、完整净空候选转到 Bedrock `set_spawn_position` 确认。保持现有正式世界、BDS保护、查询节流；无必要不得重复重启。
+
+
+## 2026-11-03 rev75：新生命只读验收与门优先诊断扩展
+
+- 固定 MCP 回执 `alice_r75_live_gate_01` / `alice_r75_demand_02` 已 PASS：Alice 当前 owner 在线、独立 BDS 样本 12、累计本生命 serverTravel 2.62 格；读取瞬间最新见证约 99 秒，未通过 4 秒运动入场门禁。BDS 系统定时器正常、demandNow=true、小时 budget32/40、stalledPairs2、pauseRemaining0、lastServiceResult=cooldown_or_budget。观察到 `IDLE` 且 `idleHoldReason=null`，不再有旧 vertical_hold 证据；不能以此判定具体一格或开门成功。
+- `alice_r75_nav_05`：本生命 acceptance journal `partialEndpointCount=2`、`confirmedEndpointCount=0`、`unverifiedEndpointCount=0`；`alice_r75_door_03` 木门优先/接近/开门/门口 BDS 事件均为 0。`alice_r75_home_04` 白天、记忆两床，但无加载的可用床、个人重生点和 HOME 均未验证；当前床步骤没有真实 BDS 终点。
+- `alice_r75_collision_06` 为 **client_chunk_cache_not_bds**：相对(-3,-3)云杉门上下半均关闭；名义中心线 5 格，首格两个候选、并非实际 BDS 可执行路线。`alice_r75_voxels_07`：最近门约4.2格；两床相对(-9,-9)、(-10,-9)，最近约12.7格，不能把床当作当前可立即交互。
+- 为区分“实时门优先分支未进入”与“进入后缺少合法 BDS 起点”，本次只扩展既有 `alice-door-lifecycle-readonly.py` 对**现存 owner 进程有限日志和当前 status**的去标识化枚举：当前 PID、昼夜/决策/idleGate、最近已有逃生扫描是否观察到门及路点数、资源机会和 idle gate 的既有事件。绝不输出原始日志或坐标、不追加任何 BDS 查询或游戏输入；此诊断修改**仅为脚本，不要求重启 Alice**，需后续固定 MCP 实测。保留 40/h、180s、240s 和 STOP/FOLLOW 全部原安全条件。

@@ -18,7 +18,13 @@ result={'state':'unverified','currentOwner':False,'connected':False,'sessionEsta
  'escapeSurveyAgeBand':'unknown','doorPriorityCount':0,'doorApproachOutcomeCount':0,
  'doorApproachBdsVerifiedCount':0,'doorApproachBdsRejectedCount':0,
  'doorOpenOutcomeCount':0,'doorApproachGatedCount':0,'lastDoorReason':'unknown',
- 'lastDoorPrioritySteps':None,'bdsQuerySent':False,'movementSentByAudit':False}
+ 'lastDoorPrioritySteps':None,'bdsQuerySent':False,'movementSentByAudit':False,
+ 'currentPid':None,'worldPhase':'unknown','idleGate':'unknown',
+ 'lastDecisionAction':'unknown','lastDecisionGoal':'unknown','lastDecisionReason':'unknown',
+ 'decisionAgeBand':'unknown','surveyLogCount':0,'lastSurveyLogStatus':'unknown',
+ 'lastSurveyLogReason':'unknown','lastSurveyLogDoor':False,'lastSurveyLogSteps':None,
+ 'resourceLogCount':0,'lastResourceLogAction':'unknown','lastResourceLogReason':'unknown',
+ 'idleGateLogCount':0,'lastIdleGateLog':'unknown'}
 valid_text=lambda v: v if isinstance(v,str) and re.fullmatch('[a-z][a-z0-9_:]{0,89}',v) else 'unknown'
 try:
  script=Path.home()/'minecraft-ai/scripts/alice-mint.py'
@@ -35,11 +41,24 @@ try:
  if d.get('producerPid')!=pid or d.get('world')!='Bedrock level' or d.get('serverPort')!=17879:
   raise ValueError('wrong_world')
  result['currentOwner']=True
+ result['currentPid']=pid
  result['connected']=d.get('connected') is True
  result['sessionEstablished']=d.get('sessionEstablished') is True
  result['autonomyEnabled']=(d.get('settings') or {}).get('autonomyEnabled') is True
  result['coreState']=valid_text(str(d.get('state') or '').lower())
  result['jobActive']=d.get('job') is not None
+ wr=d.get('worldRoutine') or {}
+ if isinstance(wr,dict):
+  result['worldPhase']=valid_text(str(wr.get('phase') or 'unknown').lower())
+  result['idleGate']=valid_text(str(wr.get('idleGate') or 'unknown').lower())
+  decision=wr.get('decision') or {}
+  if isinstance(decision,dict):
+   for src,dest in (('action','lastDecisionAction'),('goal','lastDecisionGoal'),('reason','lastDecisionReason')):
+    result[dest]=valid_text(str(decision.get(src) or 'unknown').lower())
+   when=decision.get('at')
+   if type(when) is int:
+    age=(int(time.time()*1000)-when)/1000
+    result['decisionAgeBand']='within90s' if 0<=age<=90 else 'expired' if age>90 else 'invalid'
  h=d.get('health')
  if type(h) in (int,float) and 0<=h<=20:result['health']=h
  n=(d.get('movementEvidence') or {}).get('independentSamples')
@@ -69,6 +88,29 @@ try:
   '[Alice exploration] door interaction outcome:':'doorOpenOutcomeCount',
   '[Alice exploration] doorway approach gated:':'doorApproachGatedCount'}
  for line in lines:
+  # Read only anonymized enums, never emit raw operator log or coordinates.
+  for prefix,kind in (('[Alice exploration] escape survey:','survey'),
+                      ('[Alice mission] resource opportunity:','resource'),
+                      ('[Alice autonomy] idle gate:','idle')):
+   if not line.startswith(prefix):continue
+   try:extra=json.loads(line.split(prefix,1)[1])
+   except (TypeError,ValueError):continue
+   if not isinstance(extra,dict):continue
+   if kind=='survey':
+    result['surveyLogCount']+=1
+    result['lastSurveyLogStatus']=valid_text(str(extra.get('status') or 'unknown').lower())
+    result['lastSurveyLogReason']=valid_text(str(extra.get('reason') or 'unknown').lower())
+    door=extra.get('door')
+    result['lastSurveyLogDoor']=isinstance(door,dict)
+    steps=(door.get('approach') or {}).get('steps') if isinstance(door,dict) and isinstance(door.get('approach'),dict) else None
+    result['lastSurveyLogSteps']=steps if type(steps) is int and 0<=steps<=12 else None
+   elif kind=='resource':
+    result['resourceLogCount']+=1
+    result['lastResourceLogAction']=valid_text(str(extra.get('action') or 'unknown').lower())
+    result['lastResourceLogReason']=valid_text(str(extra.get('reason') or 'unknown').lower())
+   else:
+    result['idleGateLogCount']+=1
+    result['lastIdleGateLog']=valid_text(str(extra.get('reason') or 'unknown').lower())
   for marker,key in types.items():
    if not line.startswith(marker):continue
    try:data=json.loads(line.split(marker,1)[1])
@@ -96,7 +138,11 @@ KEYS={'state','currentOwner','connected','sessionEstablished','autonomyEnabled',
       'doorApproachSteps','escapeSurveyAgeBand','doorPriorityCount',
       'doorApproachOutcomeCount','doorApproachBdsVerifiedCount',
       'doorApproachBdsRejectedCount','doorOpenOutcomeCount','doorApproachGatedCount',
-      'lastDoorReason','lastDoorPrioritySteps','bdsQuerySent','movementSentByAudit'}
+      'lastDoorReason','lastDoorPrioritySteps','bdsQuerySent','movementSentByAudit',
+      'currentPid','worldPhase','idleGate','lastDecisionAction','lastDecisionGoal',
+      'lastDecisionReason','decisionAgeBand','surveyLogCount','lastSurveyLogStatus',
+      'lastSurveyLogReason','lastSurveyLogDoor','lastSurveyLogSteps','resourceLogCount',
+      'lastResourceLogAction','lastResourceLogReason','idleGateLogCount','lastIdleGateLog'}
 
 def valid(row):
     if not isinstance(row,dict) or set(row)!=KEYS or row['state'] not in ('observed','unverified'):
@@ -105,17 +151,23 @@ def valid(row):
         ('currentOwner','connected','sessionEstablished','autonomyEnabled',
          'jobActive','bdsQuerySent','movementSentByAudit')):
         return None
-    if row['bdsQuerySent'] or row['movementSentByAudit']:
+    if row['bdsQuerySent'] or row['movementSentByAudit'] or type(row['lastSurveyLogDoor']) is not bool:
         return None
     for k in ('doorPriorityCount','doorApproachOutcomeCount','doorApproachBdsVerifiedCount',
               'doorApproachBdsRejectedCount','doorOpenOutcomeCount','doorApproachGatedCount'):
         if type(row[k]) is not int or not 0<=row[k]<=10000000:return None
-    for k in ('independentSamples','doorApproachSteps','lastDoorPrioritySteps'):
+    for k in ('surveyLogCount','resourceLogCount','idleGateLogCount'):
+        if type(row[k]) is not int or not 0<=row[k]<=10000000:return None
+    if row['currentPid'] is not None and (type(row['currentPid']) is not int or row['currentPid']<=0):return None
+    for k in ('independentSamples','doorApproachSteps','lastDoorPrioritySteps','lastSurveyLogSteps'):
         if row[k] is not None and (type(row[k]) is not int or not 0<=row[k]<=10000000):
             return None
     if row['health'] is not None and (type(row['health']) not in (int,float) or not 0<=row['health']<=20):
         return None
-    for k in ('coreState','escapeSurveyStatus','escapeSurveyAgeBand','lastDoorReason'):
+    for k in ('coreState','escapeSurveyStatus','escapeSurveyAgeBand','lastDoorReason',
+              'worldPhase','idleGate','lastDecisionAction','lastDecisionGoal','lastDecisionReason',
+              'decisionAgeBand','lastSurveyLogStatus','lastSurveyLogReason',
+              'lastResourceLogAction','lastResourceLogReason','lastIdleGateLog'):
         if not isinstance(row[k],str) or not re.fullmatch(r'[a-z][a-z0-9_:]{0,89}',row[k]):
             return None
     return row
@@ -150,6 +202,10 @@ def selftest():
     assert 'bot.setControlState' not in REMOTE
     assert 'querytarget' not in REMOTE
     assert 'alice-mac.sh restart' not in REMOTE
+    assert "'lastSurveyLogDoor'" in REMOTE
+    assert "'[Alice exploration] escape survey:'" in REMOTE
+    assert "'currentPid'" in REMOTE
+    assert 'bdsCommandSent' not in REMOTE
     print('ALICE_DOOR_AUTONOMY_READONLY_SELFTEST_PASS')
 
 if __name__=='__main__':
