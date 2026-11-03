@@ -3,12 +3,13 @@
 import json,os,shlex,subprocess,sys
 from pathlib import Path
 REMOTE=r"""
-import json,os,re,subprocess
+import json,os,re,subprocess,time
 from pathlib import Path
 root=Path.home()/'.alice-bedrock-control'
 status_tool=Path.home()/'minecraft-ai/scripts/alice-mint.py'
 out={'state':'unverified','connected':False,'health':None,
  'phase':'unknown','canSleep':None,'rememberedBeds':None,
+ 'bedLogicVersion':None,'producerPid':None,'isSleeping':None,'personalBedStatus':'unknown',
  'sleepOpportunity':'unknown','lastBedFailure':'unknown',
  'nightSurvival':'unknown','idleGate':'unknown',
  'hasFollowTarget':False,'jobActive':False}
@@ -19,9 +20,16 @@ try:
  f=root/'status.json'
  if f.is_symlink() or not f.is_file() or f.stat().st_uid!=os.getuid() or f.stat().st_mode&0o077 or f.stat().st_size>8192:raise ValueError('status_file')
  d=json.loads(f.read_text())
- if d.get('producerPid')!=t.get('pid') or d.get('world')!='Bedrock level' or d.get('serverPort')!=17879:raise ValueError('owner')
+ if (t.get('statusSource')!='current_process' or t.get('heartbeatFresh') is not True or
+     d.get('producerPid')!=t.get('pid') or not 0<=time.time()-f.stat().st_mtime<=10 or
+     d.get('world')!='Bedrock level' or d.get('serverPort')!=17879):raise ValueError('owner')
  w=d.get('worldRoutine') or {}
  out['state']='observed'
+ out['producerPid']=t['pid']
+ if type(w.get('bedLogicVersion')) is int:out['bedLogicVersion']=w['bedLogicVersion']
+ if type(d.get('isSleeping')) is bool:out['isSleeping']=d['isSleeping']
+ personal=(w.get('homeBed') or {}).get('status')
+ if isinstance(personal,str) and re.fullmatch('[a-z_]{1,60}',personal):out['personalBedStatus']=personal
  out['connected']=d.get('connected') is True and d.get('sessionEstablished') is True
  x=d.get('health')
  if type(x) in (float,int) and 0<=x<=20:out['health']=round(x,1)
@@ -44,7 +52,7 @@ except (OSError,ValueError,TypeError,KeyError,subprocess.SubprocessError):pass
 print(json.dumps(out,separators=(',',':')))
 """
 def validate(x):
-    keys={'state','connected','health','phase','canSleep','rememberedBeds','sleepOpportunity','lastBedFailure','nightSurvival','idleGate','hasFollowTarget','jobActive'}
+    keys={'bedLogicVersion','producerPid','isSleeping','personalBedStatus','state','connected','health','phase','canSleep','rememberedBeds','sleepOpportunity','lastBedFailure','nightSurvival','idleGate','hasFollowTarget','jobActive'}
     if not isinstance(x,dict) or set(x)!=keys or x['state'] not in ('observed','unverified'):return None
     return x
 def run(out):

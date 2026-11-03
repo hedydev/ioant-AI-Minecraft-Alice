@@ -24,7 +24,12 @@ function selectDirectionalBedStep(bot,bed,{radius=16}={}){
   if(nextDist>fromDist-.25)continue
   // No nearby entity may occupy the intended target, regardless of
   // whether it is presently hostile or attacking.
-  const occupied=Object.values(bot.entities||{}).some(e=>finite(e?.position)&&
+  // The pinned Bedrock lifecycle stores bot.entity in bot.entities too.
+  // At a one-block destination Alice is herself <1.1 blocks away; she
+  // must not be interpreted as another player blocking every flat step.
+  const occupied=Object.values(bot.entities||{}).some(e=>e!==bot.entity&&
+    !(e?.id!=null&&bot.entity.id!=null&&String(e.id)===String(bot.entity.id))&&
+    finite(e?.position)&&
     Math.hypot(e.position.x-(cell.x+.5),e.position.y-cell.y,
       e.position.z-(cell.z+.5))<1.1)
   if(occupied)continue

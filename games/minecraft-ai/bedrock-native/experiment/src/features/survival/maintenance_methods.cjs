@@ -62,53 +62,7 @@ function createMaintenanceRuntimeMethods({classifyJobException,environment,safeS
     // Bed-based respawn is a fundamental need even in companion mode;
     // it is independent of sleep/night cooldown and never interrupts humans.
     if(await this.spawnpointTick())return
-    // A nearby known bed has priority over optional crafting/shelter.
-    // Minecraft can forbid sleeping near monsters even through solid walls.
-    // Observe and explain the bed opportunity even while a safety gate holds.
-    const phase=environment(this.bot)
-    const known=phase.canSleep?this.observedBeds.nearby(this.bot):[]
-    if(phase.canSleep&&known.length){
-      const avoidBed=p=>!!this.failureMemory.blocked('bed',p)
-      const survey=this.ops.inspectNightBeds?.(12,{avoidBed,knownPositions:known})||null
-      const eligible=survey?survey.eligible>0:
-        this.ops.hasNearbyBed(12,{avoidBed,knownPositions:known})
-      const danger=this.threat(),here=this.bot.entity?.position
-      const closest=here?known.reduce((d,p)=>Math.min(d,Math.hypot(
-        p.x+.5-here.x,p.y-here.y,p.z+.5-here.z)),Infinity):Infinity
-      const adjacent=Number.isFinite(closest)&&closest<=2.4
-      const blocked=this.safetyBusy||this.job||this.core.hasFollowIntent()||
-        !!this.pendingBedRequest
-      // At low health, never initiate a long walk to a bed. A bed already
-      // within 2.4 blocks can be interacted with without any path movement.
-      const travelOK=adjacent||this.bot.health>=14
-      this.lastSleepOpportunity={status:!eligible?survey?.status||'bed_candidate_unverified':
-          blocked?'deferred_for_active_owner_or_job':
-          danger?'deferred_for_immediate_danger':
-          !travelOK?'deferred_low_health_bed_too_far':
-          this.clock()<this.nextSleepAt?'sleep_retry_cooldown':'safe_bed_candidate',
-        phase:phase.phase,knownBeds:known.length,eligible:survey?.eligible??(eligible?1:0),
-        hostile:survey?.hostile??null,occupied:survey?.occupied??null,
-        unknown:survey?.unknown??null,adjacent}
-      if(eligible&&!blocked&&!danger&&travelOK&&this.clock()>=this.nextSleepAt&&
-         !this.failureMemory.blocked('sleep',this.bot.entity.position)){
-        this.nextSleepAt=this.clock()+120000
-        this.startJob('RECOVER','自主生存',
-          signal=>this.ops.sleepNearby({signal,radius:12,avoidBed,knownPositions:known,
-            requireBdsProof:this.requireBdsAlignedExplore,
-            forbidNavigation:this.requireBdsAlignedExplore,clock:this.clock}),
-          {label:'利用已发现的安全床位睡觉',announce:false})
-        return
-      }
-    }else{
-      this.lastSleepOpportunity={
-        status:phase.canSleep?'no_observed_bed_currently_loaded':'outside_sleep_window',
-        phase:phase.phase,knownBeds:known.length}
-    }
-    const opportunityKey=JSON.stringify(this.lastSleepOpportunity)
-    if(opportunityKey!==this.lastSleepOpportunityKey){
-      this.lastSleepOpportunityKey=opportunityKey
-      this.log.log('[Alice sleep] opportunity:',JSON.stringify(this.lastSleepOpportunity))
-    }
+    if(this.sleepTick())return
     // Food is a survival need, not optional exploration. A positively
     // observed wall can isolate a distant mob; unknown/close danger cannot.
     const foodDanger=this.threat()

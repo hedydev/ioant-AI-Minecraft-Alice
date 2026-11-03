@@ -61,6 +61,15 @@ test('an explicit distant bed stays pending rather than falsely claiming sleep',
  assert.equal(f.steps(),0)
  cancelBed(f.r)
 })
+test('a login personal spawn elsewhere cannot complete the requested bed setup',()=>{
+ const f=world()
+ f.r.currentRespawnStatus=()=> 'observed_server_player_spawn_packet'
+ const reply=requestBed(f.r,'set_spawnpoint','控制台')
+ assert.equal(reply.status,'started')
+ assert.equal(f.r.pendingBedRequest.stage,'approach')
+ assert.equal(f.interactions(),0)
+ cancelBed(f.r)
+})
 test('a fresh pair starts at most ONE one-cell step, no duplicate on job flight',()=>{
  const f=world()
  requestBed(f.r,'sleep','控制台');f.setProof(true)

@@ -1,3 +1,7 @@
+## 2026-11-04 — 床流程版本与实机验收
+
+`alice-17879-bed-readonly.py --inspect OUTPUT_DIR` / `.openclaw/tasks/alice_17879_bed_readonly.json` 只读取原17879当前owner和新鲜心跳，不触发querytarget、输入、重载或世界写入。检查 `bedLogicVersion=1` 后，仍要分别读取个人床服务器确认、睡眠状态和接近的独立BDS终点；只有文件mtime不证明加载。原`alice-mac.sh sync`和`.openclaw/tasks/alice_mint_nonrestart_sync.json`不重启客户端，完整Mint Node24通过后才可在明确用户授权和平台审核下使用原已批准`alice_17879_client_restart.json`，不得换名重放历史被拒操作。
+
 ## 2026-11-02 — Diagnose the accepted-witness handoff without another reload
 
 The existing alice_model_navigation_log_readonly_20261101 task now reports fixed witness idle-handoff outcomes, mirror-deferral reasons and prepared-route start counts from the current owner’s bounded existing log tail, plus up to five private acceptance journal segments filtered after the verified process/login/life start. Run once at its exact committed SHA through MCP/current and read model_nav; no model, BDS query, remote script install or client/BDS restart. Last logged outcomes are historical within that process tail, not instantaneous state. Keep4s/.75 navigation and1000ms diagnostic criteria distinct; see [review and commands](COORDINATE_EVIDENCE_REVIEW_20261102.md).

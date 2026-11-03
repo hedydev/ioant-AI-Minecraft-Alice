@@ -1,8 +1,10 @@
 'use strict'
+const {sleepOpportunity}=require('./sleep_opportunity.cjs')
 // Extracted, behavior-preserving Alice runtime feature methods.
 // Explicit dependency injection retains original owner and BDS safety gates.
 function createBedRuntimeMethods({requestBed,resumeBed,scoutStartProof,selectAdjacentBed,surveyEscape,useBedForSpawn,verifyBedStep,chooseAdjacentMovement,HOSTILES,candidateOneBlockJump,selectDirectionalBedStep,performOneBlockJump}){
   return {
+  sleepTick(options={}){return sleepOpportunity(this,options)},
   requestBedTask(action,source,report=null){return requestBed(this,action,source,report)},
   resumeBedRequestOnWitness(){return resumeBed(this)},
   async spawnpointTick({freshBdsWitness=false}={}){
@@ -16,9 +18,9 @@ function createBedRuntimeMethods({requestBed,resumeBed,scoutStartProof,selectAdj
        this.safetyBusy||this.threat()||this.core.hasFollowIntent()||
        this.goalPlanner.stoppedByHuman||this.bot.health<16||
        (!freshBdsWitness&&this.clock()<this.nextSpawnpointAt))return false
-    // The existing personal spawn packet proves an already active point.
-    if(this.currentRespawnStatus?.()==='observed_server_player_spawn_packet'||
-       this.homeBed.summary().status==='server_confirmed_current_session')return false
+    // Login can announce a personal spawn elsewhere. It does not certify
+    // using the observed bed in this session.
+    if(this.homeBed.summary().status==='server_confirmed_current_session')return false
     // Observe bed reach before independent BDS admission; neither observation
     // authorizes an interaction or bypasses the existing movement safety gate.
     const positions=this.observedBeds.nearby(this.bot,{radius:16})
@@ -311,8 +313,7 @@ function createBedRuntimeMethods({requestBed,resumeBed,scoutStartProof,selectAdj
        this.bot.isSleeping||this.closed||!this.ready()||
        this.bot.health<16||this.bot.game?.dimension!=='overworld')
       return hold('autonomous_bed_other_priority')
-    if(this.homeBed.summary().status!=='not_verified'||
-       this.currentRespawnStatus?.()==='observed_server_player_spawn_packet')
+    if(this.homeBed.summary().status==='server_confirmed_current_session')
       return hold('autonomous_bed_respawn_already_known')
     if(!scoutStartProof(this.bot,this.movementEvidence,this.clock).ok)
       return hold('autonomous_bed_bds_pair_not_fresh')

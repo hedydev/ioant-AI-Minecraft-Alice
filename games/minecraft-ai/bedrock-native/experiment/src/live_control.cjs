@@ -97,6 +97,7 @@ function compactStatus(state){
   if(data.worldRoutine){
     const w=data.worldRoutine
     data.worldRoutine={phase:w.phase,tick:w.tick,weather:w.weather,
+      bedLogicVersion:w.bedLogicVersion,canSleep:w.canSleep,
       idleGate:w.idleGate,safeToExplore:w.safeToExplore,decision:w.decision,
       cooldowns:w.cooldowns,escapeSurvey:w.escapeSurvey,
       explorationProgress:w.explorationProgress,
@@ -146,6 +147,7 @@ function compactStatus(state){
   if(data.worldRoutine){
     const w=data.worldRoutine,d=w.escapeSurvey?.door
     data.worldRoutine={phase:w.phase,tick:w.tick,weather:w.weather,
+      bedLogicVersion:w.bedLogicVersion,canSleep:w.canSleep,
       idleGate:w.idleGate,decision:w.decision,idleHold:w.idleHold,nightSurvival:w.nightSurvival,
       sleepOpportunity:w.sleepOpportunity,
       rememberedBeds:w.rememberedBeds,
@@ -234,6 +236,7 @@ function compactStatus(state){
       followDistance:num(state.settings.followDistance),
       occludedDistance:num(state.settings.occludedDistance)},
     state:str(state.state,32),job:str(state.job,80),
+    isSleeping:typeof state.isSleeping==='boolean'?state.isSleeping:null,
     position:xyz(state.position),health:num(state.health),food:num(state.food),
     followTarget:str(state.followTarget,18),
     life:{deathsSinceTracking:num(life.deathsSinceTracking),
@@ -259,6 +262,7 @@ function compactStatus(state){
         positionGateSatisfied:d.positionGateSatisfied===true,
         permissionGranted:false,querySent:false}},
     worldRoutine:{phase:str(w.phase,25),tick:num(w.tick),
+      bedLogicVersion:num(w.bedLogicVersion),canSleep:typeof w.canSleep==='boolean'?w.canSleep:null,
       weather:str(w.weather,20),idleGate:str(w.idleGate,48),
       // A bounded recent door decision must retain BOTH provenance fields
       // through minimal-status compaction; the witness timer still enforces
@@ -278,6 +282,7 @@ function compactStatus(state){
   const bedAction=w.bedApproachAction
   const bedAttempt=w.lastSpawnpointAttempt
   const bedCompact={...essential,worldRoutine:{...essential.worldRoutine,
+    sleepOpportunity:w.sleepOpportunity&&{status:str(w.sleepOpportunity.status,80)},
     rememberedBeds:w.rememberedBeds&&{
       knownBeds:num(w.rememberedBeds.knownBeds)},
     homeBed:w.homeBed&&{status:str(w.homeBed.status,54)},
@@ -294,8 +299,10 @@ function compactStatus(state){
   // the concise admission cause over optional idle explanation text.
   const bedPrioritized={...bedCompact,worldRoutine:{
     phase:essential.worldRoutine.phase,
+    bedLogicVersion:essential.worldRoutine.bedLogicVersion,canSleep:essential.worldRoutine.canSleep,
     idleGate:essential.worldRoutine.idleGate,
     decision:essential.worldRoutine.decision,
+    sleepOpportunity:bedCompact.worldRoutine.sleepOpportunity,
     rememberedBeds:bedCompact.worldRoutine.rememberedBeds,
     homeBed:bedCompact.worldRoutine.homeBed,
     homeBase:bedCompact.worldRoutine.homeBase,

@@ -115,11 +115,19 @@ test('time-limited pending request cannot be rearmed by old witness',()=>{
  assert.equal(resumeBed(r).state,'rejected')
  assert.equal(calls.length,0)
 })
-test('already confirmed personal spawn does not activate bed again',()=>{
+test('same observed bed confirmed this session does not activate again',()=>{
  const {r,calls}=fixture()
- r.homeBed.summary=()=>({status:'server_confirmed_current_session'})
+ r.homeBed.summary=()=>({status:'server_confirmed_current_session',bed:bed.position})
  assert.equal(requestBed(r,'set_spawnpoint','控制台').status,'completed')
  assert.equal(calls.length,0)
+})
+test('another confirmed bed cannot silently fulfill setup of the adjacent bed',()=>{
+ const {r,calls}=fixture()
+ r.homeBed.summary=()=>({status:'server_confirmed_current_session',bed:{x:20,y:65,z:0}})
+ const result=requestBed(r,'set_spawnpoint','控制台')
+ assert.equal(result.status,'started')
+ assert.equal(calls.length,0)
+ cancelBed(r)
 })
 
 test('new explicit bed intent cancels stale async model planning without issuing movement',()=>{

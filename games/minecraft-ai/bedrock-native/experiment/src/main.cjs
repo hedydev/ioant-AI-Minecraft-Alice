@@ -250,7 +250,7 @@ async function main(args=process.argv.slice(2)){
       sessionExit,deathRecovery:respawnRecovery.get(),
       revision:runtime.liveBehavior.revision,
       settings:runtime.liveBehavior.settings,world:'Bedrock level',serverPort:c.port,
-      state:String(core.state||'unknown').slice(0,32),
+      state:String(core.state||'unknown').slice(0,32),isSleeping:bot.isSleeping===true,
       job:runtime.action?.label||null,
       longTermGoal:runtime.continuousGoal.snapshot({
         mode:runtime.liveBehavior.settings.agentMode,
@@ -286,7 +286,7 @@ async function main(args=process.argv.slice(2)){
         witnessDemand:witnessDemand({connected:!!connected,sessionEstablished:networkSessionEstablished,
           bot,evidence:movementEvidence})},
       ...(outboundSummary?{outboundInput:outboundSummary}:{}),
-      worldRoutine:{...environment(bot),idleGate:runtime.idleGateReason(),
+      worldRoutine:{...environment(bot),bedLogicVersion:1,idleGate:runtime.idleGateReason(),
         verticalSafety:runtime.verticalWatch.summary(),
         cooldowns:runtime.failureMemory.summary(self),
         explorationProgress:runtime.explorationProgress.summary(),
@@ -459,6 +459,8 @@ async function main(args=process.argv.slice(2)){
     // one separately guarded step TOWARD a loaded free bed, never a blind
     // long path. Then retain the original fall-closed scout admission.
     Promise.resolve(bedCheck).then(()=>{
+      // Sleep must consume the SAME fresh proof, not the next 5s timer tick.
+      if(runtime.sleepTick({freshBdsWitness:true}))return
       const bedMove=runtime.resumeAutonomousBedApproachOnWitness()
       if(bedMove.state==='started'){
         runtimeLogger.log('[Alice home] witnessed short bed approach:',

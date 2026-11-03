@@ -649,6 +649,7 @@ class AliceBedrockRuntime {
   tryShortFollow(...args){return followRuntimeMethods.tryShortFollow.apply(this,args)}
   followTick(...args){return followRuntimeMethods.followTick.apply(this,args)}
   // Bed/spawnpoint implementation is delegated to features/bed/.
+  sleepTick(...args){return bedRuntimeMethods.sleepTick.apply(this,args)}
   requestBedTask(...args){return bedRuntimeMethods.requestBedTask.apply(this,args)}
   resumeBedRequestOnWitness(...args){return bedRuntimeMethods.resumeBedRequestOnWitness.apply(this,args)}
   async spawnpointTick(...args){return bedRuntimeMethods.spawnpointTick.apply(this,args)}

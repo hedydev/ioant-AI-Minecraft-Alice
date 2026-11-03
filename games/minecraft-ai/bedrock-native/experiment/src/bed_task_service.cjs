@@ -10,8 +10,14 @@ const {candidateOneBlockJump}=require('./one_block_jump.cjs')
 const {outcome,message}=require('./bed_request_outcome.cjs')
 const TIMEOUT=240000
 const TYPES=new Set(['sleep','set_spawnpoint'])
-const hasSpawn=r=>r.currentRespawnStatus?.()==='observed_server_player_spawn_packet'||
-  r.homeBed.summary().status==='server_confirmed_current_session'
+// A personal spawn packet at login can describe a DIFFERENT location.
+// Only an interaction-confirmed current-session bed can satisfy this task.
+const hasSpawn=(r,position)=>{
+ const home=r.homeBed.summary()
+ return home.status==='server_confirmed_current_session'&&home.bed&&position&&
+   Math.hypot(home.bed.x-position.x,home.bed.y-position.y,
+     home.bed.z-position.z)<=1.5
+}
 // A discovered bed behind a door, step, wall, water or unknown geometry
 // must never be treated as an ordinary flat WALK path. Validate the whole
 // grid chain AND the exact intended bed-side standing cell before staging.
@@ -78,8 +84,6 @@ function requestBed(r,action,source,report=null){
    return reply('rejected','bed_safety_or_follow_priority','当前有危险、跟随或停止指令，暂不启动床任务')
  if(r.bot.game?.dimension!=='overworld')
    return reply('rejected','bed_wrong_dimension','这个维度不能使用普通床')
- if(action==='set_spawnpoint'&&hasSpawn(r))
-   return reply('completed','existing_personal_spawn','已有服务器确认过的重生点')
  // Only loaded, verified bed cells; a farther candidate is NOT a safe route.
  const positions=observedBedPositions(r)
  const choice=selectAdjacentBed(r.bot,positions,{radius:16})
@@ -136,6 +140,8 @@ function requestBed(r,action,source,report=null){
   const reason=obstacleReason||choice.reason
   return reply('rejected',reason,message({reason}))
  }
+ if(action==='set_spawnpoint'&&!needsApproach&&hasSpawn(r,bedPosition))
+   return reply('completed','existing_personal_spawn','这张床已有本次会话的服务器重生点确认')
  const now=r.clock(),ev=r.movementEvidence?.get?.()
  // A new explicit human command outranks a slow autonomous model answer.
  // It invalidates an older planning epoch without touching the BDS witness,
@@ -224,7 +230,7 @@ function resumeBed(r){
  if(!choice.bed||['x','y','z'].some(k=>choice.bed.position[k]!==p.position[k]))
    return deny('bed_changed_or_no_longer_adjacent')
  r.pendingBedRequest=null;clearTimeout(p.timer)
- const known=hasSpawn(r)
+ const known=hasSpawn(r,p.position)
  if(p.action==='set_spawnpoint'&&known){
   p.report?.('completed','existing_personal_spawn','已有确认过的个人重生点')
   return {state:'completed',reason:'existing_personal_spawn',message:'已有确认过的个人重生点'}

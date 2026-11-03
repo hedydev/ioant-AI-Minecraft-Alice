@@ -34,6 +34,17 @@ test('hostile or nearby player occupying first safe cell blocks the step',()=>{
  bot.entities.zombie={position:V(1.5,65,.5),name:'zombie'}
  assert.equal(selectDirectionalBedStep(bot,bed).ok,false)
 })
+test('real Bedrock self entry cannot obstruct its own bedward step',()=>{
+ const bot=world()
+ bot.entity.id=17
+ bot.entities[17]=bot.entity
+ assert.deepEqual(selectDirectionalBedStep(bot,bed).first,[1,65,0])
+ // Identity can also be mirrored as another object by an adapter.
+ bot.entities[17]={...bot.entity}
+ assert.equal(selectDirectionalBedStep(bot,bed).ok,true)
+ bot.entities.other={id:18,name:'player',position:V(1.5,65,.5)}
+ assert.equal(selectDirectionalBedStep(bot,bed).ok,false)
+})
 test('unknown floor, airborne, vertical or wrong dimension never authorize movement',()=>{
  const bot=world()
  bot.entity.onGround=false
