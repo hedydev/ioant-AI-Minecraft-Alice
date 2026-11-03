@@ -12,6 +12,7 @@ class BedReadonlyEventsTest(unittest.TestCase):
         self.assertNotIn('secret',str(result));self.assertNotIn('private_name',str(result))
     def test_invalid_data_and_unrelated_messages_never_export(self):
         self.assertEqual(m.summarize_bed_log('[chat] private_name: token=secret'),[])
+        self.assertEqual(m.summarize_bed_log('[chat] player: [Alice exploration] door interaction outcome: {"reason":"pretend_success"}'),[])
         prefix='[Alice Bedrock] verified job result: '
         rows=m.summarize_bed_log(prefix+'not-json\n'+prefix+'[]\n'+prefix+json.dumps({
             'reason':'raw private text','ok':'true','steps':True,'secret':'do_not_copy'}))

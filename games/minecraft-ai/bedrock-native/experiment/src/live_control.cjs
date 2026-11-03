@@ -257,6 +257,7 @@ function compactStatus(state){
       occludedDistance:num(state.settings.occludedDistance)},
     state:str(state.state,32),job:str(state.job,80),
     isSleeping:typeof state.isSleeping==='boolean'?state.isSleeping:null,
+    interactionStatus:state.interactionStatus,
     position:xyz(state.position),health:num(state.health),food:num(state.food),
     followTarget:str(state.followTarget,18),
     life:{deathsSinceTracking:num(life.deathsSinceTracking),

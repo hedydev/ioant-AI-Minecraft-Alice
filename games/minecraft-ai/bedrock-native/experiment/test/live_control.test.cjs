@@ -439,6 +439,7 @@ test('minimal oversized status retains a bounded bed-admission hold reason',()=>
  pub.publish({connected:true,sessionEstablished:true,producerPid:12345,
    producerStartToken:'a'.repeat(40),world:'Bedrock level',serverPort:17879,
    state:'IDLE',health:20,food:20,settings:{...DEFAULTS,agentMode:'autonomous'},
+   interactionStatus:{version:1,queueOnlyNotNetworkProof:true,blockClicksSerialized:1},
    movementEvidence:{independentSamples:4,independentSource:'bds_querytarget',
      independentAt:100000,independentPreviousAt:99000,
      independentLatestFeet:{x:1.5,y:65,z:.5}},
@@ -461,6 +462,7 @@ test('minimal oversized status retains a bounded bed-admission hold reason',()=>
  const data=JSON.parse(fs.readFileSync(path.join(root,'status.json'),'utf8'))
  assert.equal(data.statusMinimal,true)
  assert.equal(data.connected,true)
+ assert.equal(data.interactionStatus.blockClicksSerialized,1)
  assert.equal(data.movementEvidence.independentSamples,4)
  assert.equal(data.worldRoutine.rememberedBeds.knownBeds,2)
  assert.deepEqual(data.worldRoutine.bedRequest,{action:'set_spawnpoint',

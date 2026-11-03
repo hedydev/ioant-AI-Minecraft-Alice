@@ -1,3 +1,9 @@
+## 2026-11-04 — 原服默认member；增加只读自身交互诊断
+
+固定只读45确认原17879/Bedrock level的默认角色member、gamemode=survival。这不能证明Alice当前实际角色；实际安装abilities.js接受update_abilities且未按玩家ID筛选，不能直接把bot.abilities认作自身权限。新增被动interaction_audit：仅接受与自己start_game唯一ID精确匹配的权限包，输出匿名角色和门/容器布尔权限；未知不冒充允许。记录已有click_block成功序列化计数、错误计数及面/槽位匹配/空手/堆栈标记/本地眼睛位置一致性等有限诊断。queue包装保持原this、参数、返回值和异常，不增加发送或修改包；明确queueOnlyNotNetworkProof，不把序列化当服务器执行。只读床回执保留这些诊断，日志仅识别真实行首标记。
+
+此提交只增加观测，不改变门、床、权限或安全策略，不发送测试指令。Node29项观察器/4KiB回归通过；完整Mac/Mint与必要加载待回执。此前1bb226cf…睡眠验收只发一次，后续只查该回执，不为采集诊断反复点击。
+
 ## 2026-11-04 — 已开门仍须先到近侧格
 
 源码审查发现另一个确定性衔接缺口：门已打开且路线仅1～2格时，策略直接请求crossObservedDoor，但该执行器明确要求approach.steps===0，于是永远停在门外。现让任何仍有路线的已开木门走原逐格approachDoor/BDS终点路径，到近侧后才尝试穿门；不放宽crossObservedDoor或跳过位置证明。新增远门/已到近侧两种行为断言，33项定向Node通过。此前侧面点击源码2185d15已通过真实sync38：Mint992/992、Mac332 skip3；此补充尚待完整Mint复验，当前PID1475661仍版本4，无新点击或重启。

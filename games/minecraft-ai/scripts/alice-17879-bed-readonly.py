@@ -16,8 +16,9 @@ def summarize_bed_log(text):
       '[Alice Bedrock] verified job result:':'job_result'}
     events=[]
     for line in text[-120000:].splitlines():
+        line=re.sub(r'^\[[0-9T:.+\-]+ PID=[0-9]+\] ', '', line)
         for marker,kind in markers.items():
-            if marker not in line:continue
+            if not line.startswith(marker):continue
             try: value=json.JSONDecoder().raw_decode(line.split(marker,1)[1].strip())[0]
             except (ValueError,TypeError):break
             if not isinstance(value,dict):break
@@ -41,7 +42,8 @@ out={'state':'unverified','connected':False,'health':None,
  'bedLogicVersion':None,'producerPid':None,'isSleeping':None,'personalBedStatus':'unknown',
  'sleepOpportunity':'unknown','lastBedFailure':'unknown',
  'nightSurvival':'unknown','idleGate':'unknown',
- 'hasFollowTarget':False,'jobActive':False,'bedLogRead':False,'bedEvents':[]}
+ 'hasFollowTarget':False,'jobActive':False,'bedLogRead':False,'bedEvents':[],
+ 'interactionStatus':None}
 try:
  p=subprocess.run(['/usr/bin/python3',str(status_tool),'status'],capture_output=True,text=True,timeout=12,check=False)
  if p.returncode!=0 or len(p.stdout)>20000:raise ValueError('status')
@@ -77,6 +79,8 @@ try:
  if isinstance(a,str) and re.fullmatch('[A-Za-z0-9_]{1,75}',a):out['idleGate']=a
  out['hasFollowTarget']=bool(d.get('followTarget'))
  out['jobActive']=bool(d.get('job'))
+ audit=d.get('interactionStatus')
+ if isinstance(audit,dict) and audit.get('version')==1:out['interactionStatus']=audit
  location=(Path('/proc')/str(t['pid'])/'fd/1').resolve(strict=True)
  if (location.parent!=root or not location.name.startswith('operator-') or
      not location.is_file() or location.stat().st_uid!=os.getuid() or
@@ -90,9 +94,23 @@ print(json.dumps(out,separators=(',',':')))
 """
 REMOTE=inspect.getsource(summarize_bed_log)+'\n'+REMOTE
 def validate(x):
-    keys={'bedLogRead','bedEvents','bedLogicVersion','producerPid','isSleeping','personalBedStatus','state','connected','health','phase','canSleep','rememberedBeds','sleepOpportunity','lastBedFailure','nightSurvival','idleGate','hasFollowTarget','jobActive'}
+    keys={'interactionStatus','bedLogRead','bedEvents','bedLogicVersion','producerPid','isSleeping','personalBedStatus','state','connected','health','phase','canSleep','rememberedBeds','sleepOpportunity','lastBedFailure','nightSurvival','idleGate','hasFollowTarget','jobActive'}
     if not isinstance(x,dict) or set(x)!=keys or x['state'] not in ('observed','unverified'):return None
     if type(x['bedLogRead']) is not bool or not isinstance(x['bedEvents'],list) or len(x['bedEvents'])>12:return None
+    a=x['interactionStatus']
+    if a is not None:
+        if not isinstance(a,dict) or set(a)!={'version','queueOnlyNotNetworkProof','permissions','sneaking','usingItem','blockClicksSerialized','blockClickErrors','lastClick'}:return None
+        if a['version']!=1 or a['queueOnlyNotNetworkProof'] is not True:return None
+        p=a['permissions']
+        if not isinstance(p,dict) or set(p)!={'source','role','doorsAndSwitches','openContainers'}:return None
+        if p['source'] not in ('unobserved','self_update_abilities') or p['role'] not in ('unknown','visitor','member','operator','custom'):return None
+        if any(v is not None and type(v) is not bool for v in (p['doorsAndSwitches'],p['openContainers'],a['sneaking'],a['usingItem'])):return None
+        if any(type(a[k]) is not int or not 0<=a[k]<=1000000 for k in ('blockClicksSerialized','blockClickErrors')):return None
+        q=a['lastClick']
+        if q is not None:
+            if not isinstance(q,dict) or set(q)!={'face','hotbarMatchesLocal','heldEmpty','hasStackId','eyePositionMatchesLocal'}:return None
+            if q['face'] is not None and (type(q['face']) is not int or not 0<=q['face']<=5):return None
+            if any(v is not None and type(v) is not bool for k,v in q.items() if k!='face'):return None
     for event in x['bedEvents']:
         if not isinstance(event,dict) or set(event)-{'kind','reason','attempted','serverMovementVerified','ok','steps'}:return None
         if event.get('kind') not in ('bed_admission','door_approach','door_approach_gate','door_interaction','door_interaction_gate','door_passage','door_endpoint','passage_endpoint','bed_endpoint','job_result'):return None

@@ -1,3 +1,9 @@
+## 2026-11-04 — 原服默认member；增加只读自身交互诊断
+
+固定只读45确认原17879/Bedrock level的默认角色member、gamemode=survival。这不能证明Alice当前实际角色；实际安装abilities.js接受update_abilities且未按玩家ID筛选，不能直接把bot.abilities认作自身权限。新增被动interaction_audit：仅接受与自己start_game唯一ID精确匹配的权限包，输出匿名角色和门/容器布尔权限；未知不冒充允许。记录已有click_block成功序列化计数、错误计数及面/槽位匹配/空手/堆栈标记/本地眼睛位置一致性等有限诊断。queue包装保持原this、参数、返回值和异常，不增加发送或修改包；明确queueOnlyNotNetworkProof，不把序列化当服务器执行。只读床回执保留这些诊断，日志仅识别真实行首标记。
+
+此提交只增加观测，不改变门、床、权限或安全策略，不发送测试指令。Node29项观察器/4KiB回归通过；完整Mac/Mint与必要加载待回执。此前1bb226cf…睡眠验收只发一次，后续只查该回执，不为采集诊断反复点击。
+
 ## 2026-11-04 — 版本5实机仍未开门；额度交接规则更新
 
 c1488eb已经实际通过sync39（Mint993/993，Mac332 skip3），原批准restart40完成PID1475661→1495260；读回41确认版本5/在线。新版本独立sleep验收42的commandId为1bb226cfeb5d45b6a528a4ad55c44041；仅发一次，后续只查回执。有限观察43捕捉到独立新鲜静止窗口，偏差0.00（5个合格样本），但BDS位移0。只读日志44仍返回door_state_change_not_observed，attempted=true；**侧面修复没有解决本次原服门交互，床/重生点/睡觉仍未成功**。不继续重复点击，先审计实际安装的交互上下文及服务器默认交互权限。

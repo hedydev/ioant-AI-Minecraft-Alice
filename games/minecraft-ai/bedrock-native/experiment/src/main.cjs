@@ -1,5 +1,6 @@
 'use strict'
 const {bedWitnessDemand}=require('./features/bed/witness_demand.cjs')
+const {attachInteractionAudit}=require('./interaction_audit.cjs')
 // Register BEFORE emitting any production logs. Simulation/check invocations
 // and the independent operator CLI retain their existing output contracts.
 if(process.argv.includes('--production-start'))
@@ -139,6 +140,7 @@ async function main(args=process.argv.slice(2)){
   })
   if(analogCompat.enabled)console.log('[Alice Bedrock] official 2193 analog input compatibility enabled (opt-in)')
   const movementEvidence=attachMovementEvidence(bot._client,{eyeHeight:()=>bot.entity?.eyeHeight||1.62})
+  const interactionAudit=attachInteractionAudit(bot)
   const bdsWitness=live?new BdsWitnessReader({name:()=>bot.username}):null
   let stableWitness=null // off unless owner-only config exists
   // Bedrock add_player reports Y with the player eye-height offset. The pinned
@@ -252,6 +254,7 @@ async function main(args=process.argv.slice(2)){
       revision:runtime.liveBehavior.revision,
       settings:runtime.liveBehavior.settings,world:'Bedrock level',serverPort:c.port,
       state:String(core.state||'unknown').slice(0,32),isSleeping:bot.isSleeping===true,
+      interactionStatus:interactionAudit.get(),
       job:runtime.action?.label||null,
       longTermGoal:runtime.continuousGoal.snapshot({
         mode:runtime.liveBehavior.settings.agentMode,

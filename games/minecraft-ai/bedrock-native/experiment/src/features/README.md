@@ -33,3 +33,5 @@ Maintenance and terrain method bodies continue executing with the original Alice
 - bed/door_stage.cjs: bounded bed goal transition through existing independently guarded door executors; no second navigation engine.
 
 - bed/witness_demand.cjs: read-only, current-life typed bed intent/endpoint descriptor; no query, timer or movement permission. Existing opt-in demand service owns budget/backoff.
+
+- interaction_audit.cjs (root observer): exact-self ability provenance and queue-only click diagnostics; never grants permissions or emits packets.
