@@ -1,3 +1,7 @@
+## 2026-11-03 — 第二批 Bedrock 功能目录和依赖所有权
+
+新增 safety/runtime_methods.cjs（threat/escortDecision/safetyTick）、navigation/follow_methods.cjs（stopDirectFollow/tryShortFollow/followTick）、autonomy/model_methods.cjs（recordAutonomousDecision/runAutonomousModelStep）、autonomy/night_methods.cjs（tryNightReposition）、autonomy/idle_methods.cjs（idleTick/runIdleDecision）。全部使用显式根依赖工厂并在类方法入口 .apply(this,args)，不创建状态副本。原有生存抢占、model allowlist、随从意图、木门/床独立BDS一格确认沿用现有合同。每批 Node24/Python 全量回归与 Mint 不重启同步不可省略。未将大型 idle 决策内部完全拆成子阶段，后续可按目标决策、资源获取、门候选、审计阶段进一步细分。
+
 ### Feature 原码隔离测试的兼容入口（2026-11-03）
 
 原 test/bed_jump_runtime.test.cjs、bed_runtime_step_contract.test.cjs 和 raised_door_landing_runtime.test.cjs 通过源码文本截取的方法已更新为直接 import 对应 src/features/bed 或 src/features/door 的真实工厂方法，以相同 fixture 注入原策略、BDS 见证和跳跃执行器。新增领域模块不得再依赖 runtime.cjs 文本行号或通过 new Function 从主类切片重建方法；需要真实方法则对模块工厂显式注入依赖。行为保护断言不得删改为静态存在性检查。

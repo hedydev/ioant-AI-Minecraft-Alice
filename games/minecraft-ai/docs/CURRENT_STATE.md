@@ -1,3 +1,7 @@
+## 2026-11-03 — Runtime 第二批模块化（功能源码待 Mint/Node24 回归）
+
+延续 bed/door 首批拆分，此次将 11 个方法按职责迁至 safety、navigation/follow、autonomy/model、autonomy/night、autonomy/idle 五个功能模块，方法体原样迁移、原实例 API 使用 .apply(this,args) 转发、同一 Alice bot/job/epoch/BDS 证据 owner 不变。runtime.cjs 2965 行降至 1667 行，迁出约 1298 行，新增 runtime_second_wave_modules.test.cjs 检查模块签名和安全/跟随/夜间/IDLE 门禁。源重构没有放宽 4s/0.75m、独立 BDS 后验、40/h 查询预算/180秒间隔、240秒单格等待、STOP/FOLLOW/战斗威胁/防撞规则。生产 Alice 未重启，不能据此认定原服行为已加载；需完整验收。
+
 ## 2026-11-03 — Feature 模块化第一批全量验收通过（最终回执）
 
 实际完成两级功能文件夹：src/features/bed/runtime_methods.cjs（6 方法）、src/features/door/runtime_methods.cjs（7 方法），runtime.cjs 原 3566 行减少为 2965 行。首轮 Mint Node24 931/934 且 3 个 Node 测试文件因旧方式截取 runtime.cjs 方法源码而启动失败，已在 commit 747e2400b39fa98874ccc919e92cb718d0ac98f3 将三份原行为合约测试直接注入新功能工厂，没有删除断言或放宽安全要求。

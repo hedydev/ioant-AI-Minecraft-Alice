@@ -1,8 +1,13 @@
-# Bedrock feature modules
+# Runtime feature ownership and dependency contract
 
-The original AliceBedrockRuntime remains the only owner of bot state, task lifetime, timer, priority, STOP/FOLLOW and independent BDS witness context.
+The root AliceBedrockRuntime in src/runtime.cjs remains the only owner of the live bot, clock, decision epochs, task/job lifecycle, STOP/FOLLOW intent, model authority, timers and independent BDS witness evidence. Feature module factories receive the existing runtime policy dependencies explicitly and their methods execute with the SAME Alice instance via .apply(this,args). No feature module creates another client, timers, source of coordinate truth, MCSManager query or gameplay mutation beyond the original method body.
 
-- bed/runtime_methods.cjs owns spawnpoint, bed approach and bed-step witness settlement.
-- door/runtime_methods.cjs owns door approach, crossing, raised landing and escape survey.
+- bed/runtime_methods.cjs: bed and personal respawn tasks.
+- door/runtime_methods.cjs: door, crossing, post-input witness and room survey.
+- safety/runtime_methods.cjs: observed hostile evidence, escort and safety preemption.
+- navigation/follow_methods.cjs: following and bounded recovery.
+- autonomy/model_methods.cjs: bounded model goal execution and decision records.
+- autonomy/night_methods.cjs: guarded night reposition.
+- autonomy/idle_methods.cjs: durable autonomous IDLE scheduling.
 
-These factories inject dependencies once. Public instance methods forward using the original this; no second client, timer or independent state store is introduced. Preserve all original safety, geometry, query budget and post-input server-proof gates. Future modules should be extracted incrementally and accepted by full Mint Node24 and Mac Python regression.
+Keep stable AliceBedrockRuntime instance APIs for all consumers. Add and preserve behavioral tests for each extracted feature; no status-only or local physics indication may be promoted to BDS accepted travel. Source refactors require Mac Python and Mint Node24 full regression with one-client no-restart non-destructive sync.
