@@ -76,3 +76,10 @@
 ### 下一轮
 
 在 PID4147538 上只读核验新的双 BDS 见证、当前门前首次一格尝试、端点复核与房间 `escapeSurvey`；不要借旧PID的(-2,-3)坐标实施导航。严格不放宽原4秒 BDS 新鲜度、180秒采样节流、40/h预算、不重复重启/BDS/世界。新代码部署成功，但**正式世界到门、开门、出门、床重生点及 HOME 返回仍待真实验收**。
+
+### 补充：当前 PID4147538 的只读门前执行事件审计
+
+- 新增 `games/minecraft-ai/scripts/alice-door-lifecycle-readonly.py` 和固定任务 `.openclaw/tasks/alice_door_autonomy_readonly.json`，只通过 owner/PID/world/17879/600权限检查的 `status.json` 与当前 `/proc/PID/fd/1` 读取已存在的有限日志；输出脱敏枚举/次数，不读取玩家隐私、原始日志、账号数据，不发BDS命令或运动输入。登记提交 `abf2939c490c96bad03564b813a5d46c9fcec214`，固定Mac sync任务 `alice_r72_door_audit_sync_17` PASS。
+- `alice_r72_door_audit_live_18` selftest和真实 owner 检查均 PASS：`PID4147538` 连接正常，独立 BDS 样本2，当前还没有封闭木门优先/门口第一格/开门的日志事件（各计数0）。该诊断**不会自动读取未来**，每次观察必须用新的只读 operation ID。
+- `alice_r72_door_audit_gate_19`：同 PID 自主 IDLE、HP20、`movingQueued=6`，`nightSurvivalReason=scout_step_awaiting_new_bds_pair`，表示夜间短距离 SCOUT 已经发送输入但缺少独立 BDS 终点证明；不能宣称走动成功，也不能重复启动另一个短程动作。
+- `alice_r72_post_probe_demand_20`：service owner/timer/opt-in 有效，`demandNow=true`，budget32/40，距上次批次151.2秒，stalledPairs1，当前独立 BDS 样本仍2、serverTravel0。必须由原带冷却/配额/固定见证的服务自行完成后续样本，**不强行延长单格240秒截止或补发手动querytarget**。
