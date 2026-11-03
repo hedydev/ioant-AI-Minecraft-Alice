@@ -37,6 +37,29 @@ test('closed Bedrock wooden door can be opened exactly once, without moving or d
  assert.equal(f.counts().digs,0)
  assert.equal(planDoorOpen(f.bot,s).reason,'door_already_open')
 })
+test('native block API receives the visible horizontal face rather than covered top face',async()=>{
+ const f=room(),activate=f.bot.activateBlock
+ let clicked=null,aim=null
+ f.bot.activateBlock=async(block,face)=>{clicked=face;await activate(block)}
+ f.bot.lookAt=async p=>{aim=p}
+ const gate=planDoorOpen(f.bot,f.survey())
+ assert.deepEqual(gate.face,{x:-1,y:0,z:0})
+ assert.deepEqual(gate.point,{x:2,y:65.5,z:.5})
+ assert.equal((await attemptDoorOpen(f.bot,f.survey(),{sleep:async()=>{}})).ok,true)
+ assert.deepEqual(clicked,{x:-1,y:0,z:0})
+ assert.deepEqual(aim,{x:2,y:65.5,z:.5})
+ assert.equal(f.counts().activation,1)
+})
+test('a wall or missing eye-ray block prevents any door activation',async()=>{
+ for(const blocker of [null,{name:'glass',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}]){
+  const f=room(),original=f.bot.blockAt
+  f.bot.blockAt=p=>Math.floor(p.x)===0&&Math.floor(p.y)===66&&Math.floor(p.z)===0?
+    blocker:original(p)
+  const outcome=await attemptDoorOpen(f.bot,f.survey(),{sleep:async()=>{}})
+  assert.equal(outcome.attempted,false)
+  assert.equal(f.counts().activation,0)
+ }
+})
 test('unknown Bedrock open_bit cannot trigger interaction',async()=>{
  const f=room({doorProps:{upper_block_bit:false}}),s=f.survey()
  // Explicitly preserve a missing open_bit, rather than converting unknown to false.

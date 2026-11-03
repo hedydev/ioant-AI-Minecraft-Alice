@@ -3,6 +3,7 @@
 // placing, arbitrary interaction or claim of BDS-confirmed passage.
 const {knownAir}=require('./scout_routes.cjs')
 const {fullSupport}=require('./escape_survey.cjs')
+const {boxes}=require('./voxel_actions.cjs')
 const WOOD_DOOR=/^(oak|spruce|birch|jungle|acacia|dark_oak|mangrove|cherry|bamboo|crimson|warped|pale_oak|wooden)_door$/
 const xyz=p=>Array.isArray(p)&&p.length===3&&p.every(Number.isSafeInteger)
 // Vanilla Bedrock stores these bit states as 0/1; some Block adapters return
@@ -26,6 +27,32 @@ function observedDoorBits(block){
 function blockAt(bot,x,y,z){
  const p=bot.entity.position
  return bot.blockAt(p.offset(x-p.x,y-p.y,z-p.z))
+}
+function doorClickFace(bot,position){
+ const self=bot.entity.position,[x,y,z]=position
+ const dx=self.x-x-.5,dz=self.z-z-.5
+ const face=Math.abs(dx)>=Math.abs(dz)?
+   {x:Math.sign(dx),y:0,z:0}:{x:0,y:0,z:Math.sign(dz)}
+ const point={x:x+.5+face.x*.5,y:y+.5,z:z+.5+face.z*.5}
+ const height=bot.entity.eyeHeight??1.62
+ if(!Number.isFinite(height)||height<1||height>1.8)return null
+ const eye={x:self.x,y:self.y+height,z:self.z}
+ const count=Math.ceil(Math.hypot(point.x-eye.x,point.y-eye.y,point.z-eye.z)/.05)
+ if(count<1||count>90)return null
+ const cache=new Map()
+ for(let i=0;i<count;i++){
+  const f=i/count,p={x:eye.x+(point.x-eye.x)*f,
+    y:eye.y+(point.y-eye.y)*f,z:eye.z+(point.z-eye.z)*f}
+  const a=Math.floor(p.x),b=Math.floor(p.y),c=Math.floor(p.z)
+  if(a===x&&b===y&&c===z)continue // only the selected door may end this ray
+  const key=[a,b,c].join(',')
+  if(!cache.has(key))cache.set(key,boxes(blockAt(bot,a,b,c)))
+  const shapes=cache.get(key)
+  if(!shapes||shapes.some(s=>p.x-a>s[0]-.001&&p.x-a<s[3]+.001&&
+     p.y-b>s[1]-.001&&p.y-b<s[4]+.001&&
+     p.z-c>s[2]-.001&&p.z-c<s[5]+.001))return null
+ }
+ return {face,point}
 }
 function planDoorOpen(bot,survey){
  const fail=reason=>({ok:false,reason})
@@ -70,7 +97,9 @@ function planDoorOpen(bot,survey){
    if(state.upper===true)return {ok:false,reason:'door_upper_half_unverified',stateFormat:state.format}
    if(state.open===null)return {ok:false,reason:'door_open_bit_unverified',stateFormat:state.format}
    if(state.open===true)return {ok:false,reason:'door_already_open',stateFormat:state.format}
-   return {ok:true,door:door.position,block,stateFormat:state.format}
+   const click=doorClickFace(bot,door.position)
+   if(!click)return fail('door_click_ray_blocked_or_unknown')
+   return {ok:true,door:door.position,block,stateFormat:state.format,...click}
  }catch{return fail('door_observation_failed')}
 }
 async function attemptDoorOpen(bot,survey,{signal,sleep=ms=>new Promise(r=>setTimeout(r,ms)),safe=()=>true}={}){
@@ -83,14 +112,17 @@ async function attemptDoorOpen(bot,survey,{signal,sleep=ms=>new Promise(r=>setTi
  let attempted=false
  try{
    if(typeof bot.lookAt==='function'&&gate.block.position)
-     await bot.lookAt(gate.block.position)
+     await bot.lookAt(gate.point)
    if(signal?.aborted||!safe())return {ok:false,reason:'door_action_preempted',attempted:false,openObserved:false}
    attempted=true
    // Exactly one block activation, bounded by an independent deadline.
    let timer
    try{
      await Promise.race([
-       Promise.resolve().then(()=>bot.activateBlock(gate.block)),
+       // Actual installed native interact.js defaults to the TOP face and
+       // overrides lookAt with that click point. The lower door's top is
+       // covered by its upper half; select the observed visible side instead.
+       Promise.resolve().then(()=>bot.activateBlock(gate.block,gate.face)),
        new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('door_interaction_timeout')),2500)})
      ])
    }finally{clearTimeout(timer)}
@@ -117,4 +149,4 @@ async function attemptDoorOpen(bot,survey,{signal,sleep=ms=>new Promise(r=>setTi
      attempted,openObserved:false,door:gate.door,serverMovementVerified:false}
  }
 }
-module.exports={planDoorOpen,attemptDoorOpen,observedDoorBits}
+module.exports={planDoorOpen,attemptDoorOpen,observedDoorBits,doorClickFace}

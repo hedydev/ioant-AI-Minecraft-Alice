@@ -1,3 +1,9 @@
+## 2026-11-04 — 木门点击可见侧面（版本5，待实机加载）
+
+实际安装的interact.js审计37（SHA256 de5acbaf…a62603）确认：activateBlock默认上表面，_genericPlace会覆盖调用者lookAt并按faceVector计算click_pos，先等待120ms再发已有click_block交易。现有门动作点击下半门时默认命中被上半门遮挡的上面；真实当前PID日志只观测到door_state_change_not_observed，尚不能从源码断言服务器拒绝的唯一原因。
+
+修复通过同一公开activateBlock(block,faceVector) API传入朝玩家的水平侧面，瞄准同一面中心；保留所有门状态/BDS/safety/一次调用/800ms观察与10分钟重复保护。新增眼睛到点击点的有界已加载碰撞形状检查（最多90点），墙、玻璃、未知块拒绝，不允许隔墙操作。没有改Bedrock包格式、世界、门的实际状态或查询预算；结果仍必须观察open_bit改变，随后另用独立BDS证明通过门。bedLogicVersion=5、typed测试要求5，当前进程仍版本4。32项门策略/床请求/面向测试通过；Mint完整回归和原批准生命周期加载待验收。
+
 ## 2026-11-04 — 原生交互API现场源码证据
 
 固定只读36已取得Mint实际安装bed.js/interact.js公开源码：activateBlock默认faceVector=(0,1,0)，委托_genericPlace；sleep只等待服务器sleep事件，不能把调用当成功。当前门执行器点击下半门时未传faceVector，故默认点击上表面，且lookAt指向方块整数角。是否导致BDS拒绝仍须核对_genericPlace实际包构造，先将原只读源码审计补充该函数，禁止直接猜包或反复点击。

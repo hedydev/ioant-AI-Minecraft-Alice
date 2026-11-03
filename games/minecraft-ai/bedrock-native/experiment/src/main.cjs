@@ -287,7 +287,7 @@ async function main(args=process.argv.slice(2)){
         witnessDemand:witnessDemand({connected:!!connected,sessionEstablished:networkSessionEstablished,
           bot,evidence:movementEvidence})},
       ...(outboundSummary?{outboundInput:outboundSummary}:{}),
-      worldRoutine:{...environment(bot),bedLogicVersion:4,idleGate:runtime.idleGateReason(),
+      worldRoutine:{...environment(bot),bedLogicVersion:5,idleGate:runtime.idleGateReason(),
         bedWitness:bedWitnessDemand(runtime),
         verticalSafety:runtime.verticalWatch.summary(),
         cooldowns:runtime.failureMemory.summary(self),
