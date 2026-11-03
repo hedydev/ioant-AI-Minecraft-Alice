@@ -3,12 +3,12 @@ const test=require('node:test'),assert=require('node:assert/strict')
 const {validateApproach,approachDoor}=require('../src/escape_approach.cjs')
 const vec=(x,y,z)=>({x,y,z,offset(a,b,c){return vec(x+a,y+b,z+c)}})
 const delay=()=>new Promise(resolve=>setImmediate(resolve))
-function fixture({unknown=false,noPath=false}={}){
+function fixture({unknown=false,noPath=false,corridorMax=5}={}){
  const events=[],bot={entity:{position:vec(.5,65,.5),onGround:true},
   blockAt(p){
    const x=Math.floor(p.x),z=Math.floor(p.z),y=Math.floor(p.y)
    if(unknown&&z===2)return null
-   if(x!==0||z<0||z>5)return {name:'stone_bricks',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}
+   if(x!==0||z<0||z>corridorMax)return {name:'stone_bricks',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}
    return y===64?{name:'oak_planks',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}:
      {name:'air',boundingBox:'empty',shapes:[]}
   },
@@ -45,6 +45,23 @@ test('four-step proposal sends only ONE swept WALK and waits for new BDS pair',a
  assert.equal(f.events.some(e=>e[0]==='activate'||e[0]==='dig'),false)
  assert.equal(f.events.at(-1)[0],'stop')
 })
+test('seven-cell observed door route is eligible but drives only the first one',async()=>{
+ const f=fixture({corridorMax:8})
+ const route=Array.from({length:7},(_,i)=>[0,65,i+1])
+ const door={...f.door,position:[0,65,8],approach:{
+  position:[0,65,7],steps:7,routeComplete:true,elevationChanges:0,
+  serverVerified:false,waypoints:route}}
+ const admitted=validateApproach(f.bot,door)
+ assert.equal(admitted.ok,true)
+ assert.equal(admitted.steps,7)
+ const result=await approachDoor(f.bot,door,config)
+ assert.equal(result.reason,'approach_first_cell_awaits_independent_bds_pair')
+ assert.equal(result.serverMovementVerified,false)
+ assert.equal(result.remainingSteps,6)
+ assert.equal(f.events.filter(e=>e[0]==='goto').length,1)
+ assert.deepEqual(f.events.filter(e=>e[0]==='goto')[0],['goto',0,65,1])
+ assert.equal(f.events.some(e=>e[0]==='activate'||e[0]==='dig'),false)
+})
 test('missing terrain denies approach before any movement',async()=>{
  const f=fixture({unknown:true})
  assert.equal(validateApproach(f.bot,f.door).reason,'approach_cell_blocked_or_unloaded')
@@ -75,8 +92,9 @@ test('unbounded, vertical or broken sequences are rejected',()=>{
  assert.equal(validateApproach(f.bot,broken).ok,false)
  const vertical={...f.door,approach:{...f.door.approach,elevationChanges:1}}
  assert.equal(validateApproach(f.bot,vertical).ok,false)
- const tooLong={...f.door,approach:{...f.door.approach,steps:7,
-  waypoints:[[0,65,1],[0,65,2],[0,65,3],[0,65,4],[0,65,5],[0,65,6],[0,65,7]]}}
+ const tooLong={...f.door,position:[0,65,14],approach:{
+  ...f.door.approach,position:[0,65,13],steps:13,
+  waypoints:Array.from({length:13},(_,i)=>[0,65,i+1])}}
  assert.equal(validateApproach(f.bot,tooLong).ok,false)
 })
 test('packet-level movement does not authorize next cell or claim BDS arrival',async()=>{
