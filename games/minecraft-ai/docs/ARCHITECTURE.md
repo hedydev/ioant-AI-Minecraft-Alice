@@ -1,3 +1,7 @@
+## 2026-11-03 — Feature 文件夹职责及状态所有权
+
+src/features/bed/runtime_methods.cjs 拥有床任务/个人重生点及等待独立 BDS 单格端点的方法；src/features/door/runtime_methods.cjs 拥有门前接近、门槛、门后落点和室内出口扫描的方法。唯一的 bot、任务生命周期、clock、优先级、BDS 见证所有权仍在 AliceBedrockRuntime；原 public 实例方法通过 apply(this,args) 转发，显式依赖注入，不新增第二套状态或操作世界的接口。后续单独分拆 autonomous idle、movement/safety 协调器，每批必须先过 Node24/Python 回归，不能放松权威 BDS、安全/STOP/FOLLOW 条件。
+
 ## 2026-10-23 — Evidence-backed death learning, duration telemetry and 3D controls (STAGED, not Mint accepted)
 
 - **Before this change:** Alice persisted total deaths (`life.json`), verified item-skill outcomes, failed work-site cool-downs and explored endpoints, but **not** an attributed cause-of-death learning loop. The mere presence of an enemy or `entityHurt` cannot prove who dealt the fatal hit. Previous deaths are not retrospectively labeled as confirmed causes.

@@ -1,3 +1,7 @@
+## 2026-11-03 — Bedrock runtime 第一批功能目录拆分（源码/回归阶段）
+
+Bedrock runtime.cjs 中床/重生点 6 个实例方法、木门/开门/穿越/室内出口及 BDS 见证 7 个实例方法原样迁入 src/features/bed/runtime_methods.cjs 与 src/features/door/runtime_methods.cjs。原实例仍提供同名代理并保留 this/状态归属；依赖从 runtime 显式注入，无第二个客户端或后台定时器。runtime.cjs 由 3566 行降至 2965 行；新增 test/runtime_feature_modules.test.cjs 验证兼容入口和床/门独立 BDS 端点不冒充成功。STOP/FOLLOW、健康/威胁/碰撞、单步240秒、40/h/180秒查询配额及服务器位置权威均未改变。非重启源同步与测试不表示原17879世界 Alice 进程已热加载，也不表示床重生点、开门或完整穿门已验收。
+
 ## 2026-11-03 — rev75 实机补充验收与状态压缩修复回执
 
 固定只读PID1008401在2026-11-03晚间已获得24个同登录独立BDS样本、serverTravel6.6格；真实门事件审计纠正timestamp前缀后确认3次独立BDS单格门前端点、4次门优先、0次开门。白天新调查 `no_non_destructive_exit_observed`，但client world-view仍可见关闭云杉门且相对名义5格中心线；不代表当前BDS可执行。最小状态丢失decision.at/phase问题源码提交aaedef48，Node24 Mint 940/940、Mac Python321通过，非重启同步；当前Alice进程未重载这项Node补丁，不称实机修复成功。最新服务配额10/40、180秒节流，暂停0/停滞1，门打开/穿门/床重生点/HOME均未验收。根文档ALICE_DOOR_ONECELL_BDS_20261103.md有逐条MCP回执。

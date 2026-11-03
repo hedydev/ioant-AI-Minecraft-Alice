@@ -1,3 +1,7 @@
+## 2026-11-03 — Alice 核心功能目录重构（无新游戏能力）
+
+床/重生点六个原实例方法进入 src/features/bed；木门与出口七个原实例方法进入 src/features/door。外部 API 保持一致；安全门禁、独立BDS证据和配额不变。新自动化测试检查关键证据约束。此变更只改善可维护性，不能提升开门、睡觉、HOME 或穿门的实机验收等级。
+
 ## 2026-11-03 — Approved client restart available and live-tested
 
 ChatGPT can run the original approved alice_17879_client_restart task through
