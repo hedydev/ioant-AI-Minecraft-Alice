@@ -46,3 +46,27 @@ test('danger and human FOLLOW intent preempt autonomous admission before resourc
     assert.equal(scanned,false)
   }
 })
+
+test('missing independent BDS startup proof blocks work and preserves navigation hold',()=>{
+  const methods=createIdleAdmission({scoutStartProof:()=>({ok:false,reason:'scout_bds_position_unavailable'}),
+    environment:()=>({phase:'day',tick:5000,safeToExplore:true}),
+    homeAgenda:()=>({objective:'none',reason:'no_home',phase:'day'})})
+  const ctx={
+    refreshBehavior(){},clock:()=>100000,
+    liveBehavior:{settings:{autonomyEnabled:true,agentMode:'survival'}},
+    goalPlanner:{stoppedByHuman:false},ready:()=>true,
+    bot:{isSleeping:false,health:20,entity:{position:{x:0,y:64,z:0}}},
+    core:{state:'IDLE',hasFollowIntent:()=>false},
+    safetyBusy:false,threat:()=>null,verticalWatch:{active:()=>false},
+    lastSafetyAt:0,continuousGoal:{resume(){},reconcile(){},wait(){}},
+    homeBase:{summary:()=>({}),last:null},
+    ops:{inventory:()=>[]},
+    p:{autonomy_policy:{decideIdleWork:()=> 'LEARN_WEAPON'}},
+    startupObservationPending:true,
+    holdNavigation(proof){this.navigationHold=proof.reason},
+    log:{log(){}}
+  }
+  assert.deepEqual(methods.call(ctx),{allowed:false})
+  assert.equal(ctx.navigationHold,'scout_bds_position_unavailable')
+  assert.equal(ctx.startupObservationPending,true)
+})

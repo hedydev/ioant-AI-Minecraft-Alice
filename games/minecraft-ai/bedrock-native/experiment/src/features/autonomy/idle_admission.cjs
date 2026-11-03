@@ -115,7 +115,7 @@ function createIdleAdmission({WOOD_LOGS,homeAgenda,scoutStartProof,startupTerrai
       // Choose the goal now, but do not spend a two-minute action budget or
       // ask the model to plan from this incomplete initial world snapshot.
       const proof=scoutStartProof(this.bot,this.movementEvidence,this.clock)
-      if(!proof.ok){this.holdNavigation(proof);return}
+      if(!proof.ok){this.holdNavigation(proof);return {allowed:false}}
       if(!startupTerrainObserved(this.bot)){
         this.nextIdleAt=this.clock()+5000
         this.lastIdleHold={goal:goalPlan,reason:'startup_terrain_sync_pending',
