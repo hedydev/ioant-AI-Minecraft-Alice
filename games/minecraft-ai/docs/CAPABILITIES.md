@@ -1,3 +1,7 @@
+## 2026-11-03 — 自主 IDLE 准入阶段目录化（结构更动，游戏能力不变）
+
+按 BDS/STOP/FOLLOW 安全准入和实际行动区分自主决策两个阶段。保留相同准入判断，新增行为测试，原运行进程未重载，不宣称任何门/床/HOME/BDS 新成功。
+
 ## 2026-11-03 — 最终结构测试验收（真实 OpenClaw 回执）
 
 Commit `0dbb85c20472d412a22e811afa946dfca662a6ea` 的固定执行回执 `alice_r77_structure_mac_11` Mac Python321(skip3) 0失败；`alice_r77_structure_mint_12` Mint Node24 **955/955**，0 fail/skip，Mac Python321，nonrestart sync PASSED，且 `aliceRestarted=false`、`bdsRestarted=false`、`worldModifiedByTask=false`、`consoleCommandSent=false`。这证明结构预算、三批模块抽取和原核心功能自动化回归兼容；不能推导正在运行的 Alice 已热加载/完成开门、穿门、睡觉或HOME。

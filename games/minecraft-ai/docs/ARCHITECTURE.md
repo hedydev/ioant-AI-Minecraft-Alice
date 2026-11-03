@@ -1,3 +1,7 @@
+## 2026-11-03 — autonomy 读状态准入与执行阶段
+
+`src/features/autonomy/idle_admission.cjs` 同步执行 IDLE 决策的证据门禁与环境判断，返回 `{allowed:false}` 或只读工作上下文；`idle_methods.cjs` 保留原 async 动作与等待语句，避免增加 Promise 调度微任务。所有客户端、时钟、操作和 BDS 见证仍使用原 AliceBedrockRuntime.this；严禁让准入函数创建新 job、改变证明条件或自行查询 BDS。
+
 ## 2026-11-03 — 模块化验收与未来单体文件防回归约束
 
 详见 [RUNTIME_MODULARIZATION_20261103.md](RUNTIME_MODULARIZATION_20261103.md)。三批功能按 bed/door/safety/navigation/autonomy/commands/tasks 归属，唯一 AliceBedrockRuntime 实例保有生命周期、协调状态和独立BDS权威，薄代理保留原 API。新增 runtime_modularization_structure.test.cjs 将根主文件限制为1000行、单feature文件限制800行；如果超出，先继续抽出内聚职责而非扩大限制。抽离方法不得添加额外 async Promise 调度边界，或者把本地客户端预测升级为 BDS 确认。

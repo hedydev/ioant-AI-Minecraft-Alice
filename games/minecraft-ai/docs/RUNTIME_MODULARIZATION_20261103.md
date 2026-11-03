@@ -44,3 +44,7 @@ Three consecutive, behavior-preserving extraction waves reduced `bedrock-native/
 - Fixed MCP `alice_r77_structure_mint_12`: Mint Node24 **955/955, zero failures/skips**, Mac Python321, non-restart sync, no client/BDS restart, world mutation or console command.
 - The guard is now part of Node24 automated tests, not only a documentation recommendation.
 - Running Node client code loading and BDS gameplay proof remain independently unverified.
+
+## Fourth wave: decision admission extraction
+
+Synchronous preflight is now at `src/features/autonomy/idle_admission.cjs` and is called from the original async IDLE method before model/work execution. The original async method remains one Promise layer; do not convert the preflight into a new async wrapper. Receipt pending.

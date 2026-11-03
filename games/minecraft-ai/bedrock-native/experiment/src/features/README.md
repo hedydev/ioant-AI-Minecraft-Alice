@@ -17,3 +17,5 @@ Keep stable AliceBedrockRuntime instance APIs for all consumers. Add and preserv
 - navigation/scout_methods.cjs: bounded scouting and independent BDS post-input one-cell endpoint verification.
 
 Module factories are not independent controllers: no extra event loops, actor instances or BDS queries. Source-structure tests must read the owning feature, not search the root runtime source for moved method bodies. Asynchronous wrappers return the original feature Promise directly to avoid an extra microtask boundary.
+
+- autonomy/idle_admission.cjs: synchronous server-evidence, STOP/FOLLOW, danger, day/night and HOME admission gates; no extra Promise or action.

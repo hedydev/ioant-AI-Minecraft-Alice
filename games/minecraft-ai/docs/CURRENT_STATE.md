@@ -1,3 +1,7 @@
+## 2026-11-03 — 自主 IDLE 决策职责分层（第四批第一阶段）
+
+将 features/autonomy/idle_methods.cjs 中原有同步准入的 169 行搬迁到 idle_admission.cjs，覆盖 BDS 独立单格见证等待、STOP/FOLLOW/危险抢占、HOME 日落门禁、当前资源/昼夜/庇护评估和夜间移动资格。原返回为不执行动作的早退现统一表示为 {allowed:false}，即刻返回原 async runIdleDecision（仍返回 resolved Promise）；准入成功仅返回既有局部值，余下自主调度方法保留原 Promise 与 await 的位置。所有游戏动作仍由原 Alice 实例授权、未创建另一 client/timer/BDS source。新增 idle_admission.test.cjs 保留禁止动作、240秒等待及 STOP/跟随/危险证据测试，并更新 scout 源码位置断言。待本提交 Mac/Mint 全量验收再评定通过，不重启原 Alice/BDS，不修改世界。
+
 ## 2026-11-03 — 最终结构测试验收（真实 OpenClaw 回执）
 
 Commit `0dbb85c20472d412a22e811afa946dfca662a6ea` 的固定执行回执 `alice_r77_structure_mac_11` Mac Python321(skip3) 0失败；`alice_r77_structure_mint_12` Mint Node24 **955/955**，0 fail/skip，Mac Python321，nonrestart sync PASSED，且 `aliceRestarted=false`、`bdsRestarted=false`、`worldModifiedByTask=false`、`consoleCommandSent=false`。这证明结构预算、三批模块抽取和原核心功能自动化回归兼容；不能推导正在运行的 Alice 已热加载/完成开门、穿门、睡觉或HOME。

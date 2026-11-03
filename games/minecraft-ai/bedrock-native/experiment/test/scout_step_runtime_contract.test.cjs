@@ -6,7 +6,7 @@ const runtime=fs.readFileSync(path.join(root,'runtime.cjs'),'utf8')
 const main=fs.readFileSync(path.join(root,'main.cjs'),'utf8')
 const scout=fs.readFileSync(path.join(root,'features/navigation/scout_methods.cjs'),'utf8')
 const work=fs.readFileSync(path.join(root,'features/tasks/work_methods.cjs'),'utf8')
-const idle=fs.readFileSync(path.join(root,'features/autonomy/idle_methods.cjs'),'utf8')
+const admission=fs.readFileSync(path.join(root,'features/autonomy/idle_admission.cjs'),'utf8')
 test('autonomous scout admits at most first waypoint per independent baseline',()=>{
  assert.match(scout,/candidate\.waypoints\.slice\(0,1\)/)
  assert.match(scout,/reason:'scout_step_awaiting_new_bds_pair'/)
@@ -21,5 +21,5 @@ test('post-input BDS witness must settle before next scout admission',()=>{
 })
 test('STOP cancellation and idle planning do not reuse pending movement',()=>{
  assert.match(runtime,/this\.pendingScoutStep=null\s+cancelBed/)
- assert.match(idle,/if\(this\.pendingScoutStep\)\{\s+if\(this\.clock\(\)-this\.pendingScoutStep\.startedAt<=240000\)return/)
+ assert.match(admission,/if\(this\.pendingScoutStep\)\{\s+if\(this\.clock\(\)-this\.pendingScoutStep\.startedAt<=240000\)return \{allowed:false\}/)
 })
