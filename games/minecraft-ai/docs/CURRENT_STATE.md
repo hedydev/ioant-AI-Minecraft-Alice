@@ -1,3 +1,7 @@
+## 2026-11-04 — 额度暂停前最终回执
+
+源码de5b6eb已推送，固定任务alice_bed_repair_heartbeat_mint_20261104_k4n8v2cs_21实际非重启sync通过：Mint Node24 984/984，Mac Python326（3 skip），未重启Alice/BDS、未发游戏控制命令、未改世界。压缩心跳补丁已同步但运行PID1380268未加载；床实机仍未通过。当前无已知在途任务。下一编号22；先读最新handoff与Git，不重复旧床请求f482…或原重启。实际五小时used95%/remaining5%，按用户要求暂停；额度真实恢复后由bed-only接续alice-2继续，旧网页巡检alice保持PAUSED。下一重点是有界显式床取证需求与初始240秒意图期限；保留全部查询预算与安全审核。
+
 ## 2026-11-04 — 待加载：压缩心跳保留显式床意图
 
 已复核真实回执20：work_cooldown、needs_two_fresh_samples、positionGateSatisfied=false；床指令仍为原f482…且已expired。源码确认pendingBedRequest会提前暂停普通自主准入，而定时器没有专门的显式床需求分支；4KiB压缩还会丢掉bedRequest，导致无法从只读状态判断等待阶段。先修复诊断：每一层压缩均保留有界action/stage/steps/expiresAt及serverMovementVerified=false，不带目标坐标、原始消息或移动权限。本地心跳27/27通过；尚未在Mint全量验收或加载，运行PID1380268仍旧诊断实现。下一步在保留40/h、180秒、10分钟退避、STOP/FOLLOW/危险/生命owner检查的前提下，设计独立明确的床取证需求；不能直接开放work_cooldown或延长BDS样本有效期。
