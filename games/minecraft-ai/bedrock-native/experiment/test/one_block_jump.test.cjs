@@ -34,6 +34,34 @@ test('observes one FULL block rise and rejects non-adjacent claims',()=>{
  assert.equal(plan.permitted,false)
  assert.equal(plan.serverMovementVerified,false)
 })
+test('empty-collision torch above takeoff or raised landing permits bounded jump only',async()=>{
+ for(const [x,y,z] of [[0,66,0],[0,67,0],[0,68,0],[1,67,0],[1,68,0]]){
+  const f=scene(),original=f.bot.blockAt
+  f.bot.blockAt=p=>Math.floor(p.x)===x&&Math.floor(p.y)===y&&Math.floor(p.z)===z?
+    {name:'torch',boundingBox:'empty',shapes:[]}:original(p)
+  const plan=candidateOneBlockJump(f.bot,{toward:v(3.5,66,.5)})
+  assert.equal(plan.ok,true,'empty torch '+[x,y,z])
+  assert.equal(plan.serverMovementVerified,false)
+  const moved=await performOneBlockJump(f.bot,plan,{safe:()=>true,sleep:async()=>{},pulses:1})
+  assert.equal(moved.attempted,true)
+  assert.equal(moved.serverMovementVerified,false)
+  assert.equal(f.events.filter(e=>e[0]==='jump'&&e[1]).length,1)
+ }
+})
+test('a blocking or untrusted torch shape cannot authorize any jump',()=>{
+ for(const candidate of [
+  {name:'torch',boundingBox:'block',shapes:[[0,0,0,1,1,1]]},
+  {name:'torch',boundingBox:'empty',shapes:[[0,0,0,1,1,1]]},
+  {name:'torch',boundingBox:'block',shapes:[]},
+  {name:'unknown_decor',boundingBox:'empty',shapes:[]} ]){
+  const f=scene(),original=f.bot.blockAt
+  f.bot.blockAt=p=>Math.floor(p.x)===0&&Math.floor(p.y)===66&&Math.floor(p.z)===0?
+    candidate:original(p)
+  const plan=candidateOneBlockJump(f.bot,{toward:v(3.5,66,.5)})
+  assert.equal(plan.ok,false,JSON.stringify(candidate))
+  assert.equal(f.events.length,0)
+ }
+})
 test('wooden door is not a step and Minecraft stairs are not a full-cube jump',()=>{
  for(const partial of [true]){
   const f=scene({partial})
