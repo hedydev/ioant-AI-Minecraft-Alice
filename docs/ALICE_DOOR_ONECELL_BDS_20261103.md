@@ -91,3 +91,27 @@
 - `alice_r72_next_pair_door_24`：可重用纯只读诊断 PASS；尚无 `enclosed-door priority`、door approach、door opening或对应门口BDS端点事件。这不是门逻辑本身失败；当前游戏夜间，新增门优先级**明确只在日间安全资源探索阶段触发**，不能夜间强行带 Alice 离开庇护所。
 - `alice_r72_next_pair_home_25`：game phase=night，记忆两床，但 `sleepOpportunity=bed_blocks_unverified`、`lastSpawnpointReason=bed_needs_verified_approach`、`bedStepReason=jump_origin_support_or_headroom_unverified`，`bedStepAttempted=false`，HOME/respawn/return均未验证。**不能为了睡床跳过头顶空间和起跳地面支撑检查**。
 - 下一轮应重点处理床附近真实空间/门口方位的形状验证，在**白天**读取新 `alice-door-lifecycle-readonly.py` 事件，验证优先级是否被触发及第一格是否BDS成功。此前真实移动不用重复制造；原系统d 40/h预算不应手动耗尽。上线客户端PID4147538健康，原BDS17879与存档未操作。
+
+## 2026-11-03 rev73：狭窄空间的扫描边缘与木门目标（18:00+ Asia/Singapore）
+
+### 现场验收（原客户端 PID4147538）
+
+- `alice_r73_live_gate_01`：正式现有 Alice connected/sessionEstablished/autonomous/IDLE、HP20、食物20、`movingQueued=549`、独立 BDS 样本259，读取瞬间坐标配对过期。
+- `alice_r73_live_demand_02`：服务器记录**本登录生命累计真实位移75.24格**、独立样本261，BDS demand timer启用并受40/h限制（该小时2/40），不是预测位置。
+- `alice_r73_live_nav_05`：当前生命 acceptance journal 的 `partialEndpointCount=30`、`confirmedEndpointCount=0`，已经有30次独立BDS验证的部分路线进展；但没有确认的完整目标终点/穿门/床。
+- `alice_r73_live_door_03`：门优先、门接近、开门、木门端点的当前进程日志计数均为0。Home `alice_r73_live_home_04` 黄昏、记忆2张床，当前没有加载的可用床，个人重生点、HOME、出门和返回均未确认。
+- `alice_r73_collision_06` 只读客户端地形缓存：碰撞检查半径7，1350条记录unknown0，木门两半是关闭的云杉门、相对当前客户端格点(-3,-4)，当前中心到门前名义安全中心线约6格，只有17个可到达中心，且路径到扫描半径边缘。**这些相对坐标仅用于当次只读诊断，不能跨PID沿用、不能替代BDS实测。**
+
+### 发现的决策错误与修正
+
+- `self_drive.sceneFromSurvey`：此前只要观察到`openFrontier`就不把候选木门作为狭小区域目标；但小房间或走廊可能碰到**客户端扫描半径边界**，边界不是“真正走到室外”的服务器证明。在 `reachableCells<32` 时、看见木门（并且不是宽阔已探索区域）将场景保留为 `door_limited_area`，且理由标明`small_loaded_area_frontier_not_outdoor_proof`。宽阔区域达到32个可达格心仍优先正常探索，不因旧门返回屋内。
+- `runtime.runIdleDecision` 原本的白天无木材失败提前观察，还要求 `survey.status='door_interaction_candidate'` 且`openFrontier=false`。现将范围严格限制为：白天可安全探索、当前无自然资源可采、无movementFailure、真实木门位于当前25秒新鲜观察且少于32个可达格心。只改变候选分类与决策，**不**允许凭本地预测作任何运动完成、拆方块或绕过STOP/FOLLOW/碰撞/BDS双坐标门禁。
+- 新测试`self_drive.test.cjs` 验证17个可达格心与边缘frontier仍选择木门、32及以上的开阔区域仍保持探索。新`runtime.test.cjs` 在6格走廊末端可碰扫描边缘、但木门在扫描半径内的侧面，只准**第一个单格goto**，需新的独立BDS坐标确认；绝不允许开门/挖掘或声称目标到达。
+- 初始测试`alice_r73_frontier_mint_08` 936/937，失败仅因新测试将门误放在半径6之外的第7格，被合理拒绝；已将木门调至半径内走廊侧面，真实算法不放宽；最终非重启Mint `alice_r73_frontier_fix_mint_10` **937/937, fail0, skipped0**，Mac `alice_r73_frontier_mac_11` Python321，skip3，0失败。源码功能 commit `7fe1c8f0789110e10e4d7c47673232693c850196`、固定仓库sync与Mint同步PASSED。
+
+### 正式上线
+
+- 固定审批的仅Alice客户端 `alice_r73_frontier_client_reload_12` **completed**：旧PID **4147538 → 新PID 701816**，单次受控重启；新进程alive、connected、sessionEstablished、心跳、owner/world/port全部验证true；BDS没有重启、世界没有修改。
+- `alice_r73_postrestart_gate_13` 和 `alice_r73_postrestart_demand_14` 证实新会话独立样本**从0重新开始**，timerActive/optedIn/ownerValid/`demandNow` true。本小时预算6/40，不继承上次 PID 的75.24格作为当前会话成功。
+- 后续`alice_r73_post_bds_gate_16`：样本2、`movingQueued=6`、当前night survival等待 `scout_step_awaiting_new_bds_pair`；`alice_r73_post_bds_demand_17`：timer已取到当前2个新BDS样本、`serverTravel=0`、预算8/40、最近批次28.5s前、stalledPairs1。`alice_r73_post_bds_door_18` 门事件仍0。**没有实机门前到达证明**，不得误报打开/穿过木门、HOME、重生点成功。
+- 下一步先按当前新PID、**白天**读取现有`alice_door_autonomy_readonly.json`，检查`enclosed-door priority`是否发生，之后每走一格只认新的独立BDS双样本。夜间继续安全生存，床必须重新确认loaded_free_bed、地面和头顶空间；不重启BDS或人为补发手动querytarget、不可复制旧PID的位置/成果。
