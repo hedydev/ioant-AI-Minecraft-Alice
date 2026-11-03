@@ -3,6 +3,21 @@ from pathlib import Path
 spec=importlib.util.spec_from_file_location('bed_dep',Path(__file__).resolve().parents[1]/'scripts/alice-bed-dependency-readonly.py')
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 class BedDependencyReadTest(unittest.TestCase):
+    def test_original_server_policy_is_anonymous_and_never_reads_player_permissions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home=Path(tmp);server=home/'minecraft-bedrock';server.mkdir()
+            (server/'server.properties').write_text('server-port=17879\nlevel-name=Bedrock level\ndefault-player-permission-level=member\ngamemode=survival\npassword=private\n')
+            self.assertEqual(m.interaction_policy(home),{'verifiedOriginalServer':True,
+                'defaultPlayerPermission':'member','gameMode':'survival'})
+            (server/'server.properties').write_text('server-port=17880\nlevel-name=Bedrock level\n')
+            self.assertFalse(m.interaction_policy(home)['verifiedOriginalServer'])
+    def test_duplicate_policy_and_symlink_fail_closed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home=Path(tmp);server=home/'minecraft-bedrock';server.mkdir()
+            file=server/'server.properties';file.write_text('server-port=17879\nserver-port=17879\nlevel-name=Bedrock level\n')
+            self.assertFalse(m.interaction_policy(home)['verifiedOriginalServer'])
+            file.unlink();file.symlink_to(home/'unknown')
+            self.assertFalse(m.interaction_policy(home)['verifiedOriginalServer'])
     def test_only_native_js_implementation_and_bounded_excerpts(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);(root/'bed.js').write_text('async function sleep() {}\n')

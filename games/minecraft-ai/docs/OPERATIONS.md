@@ -1,3 +1,11 @@
+## 2026-11-04 — 版本5实机仍未开门；额度交接规则更新
+
+c1488eb已经实际通过sync39（Mint993/993，Mac332 skip3），原批准restart40完成PID1475661→1495260；读回41确认版本5/在线。新版本独立sleep验收42的commandId为1bb226cfeb5d45b6a528a4ad55c44041；仅发一次，后续只查回执。有限观察43捕捉到独立新鲜静止窗口，偏差0.00（5个合格样本），但BDS位移0。只读日志44仍返回door_state_change_not_observed，attempted=true；**侧面修复没有解决本次原服门交互，床/重生点/睡觉仍未成功**。不继续重复点击，先审计实际安装的交互上下文及服务器默认交互权限。
+
+现有只读dependency审计补充interact.js的实际send/pos/heldItem上下文和player_permission/update_abilities实现；仅额外读取原17879/Bedrock level的server.properties默认角色和游戏模式枚举，不读permissions.json或身份资料，不修改权限。默认角色不能等同Alice当前角色。4项路径/重复配置/隐私/尺寸测试通过。
+
+用户最新要求：若本轮5h用完仍未解决，提前提交代码交给其他AI。约10%完成文档与提交推送，最迟5%持久交接并PAUSE alice-2，不再在下一窗口自行恢复，避免与接手AI冲突。旧网页巡检仍PAUSED。
+
 ## 2026-11-04 — 已开门仍须先到近侧格
 
 源码审查发现另一个确定性衔接缺口：门已打开且路线仅1～2格时，策略直接请求crossObservedDoor，但该执行器明确要求approach.steps===0，于是永远停在门外。现让任何仍有路线的已开木门走原逐格approachDoor/BDS终点路径，到近侧后才尝试穿门；不放宽crossObservedDoor或跳过位置证明。新增远门/已到近侧两种行为断言，33项定向Node通过。此前侧面点击源码2185d15已通过真实sync38：Mint992/992、Mac332 skip3；此补充尚待完整Mint复验，当前PID1475661仍版本4，无新点击或重启。
