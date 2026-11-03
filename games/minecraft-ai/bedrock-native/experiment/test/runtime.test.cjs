@@ -2749,7 +2749,13 @@ test('fresh aligned BDS evidence wakes the next decision without waiting the act
  await e.idleTick()
  assert.equal(e.navigationHold,null)
  assert(e.lastWorldRoutine)
- assert.equal(e.nextIdleAt,now+120000,'a new eligible review consumed the ordinary action budget')
+ assert.equal(e.nextIdleAt,now+120000,
+    'a new eligible review consumed the ordinary action budget; evidence='+
+    JSON.stringify({idleHold:e.lastIdleHold?.reason||null,
+      homeObjective:e.lastHomeAgenda?.objective||null,
+      phase:e.lastWorldRoutine?.phase||null,
+      startupPending:e.startupObservationPending,
+      navigationHold:e.navigationHold?.reason||null}))
  e.stop()
 })
 test('production startup chooses intent while waiting for landing, without spending an action cooldown',async()=>{
