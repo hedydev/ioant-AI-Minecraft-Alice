@@ -1,3 +1,9 @@
+## 2026-11-03 — Feature 模块化第一批全量验收通过（最终回执）
+
+实际完成两级功能文件夹：src/features/bed/runtime_methods.cjs（6 方法）、src/features/door/runtime_methods.cjs（7 方法），runtime.cjs 原 3566 行减少为 2965 行。首轮 Mint Node24 931/934 且 3 个 Node 测试文件因旧方式截取 runtime.cjs 方法源码而启动失败，已在 commit 747e2400b39fa98874ccc919e92cb718d0ac98f3 将三份原行为合约测试直接注入新功能工厂，没有删除断言或放宽安全要求。
+
+真实 MCP 固定执行回执：alice_r76_feature_testfix_mac_05 PASSED，Mac Python 321 项、3 skip、0 fail，工作区干净；alice_r76_feature_testfix_mint_06 PASSED，Mint Node24 943/943（0 fail、0 skip），Mac Python321，正常同步原 Mint 源码且 aliceRestarted=false、bdsRestarted=false、worldModifiedByTask=false、consoleCommandSent=false。原本人状态 PID/运行代码并未因为 rsync 热加载；不能将源码回归认作木门开关、BDS 穿门、床重生点或 HOME 实机成功。后续优先抽取 autonomy/idle 调度及移动协调，每组保持原实例 API、测试、独立 BDS 位置证据和 STOP/FOLLOW/危险抢占。
+
 ## 2026-11-03 — 功能模块重构测试兼容修复
 
 首个 feature 提取提交 064703b 的 Mac Python321(skip3)通过，但 Mint Node24 首轮只通过 931/934，3 个失败文件为 bed_jump_runtime.test.cjs、bed_runtime_step_contract.test.cjs、raised_door_landing_runtime.test.cjs；原因是旧测试用 fs.readFileSync 直接截取 runtime.cjs 实例方法来 new Function 构造测试类，搬迁后首尾源码位置已不存在，并非 BDS 实机行为失败。当前这 3 个原断言文件改为从 src/features/bed 或 src/features/door 直接加载真实方法工厂，保持原 fixture、独立 BDS 延迟端点、STOP/FOLLOW、跳跃及门槛的行为测试，禁止通过跳过测试放行。Mint 新提交须重新验收；未重启 Alice/BDS，不改世界或命令配额。
