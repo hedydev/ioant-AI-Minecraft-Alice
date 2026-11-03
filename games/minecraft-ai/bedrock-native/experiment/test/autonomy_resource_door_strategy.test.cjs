@@ -67,3 +67,17 @@ test('resource and door split preserves exactly one async IDLE scheduler entry',
   assert.equal(m.idleTick.constructor.name,'AsyncFunction')
   assert.equal(m.runIdleDecision.constructor.name,'AsyncFunction')
 })
+test('an already open door still needs a witnessed approach until its near-side cell',()=>{
+ for(const steps of [1,0]){
+  let label=null,validated=0
+  const f=createDoorStrategy({planDoorOpen:()=>({ok:false,reason:'door_already_open'}),
+   validateApproach:()=>{validated++;return {ok:true}}})
+  const ctx={clock:()=>100000,lastEscapeSurveyAt:99999,
+   lastEscapeSurvey:{door:{position:[2,64,0],approach:{waypoints:steps?[[1,64,0]]:[]}}},
+   bot:{health:20},startJob(type,source,callback,options){label=options.label}}
+  assert.equal(f.runDoorWaitStrategy.call(ctx,{
+   doorDriven:true,movementFailure:false,drive:{driveGoal:'FIND_ROOM_EXIT'}}),true)
+  assert.equal(label,steps?'安全接近房间木门':'通过已打开的房间木门')
+  assert.equal(validated,steps?1:0)
+ }
+})

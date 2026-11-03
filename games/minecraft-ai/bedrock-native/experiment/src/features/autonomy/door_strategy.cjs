@@ -73,7 +73,10 @@ function createDoorStrategy({validateApproach,planDoorOpen,selectDrive,approachD
           const needApproach=Array.isArray(door.approach?.waypoints)&&
             door.approach.waypoints.length>0&&
             (door.approach.waypoints.length>2||
-              !openPlan.ok&&openPlan.reason!=='door_already_open')
+              !openPlan.ok)
+          // An open handle two cells away is NOT a near-side arrival.
+          // crossObservedDoor requires steps===0; reach it via the same
+          // separately witnessed one-cell executor before trying passage.
           const approachRecently=doorKey===this.lastEscapeApproachKey&&
             this.clock()<this.lastEscapeApproachRetryAt
           if(needApproach&&!approachRecently){

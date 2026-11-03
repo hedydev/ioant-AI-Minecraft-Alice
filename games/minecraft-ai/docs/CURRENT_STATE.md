@@ -1,3 +1,7 @@
+## 2026-11-04 — 已开门仍须先到近侧格
+
+源码审查发现另一个确定性衔接缺口：门已打开且路线仅1～2格时，策略直接请求crossObservedDoor，但该执行器明确要求approach.steps===0，于是永远停在门外。现让任何仍有路线的已开木门走原逐格approachDoor/BDS终点路径，到近侧后才尝试穿门；不放宽crossObservedDoor或跳过位置证明。新增远门/已到近侧两种行为断言，33项定向Node通过。此前侧面点击源码2185d15已通过真实sync38：Mint992/992、Mac332 skip3；此补充尚待完整Mint复验，当前PID1475661仍版本4，无新点击或重启。
+
 ## 2026-11-04 — 木门点击可见侧面（版本5，待实机加载）
 
 实际安装的interact.js审计37（SHA256 de5acbaf…a62603）确认：activateBlock默认上表面，_genericPlace会覆盖调用者lookAt并按faceVector计算click_pos，先等待120ms再发已有click_block交易。现有门动作点击下半门时默认命中被上半门遮挡的上面；真实当前PID日志只观测到door_state_change_not_observed，尚不能从源码断言服务器拒绝的唯一原因。
