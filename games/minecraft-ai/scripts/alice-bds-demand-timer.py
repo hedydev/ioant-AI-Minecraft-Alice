@@ -169,7 +169,9 @@ def safe_bed_witness_need(d, now_ms=None):
         at <= now_ms < end and 0 < end-at <= (
             240000 if b["kind"] == "endpoint" else 90*60000) and
         type(b.get("loginAt")) is int and b["loginAt"] == e.get("loginAt") and
-        type(b.get("lifeEpochAt")) is int and b["lifeEpochAt"] == e.get("lifeEpochAt")
+        "lifeEpochAt" in b and "lifeEpochAt" in e and
+        (b["lifeEpochAt"] is None or type(b["lifeEpochAt"]) is int) and
+        b["lifeEpochAt"] == e["lifeEpochAt"]
     )
 
 

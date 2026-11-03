@@ -1,3 +1,7 @@
+## 2026-11-04 — 首次生命的取证边界兼容修正
+
+版本4源码8fffbeb已经实际通过非重启sync23（Mint989/989，Mac327 skip3），原批准restart24完成PID1380268→1471802，加载读回25确认bedLogicVersion=4/连接正常。只读bedWitness仍为空。审查真实movement_evidence.cjs确认首次登录的lifeEpochAt=null，仅死亡重生后才有数字；初版bed需求只接受整数，错误地拒绝首次生命。修正为明确null或整数，并要求描述和当前observer精确相等；缺字段、换生命/登录/epoch、STOP/危险仍拒绝。压缩心跳和Python定时器同步遵循相同语义，不增加查询量或放宽门禁。Node31项及Python取证12项专项通过，完整Mint/加载待新回执；这是实现缺陷修正，仍未证明床实机成功。没有发送新的床指令。
+
 ## 2026-11-04 — 床取证需求与等待期限解耦（版本4，待实机加载）
 
 源码确认两条独立路径存在循环等待：显式pendingBedRequest提前暂停普通自主准入，但取证定时器只识别普通自主/夜间/白天门需求；自动床单格输入后的独立终点也可能被work_cooldown屏蔽。新增只读features/bed/witness_demand.cjs，由同一运行实例生成有界、当前epoch/login/life的intent或endpoint描述。只有原健康IDLE、无任务/STOP/FOLLOW/危险/垂直hold、autonomy开启时输出。既有opt-in定时器验证精确描述、时限与生命身份后允许证据采样；不开放任意work_cooldown，不改变查询40/h、180秒间隔、10分钟停滞退避、4秒/.75格双样本、逐格碰撞/终点验证，描述本身permissionGranted=false/querySent=false。

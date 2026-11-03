@@ -53,7 +53,8 @@ const STATUS_MAX_BYTES=4096
 function compactBedWitness(w){
   if(w?.version!==1||w.state!=='needs_evidence'||
      !['intent','endpoint'].includes(w.kind)||
-     ![w.at,w.expiresAt,w.loginAt,w.lifeEpochAt].every(Number.isSafeInteger))return null
+     ![w.at,w.expiresAt,w.loginAt].every(Number.isSafeInteger)||
+     !(w.lifeEpochAt===null||Number.isSafeInteger(w.lifeEpochAt)))return null
   return {version:1,kind:w.kind,state:w.state,at:w.at,expiresAt:w.expiresAt,
     loginAt:w.loginAt,lifeEpochAt:w.lifeEpochAt,permissionGranted:false,querySent:false}
 }

@@ -10,7 +10,10 @@ function bedWitnessDemand(r){
     r.bot.game?.dimension!=='overworld'||r.verticalWatch?.active()||
     !['position_witness_unverified','eligible_for_work','work_cooldown',
       'human_grace_period'].includes(r.idleGateReason()))return null
- if(!Number.isSafeInteger(ev?.loginAt)||!Number.isSafeInteger(ev?.lifeEpochAt)||
+ // The native observer uses null for the FIRST life; a numeric boundary
+ // exists only after a real respawn. Null must match exactly on both sides.
+ if(!Number.isSafeInteger(ev?.loginAt)||
+    !(ev?.lifeEpochAt===null||Number.isSafeInteger(ev?.lifeEpochAt))||
     ev.awaitingVerifiedRespawn===true)return null
  const step=r.pendingBedStep,p=r.pendingBedRequest
  // An already issued automatic bed step needs its independent endpoint too;

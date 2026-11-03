@@ -40,3 +40,13 @@ test('already issued automatic bed endpoint has an independent 240s deadline',()
  r.clock=()=>100000;r.pendingBedStep.startedAt=null
  assert.equal(bedWitnessDemand(r),null)
 })
+test('first native life has a null respawn boundary but still requires the exact login and life',()=>{
+ const r=fixture()
+ r.movementEvidence.get=()=>({loginAt:1,lifeEpochAt:null})
+ r.pendingBedRequest.lifeEpochAt=null
+ assert.equal(bedWitnessDemand(r).lifeEpochAt,null)
+ r.movementEvidence.get=()=>({loginAt:1,lifeEpochAt:3})
+ assert.equal(bedWitnessDemand(r),null)
+ r.movementEvidence.get=()=>({loginAt:1})
+ assert.equal(bedWitnessDemand(r),null)
+})

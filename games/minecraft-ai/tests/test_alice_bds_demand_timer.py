@@ -30,6 +30,12 @@ class DemandTimerTests(unittest.TestCase):
         self.assertFalse(m.demand_now({**x,"followTarget":"test"},100000))
         b=m.budget_value(3601,{"version":1,"hour":1,"used":40,"lastBatch":3500})
         self.assertFalse(m.budget_allows_batch(3601,b))
+        first={**x,"worldRoutine":{**x["worldRoutine"],"bedWitness":{
+            **x["worldRoutine"]["bedWitness"],"lifeEpochAt":None}},
+            "movementEvidence":{**x["movementEvidence"],"lifeEpochAt":None}}
+        self.assertTrue(m.demand_now(first,100000))
+        self.assertFalse(m.demand_now({**first,"movementEvidence":{
+            **first["movementEvidence"],"lifeEpochAt":3}},100000))
 
     def test_budget_same_hour_and_reset_next_hour(self):
         m.selftest()
