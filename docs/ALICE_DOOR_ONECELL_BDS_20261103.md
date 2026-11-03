@@ -44,3 +44,11 @@
 - 新登录状态 `alice_r71_sevenstep_post_status_10`：IDLE、autonomous、HP20/food20，新生命 independentSamples0（先前旧 PID 的14个样本失效），`prior_login_witness` 正常。需求服务 `alice_r71_sevenstep_post_demand_11` 只读：timer active/enabled, optedIn/ownerValid/demandNow=true, budgetUsed2/40、lastBatchAge约179秒、independentSamples0、serverTravel0，`lastServiceResult=no_navigation_demand` 是最近一次历史系统服务结果，不代表 timer 关闭。新的一轮双 BDS 见证**尚未完成**，不可以宣称已到木门。下一步应读取新生命原生 BDS witness 与逃生诊断，不重放一次性操作或人为消耗预算。
 
 所有读操作遵守固定 OpenClaw 域、执行器和原正式世界限制。新PID的前进目标必须重新扫描，不能重用旧PID(-3,-5)相对坐标。
+
+## 夜间按需 BDS 需求死锁修复（2026-11-03 rev71 第二阶段）
+
+- 复现的现场组合：`alice_r71_newlife_gate_13`、`alice_r71_newlife_demand_14` 证实新客户端 PID4070986 夜间 `worldRoutineIdleGate=work_cooldown`，`nightSurvivalReason=scout_bds_position_unavailable`，独立见证已过期，同时旧 `demand_now=false`（即使系统d timer active）。旧 `alice-bds-demand-timer.py` 仅认 `position_witness_unverified/eligible_for_work`，使夜间生存任务急需的 BDS 起点被原木采集的普通 work cooldown 阻断。
+- 改进 Mint 脚本 `games/minecraft-ai/scripts/alice-bds-demand-timer.py`：新增 `safe_night_witness_need()`，只能在夜/黄昏、`work_cooldown`、真实 `nightSurvival.reason=scout_bds_position_unavailable`、autonomous/IDLE/health>=16、无工作/无跟随目标、已知非 PAUSED 的连续目标、且 `witnessDemand` 自身仍报告缺少新鲜独立 BDS 样本时开启需求。白天、STOP/人类覆盖、FOLLOW、已有任务、无目标、其他夜间原因、已有新鲜 BDS pair 全部禁止。**不修改 BDS 40/h、180 秒持续节流和 stalledPairs 冷却，也不提交任何游戏控制输入或查询命令。**
+- 固定纯 Python 测试 `alice_r71_night_gate_selftest_16` **PASSED**；非重启 Mint 部署 `alice_r71_night_gate_mint_sync_17` **PASSED**、Node24 **932/932**，无客户端重启/BDS重启/世界修改；Mac 回归 `alice_r71_night_gate_mac_20` **PASSED** Python 321、skip3。代码版本 `131d5c7fa62a2e05a2b0bc06eca40b6173bd2a44`，Python systemd timer 下一次启动直接读取新脚本，不需要重新登录。
+- 现场 `alice_r71_night_gate_live_18`：owner/timer/opt-in均有效，**demandNow=true**（原来 false），`lastServiceResult=position_pair_verified`，独立 BDS 样本 **4**、budget 6/40、stalledPairs2、当前新生命 serverTravel **0**；`alice_r71_night_gate_post_19` 确认仍夜间 WAIT defer_nonurgent_raw_materials_at_night、无活动job、HP20、独立 pair 快照时已过期。真实移动仍未确认，不能说已出门或已睡床。
+- **后续严守**：不手动高频触发见证，不能为了追样本跳过240秒的单格 BDS 终点验收或关闭安全门禁。当前下一步针对夜间有真实 pair 但仍无 movingQueued 的决策顺序/障碍做诊断；白天重新扫描当前门并尝试每次仅一格的合法入口。原世界不变。
