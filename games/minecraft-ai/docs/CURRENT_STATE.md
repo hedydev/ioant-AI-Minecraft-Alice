@@ -1,3 +1,7 @@
+## 2026-11-03 — 第三批模块化源码（玩家命令、作业与 BDS scout）
+
+在前两批 1667 行主调度器和 Node24 948/948 基线上，新增 features/commands/runtime_methods.cjs（5方法）、features/tasks/work_methods.cjs（4方法）、features/navigation/scout_methods.cjs（2方法），共迁出812行，runtime.cjs 最终855行；所有方法体按原逻辑抽取、实例状态和 BDS authority 仍由 AliceBedrockRuntime 持有，直接返回原 async Promise，不新增异步桥。旧 scout_step_runtime_contract 静态证据测试改为读取真实 scout/work/idle 功能文件，测试断言原样保留，新增 runtime_third_wave_modules.test.cjs 覆盖先前移动等待时拒绝开始新 job、无待结算 endpoint 与关闭时命令无副作用。改动仅结构重排，不放宽 BDS 4s/0.75m、40/h、180s、240s、安全/STOP/FOLLOW/地形准入。需在 Mint Node24 + Mac Python 全量回归完成前视作 staged；原游戏进程不重载、BDS/世界不操作。
+
 ## 2026-11-03 — 第二批模块化：异步入口时序忠实度修复
 
 首次提取安全/跟随/模型/IDLE 模块提交334410e后，Mint Node24 为946/948（一个旧 scout 测试仍读取 runtime.cjs 文本，另一个 startup witness 等待严格冷却断言失败）；a5b9edc 修复 scout 测试模块路径并为后者增加有限的无个人数据诊断，Mint 947/948。证据显示后者 BDS 恢复后 startupPending=false、homeObjective=none、phase=unknown，但 nextIdleAt 为短重试而非原预期 120s。由于 module runtime 原方法体逐语句不变，额外 async 代理可能引入一轮微任务调度，故将 5 个新增异步入口（tryShortFollow/followTick/runAutonomousModelStep/idleTick/runIdleDecision）改为普通转发方法直接返回功能模块的真实 async Promise，避免二次 async adoption。原独立 BDS/安全/STOP/FOLLOW/预算门禁完全不动，保留原 Node 严格断言，仍需重新通过完整 Mint Node24 回归才能接受。

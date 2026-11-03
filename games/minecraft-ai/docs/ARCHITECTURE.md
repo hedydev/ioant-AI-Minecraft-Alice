@@ -1,3 +1,7 @@
+## 2026-11-03 — 运行时第三批源码职责边界
+
+新增 commands/（onChat、askModel、acceptAcquire、acquireItem、acceptGather）、tasks/（startJob、gatherCount、runVerifiedResourceStep、craftWeaponOrTable）、navigation/scout_methods（settlePendingScoutStepOnWitness、boundedScout）。根 AliceBedrockRuntime 仅负责初始化、生命周期和薄代理，原实例方法名、this、同步/异步返回类型保持。原源码级 Node 测试对所属模块而非 runtime.cjs 搜索，以免未来提取导致不相关测试假失败。仍保留安全抢占与服务器证明；不要在 feature 模块增加独立客户端、原服 query 或任务调度器。
+
 ## 2026-11-03 — 第二批 Bedrock 功能目录和依赖所有权
 
 新增 safety/runtime_methods.cjs（threat/escortDecision/safetyTick）、navigation/follow_methods.cjs（stopDirectFollow/tryShortFollow/followTick）、autonomy/model_methods.cjs（recordAutonomousDecision/runAutonomousModelStep）、autonomy/night_methods.cjs（tryNightReposition）、autonomy/idle_methods.cjs（idleTick/runIdleDecision）。全部使用显式根依赖工厂并在类方法入口 .apply(this,args)，不创建状态副本。原有生存抢占、model allowlist、随从意图、木门/床独立BDS一格确认沿用现有合同。每批 Node24/Python 全量回归与 Mint 不重启同步不可省略。未将大型 idle 决策内部完全拆成子阶段，后续可按目标决策、资源获取、门候选、审计阶段进一步细分。

@@ -11,3 +11,9 @@ The root AliceBedrockRuntime in src/runtime.cjs remains the only owner of the li
 - autonomy/idle_methods.cjs: durable autonomous IDLE scheduling.
 
 Keep stable AliceBedrockRuntime instance APIs for all consumers. Add and preserve behavioral tests for each extracted feature; no status-only or local physics indication may be promoted to BDS accepted travel. Source refactors require Mac Python and Mint Node24 full regression with one-client no-restart non-destructive sync.
+
+- commands/runtime_methods.cjs: typed player/chat requests, model text request and allowlisted acquisition.
+- tasks/work_methods.cjs: admission, cancellation-aware job lifecycle, gathering, verified resource steps and crafting.
+- navigation/scout_methods.cjs: bounded scouting and independent BDS post-input one-cell endpoint verification.
+
+Module factories are not independent controllers: no extra event loops, actor instances or BDS queries. Source-structure tests must read the owning feature, not search the root runtime source for moved method bodies. Asynchronous wrappers return the original feature Promise directly to avoid an extra microtask boundary.
