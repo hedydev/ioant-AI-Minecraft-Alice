@@ -8,6 +8,7 @@ const {surveyEscape}=require('./escape_survey.cjs')
 const {selectDirectionalBedStep}=require('./bed_directional_step.cjs')
 const {candidateOneBlockJump}=require('./one_block_jump.cjs')
 const {outcome,message}=require('./bed_request_outcome.cjs')
+const {selectBedDoor,resumeBedDoor}=require('./features/bed/door_stage.cjs')
 const TIMEOUT=240000
 const MAX_STEPS=24,GLOBAL_TIMEOUT=90*60000
 const TYPES=new Set(['sleep','set_spawnpoint'])
@@ -89,7 +90,7 @@ function requestBed(r,action,source,report=null){
  const positions=observedBedPositions(r)
  const choice=selectAdjacentBed(r.bot,positions,{radius:16})
  let bedPosition=choice.bed?.position||null,needsApproach=false
- let obstacleReason=null
+ let obstacleReason=null,doorStage=false
  if(!bedPosition&&choice.reason==='bed_needs_verified_approach'){
   try{
    const survey=surveyEscape(r.bot,{radius:7,maxNodes:100,bedPositions:positions})
@@ -107,6 +108,11 @@ function requestBed(r,action,source,report=null){
    if(flatBedRoute(plan,r.bot.entity?.position)){
     bedPosition={x:plan.bed[0],y:plan.bed[1],z:plan.bed[2]}
     needsApproach=true
+   }else{
+    const target=positions.find(pos=>
+      selectAdjacentBed(r.bot,[pos],{radius:16}).reason==='bed_needs_verified_approach'&&
+      selectBedDoor(r.bot,survey,pos))
+    if(target){bedPosition=target;needsApproach=true;doorStage=true}
    }
   }catch{r.lastBedApproach=null}
   if(!bedPosition){
@@ -153,7 +159,7 @@ function requestBed(r,action,source,report=null){
  r.lastHumanAt=now
  const p={action,source,report,at:now,expiresAt:now+TIMEOUT,
    globalExpiresAt:now+GLOBAL_TIMEOUT,steps:0,
-   stage:needsApproach?'approach':'interact',
+   stage:doorStage?'door':needsApproach?'approach':'interact',
    epoch:r.epoch,loginAt:ev?.loginAt??null,lifeEpochAt:ev?.lifeEpochAt??null,
    dimension:r.bot.game?.dimension,
    position:{x:bedPosition.x,y:bedPosition.y,z:bedPosition.z},
@@ -194,12 +200,32 @@ function resumeBed(r){
     r.threat()||r.core.hasFollowIntent()||
     r.goalPlanner.stoppedByHuman||r.bot.health<14)
    return deny('bed_safety_or_follow_priority')
- if(r.job)return p.stage==='awaiting_step'?
+ if(r.job)return ['awaiting_step','door'].includes(p.stage)?
    {state:'waiting',reason:'bed_step_in_flight'}:
    deny('bed_other_job_in_progress')
  const proof=scoutStartProof(r.bot,r.movementEvidence,r.clock)
  if(!proof.ok)return proof.reason==='scout_bds_position_unavailable'?
    {state:'waiting',reason:proof.reason}:deny(proof.reason)
+ if(p.stage==='door'){
+  const choice=selectAdjacentBed(r.bot,[p.position],{radius:16})
+  if(!choice.bed&&choice.reason!=='bed_needs_verified_approach')
+    return deny('bed_changed_or_no_longer_available')
+  const survey=surveyEscape(r.bot,{radius:7,maxNodes:100,bedPositions:[p.position]})
+  if(choice.bed)p.stage='interact'
+  else if(flatBedRoute(survey.bedApproach,r.bot.entity?.position))p.stage='approach'
+  else{
+   if(p.steps>=MAX_STEPS)return deny('bed_approach_step_limit')
+   const stage=resumeBedDoor(r,p)
+   if(stage.state==='rejected')return deny(stage.reason)
+   if(stage.state==='approaching'){
+    p.steps++;p.epoch=r.epoch;p.expiresAt=Math.min(p.globalExpiresAt,now+TIMEOUT)
+    clearTimeout(p.timer)
+    p.timer=setTimeout(()=>{if(r.pendingBedRequest===p)cancelBed(r,'bed_request_expired')},
+      Math.max(1,p.expiresAt-now));p.timer.unref?.()
+   }
+   return stage
+  }
+ }
  // A completed local GoalNear cannot certify the prior one-cell step.
  // The callback first settles its later independent BDS endpoint. Refuse
  // both duplicate movement and bed activation until that succeeds.

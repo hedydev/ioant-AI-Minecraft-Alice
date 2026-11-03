@@ -286,7 +286,7 @@ async function main(args=process.argv.slice(2)){
         witnessDemand:witnessDemand({connected:!!connected,sessionEstablished:networkSessionEstablished,
           bot,evidence:movementEvidence})},
       ...(outboundSummary?{outboundInput:outboundSummary}:{}),
-      worldRoutine:{...environment(bot),bedLogicVersion:2,idleGate:runtime.idleGateReason(),
+      worldRoutine:{...environment(bot),bedLogicVersion:3,idleGate:runtime.idleGateReason(),
         verticalSafety:runtime.verticalWatch.summary(),
         cooldowns:runtime.failureMemory.summary(self),
         explorationProgress:runtime.explorationProgress.summary(),
@@ -449,6 +449,7 @@ async function main(args=process.argv.slice(2)){
         JSON.stringify({reason:requestedBed.reason}))
       return
     }
+    if(runtime.pendingBedRequest)return
     // Never query BDS continuously. An operator-approved, fresh, witnessed
     // position pair can immediately unlock an already-adjacent bed interaction.
     const bedCheck=runtime.spawnpointTick({freshBdsWitness:true}).catch(err=>

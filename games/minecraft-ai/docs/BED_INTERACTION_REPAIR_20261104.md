@@ -95,3 +95,22 @@ completed: old1319142 -> new1367454, current owner/heartbeat/connection/session
 all verified, BDS/world unchanged. Version1 readonly receipt05: day, canSleep
 false, personalBedStatus not_verified. This is loading acceptance only.
 Version2 follow-up full tests and runtime loading are still pending.
+
+## Version3: connect the bed goal to the existing guarded door stages
+
+Version2 actually loaded in PID1373327; Mac326(skip3) and Mint981/981 passed.
+A single maintained typed spawnpoint request was queued with commandId
+`4c1ecaf627f74174b78b2d3ea338efea` and then explicitly REJECTED by runtime as
+`bed_route_requires_door`. No unknown operation was repeated. This identifies a
+missing goal transition, not a successful bed arrival.
+
+Version3 adds a bounded door phase to that same bed request. Only an observed,
+flat-connected wooden door toward the loaded free bed may be selected. Shared
+original door approach/open/cross/raised-landing functions own actions, collisions,
+per-step BDS proof and endpoints. Bed intent updates its epoch only for its own
+admitted job and blocks unrelated scouting while waiting. Unknown door bits
+remain waiting, not activation. Existing short handle-range failure now falls
+back to the already validated one-cell approach, instead of stalling permanently
+because a non-colliding torch made the handle-only check stricter than WALK.
+No door is treated as a verified complete path to the bed. Actual arrival and
+server spawn/sleep acknowledgements remain separate required evidence.

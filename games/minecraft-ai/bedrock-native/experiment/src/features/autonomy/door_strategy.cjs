@@ -69,8 +69,11 @@ function createDoorStrategy({validateApproach,planDoorOpen,selectDrive,approachD
           // A wooden handle within the original strictly validated short
           // interaction range may be opened without walking. Longer routes
           // still require BDS-proven single-cell approaches.
+          const openPlan=planDoorOpen(this.bot,{doorCandidates:[door]})
           const needApproach=Array.isArray(door.approach?.waypoints)&&
-            door.approach.waypoints.length>2
+            door.approach.waypoints.length>0&&
+            (door.approach.waypoints.length>2||
+              !openPlan.ok&&openPlan.reason!=='door_already_open')
           const approachRecently=doorKey===this.lastEscapeApproachKey&&
             this.clock()<this.lastEscapeApproachRetryAt
           if(needApproach&&!approachRecently){

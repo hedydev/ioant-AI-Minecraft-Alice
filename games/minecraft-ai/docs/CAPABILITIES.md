@@ -1,3 +1,7 @@
+## 2026-11-04 — 床目标经原木门执行器分阶段接续（版本3，待实机验收）
+
+真实版本2床命令`4c1ecaf627f74174b78b2d3ea338efea`被`bed_route_requires_door`拒绝（没有直走/使用床）。新`features/bed/door_stage.cjs`保留显式床意图，通过同一新鲜BDS见证优先接近床方向的已观察木门；复用原door_strategy、approachDoor、crossObservedDoor及高一级落点执行器，各段等待原独立BDS终点，不把门路线冒充床路线。短门路线若因火把等碰撞/把手条件不能直接开门，则继续原逐格接近，而不是永久停在两格外。STOP/FOLLOW/危险、autonomy开关、任务owner、4s/.75门禁和查询预算不变。`bedLogicVersion=3`只作加载证据，不代表重生点/睡眠通过。
+
 ## 2026-11-04 — 床流程修复（源码验证，实机尚待加载）
 
 修复 pinned Bedrock lifecycle 将自身放入 `bot.entities` 后，床前一格占位检查把 Alice 自己当作挡路实体的问题；其他玩家/怪物仍阻止占位。新增独立 `features/bed/sleep_opportunity.cjs`，由原维护周期和原新鲜BDS见证回调共用，避免5秒维护检查错过4秒位置证据后错误消耗120秒重试冷却；距离太远/证据过期/任务未接纳只等待，不冒充一次睡眠尝试。保留STOP/FOLLOW、危险、其他在途单格/门任务、夜晚/天气、怪物与占用检查。

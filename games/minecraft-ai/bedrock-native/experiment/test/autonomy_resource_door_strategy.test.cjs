@@ -50,6 +50,18 @@ test('door WAIT runner blocks unsafe motion and reports no server travel',()=>{
   assert.equal(f.runDoorWaitStrategy.call(ctx,{doorDriven:true,movementFailure:false,drive:{driveGoal:'FIND_ROOM_EXIT'}}),false)
   assert.equal(ctx.lastEscapeDoorAction.serverMovementVerified,false)
 })
+test('short door route blocked for handle reach falls back to verified one-cell approach',()=>{
+ let started=0,validated=0
+ const f=createDoorStrategy({
+  planDoorOpen:()=>({ok:false,reason:'approach_blocked_or_unloaded'}),
+  validateApproach:()=>{validated++;return {ok:true}}})
+ const ctx={clock:()=>100000,lastEscapeSurveyAt:99999,
+  lastEscapeSurvey:{door:{position:[2,64,0],approach:{waypoints:[[1,64,0]]}}},
+  bot:{health:20},startJob(type){assert.equal(type,'EXPLORE');started++}}
+ assert.equal(f.runDoorWaitStrategy.call(ctx,{
+  doorDriven:true,movementFailure:false,drive:{driveGoal:'FIND_ROOM_EXIT'}}),true)
+ assert.equal(validated,1);assert.equal(started,1)
+})
 test('resource and door split preserves exactly one async IDLE scheduler entry',()=>{
   const m=createIdleRuntimeMethods({})
   assert.equal(m.idleTick.constructor.name,'AsyncFunction')

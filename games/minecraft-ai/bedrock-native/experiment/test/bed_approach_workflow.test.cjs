@@ -5,7 +5,7 @@ const vec=(x,y,z)=>({x,y,z,
   offset(a,b,c){return vec(x+a,y+b,z+c)},
   distanceTo(p){return Math.hypot(x-p.x,y-p.y,z-p.z)}})
 const bedPosition=vec(3,65,0)
-function world({walled=false,doorway=false}={}){
+function world({walled=false,doorway=false,knownDoor=false}={}){
  let now=100000,proof=false,stepCalls=0,interactions=0
  const bed={name:'red_bed',position:bedPosition}
  const bot={game:{dimension:'overworld'},
@@ -16,7 +16,8 @@ function world({walled=false,doorway=false}={}){
    const x=Math.floor(p.x),y=Math.floor(p.y),z=Math.floor(p.z)
    if(x===3&&y===65&&z===0)return bed
    if(doorway&&x===1&&z===0&&(y===65||y===66))
-    return {name:'spruce_door',boundingBox:'block',position:vec(x,y,z)}
+    return {name:'spruce_door',boundingBox:'block',position:vec(x,y,z),
+      ...(knownDoor?{getProperties:()=>({open_bit:0,upper_block_bit:y===66?1:0})}:{})}
    if(doorway&&x===1&&z!==0&&Math.abs(z)<=7&&y===65)
     return {name:'stone',boundingBox:'block',position:vec(x,y,z)}
    if(y===64)return {name:'stone',boundingBox:'block',position:vec(x,y,z)}
@@ -26,6 +27,7 @@ function world({walled=false,doorway=false}={}){
    return {name:'air',boundingBox:'empty',position:vec(x,y,z)}
   }}
  const r={bot,epoch:2,job:null,closed:false,ready:()=>true,
+  liveBehavior:{settings:{autonomyEnabled:true}},log:{log(){}},
   clock:()=>now,pendingBedRequest:null,pendingBedStep:null,
   threat:()=>null,safetyBusy:false,core:{state:'IDLE',hasFollowIntent:()=>false},
   goalPlanner:{stoppedByHuman:false},
@@ -133,11 +135,35 @@ test('solid wall makes bed route read-only and rejects a direct step',()=>{
  assert.equal(f.interactions(),0)
 })
 
-test('a detected wooden exit door is reported, not silently walked through',()=>{
+test('bed behind a door preserves intent without pretending to walk through',()=>{
  const f=world({doorway:true})
  const reply=requestBed(f.r,'sleep','控制台')
- assert.equal(reply.status,'rejected')
- assert.equal(reply.reason,'bed_route_requires_door')
+ assert.equal(reply.status,'started')
+ assert.equal(f.r.pendingBedRequest.stage,'door')
  assert.equal(f.steps(),0)
  assert(f.r.lastEscapeSurvey?.doorCandidates?.length>0)
+ f.setProof(true)
+ assert.equal(resumeBed(f.r).state,'waiting')
+ assert.equal(f.interactions(),0,'unknown door bits do not allow activation')
+ cancelBed(f.r)
+})
+test('fresh proof may admit the original guarded door job, never a bed teleport',()=>{
+ const f=world({doorway:true,knownDoor:true})
+ requestBed(f.r,'set_spawnpoint','控制台')
+ assert.equal(f.interactions(),0)
+ f.setProof(true)
+ assert.equal(resumeBed(f.r).state,'approaching')
+ assert.equal(f.r.job.type,'EXPLORE')
+ assert.equal(f.r.pendingBedRequest.stage,'door')
+ assert.equal(f.steps(),0,'no straight bed path was invented')
+ assert.equal(resumeBed(f.r).state,'waiting')
+ assert.equal(f.interactions(),1,'a live door job is not submitted twice')
+ cancelBed(f.r)
+})
+test('door phase cancels if the bed becomes occupied before the fresh proof',()=>{
+ const f=world({doorway:true,knownDoor:true})
+ requestBed(f.r,'set_spawnpoint','控制台');f.setProof(true)
+ f.r.bot.parseBedMetadata=()=>({occupied:1})
+ assert.equal(resumeBed(f.r).reason,'bed_changed_or_no_longer_available')
+ assert.equal(f.interactions(),0);assert.equal(f.r.pendingBedRequest,null)
 })

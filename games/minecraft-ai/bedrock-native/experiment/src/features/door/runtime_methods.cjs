@@ -165,7 +165,9 @@ function createDoorRuntimeMethods({verifyScoutStep,scoutStartProof,surveyEscape,
     const hold=reason=>({state:'held',reason,serverMovementVerified:false})
     const now=this.clock()
     if(this.closed||this.epoch!==stage.epoch||now<stage.at||
-       now-stage.at>4000||this.pendingDoorCrossing||this.pendingBedRequest||
+       now-stage.at>4000||this.pendingDoorCrossing||
+       this.pendingBedRequest&&!(this.pendingBedRequest.stage==='door'&&
+         this.pendingBedRequest.epoch===this.epoch)||
        this.job||!this.ready()||this.goalPlanner.stoppedByHuman||
        this.core.state!=='IDLE'||this.core.hasFollowIntent()||
        this.threat()||this.safetyBusy||this.verticalWatch.active()||

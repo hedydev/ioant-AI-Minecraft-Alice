@@ -1,6 +1,6 @@
 ## 2026-11-04 — 有限床指令与实际回执
 
-固定动作使用已有 localhost 控制台和运行时 typed bed reader：`alice_bed_set_spawnpoint_once.json`、`alice_bed_sleep_once.json`，要求已加载bedLogicVersion2、原世界17879和健康IDLE。不发送BDS OP命令、不重载。`alice_bed_command_status_readonly.json`只读取现有commandId/status/reason和当前床状态。提交超时只能查询原commandId，不换operation_id重发；queued/started不是设置重生点或入睡成功。每步独立BDS证明、STOP/危险抢占不变；床请求总限90分钟/24格，每次实际输入重计240秒终点期限。
+固定动作使用已有 localhost 控制台和运行时 typed bed reader：`alice_bed_set_spawnpoint_once.json`、`alice_bed_sleep_once.json`，要求已加载bedLogicVersion3、原世界17879和健康IDLE。不发送BDS OP命令、不重载。`alice_bed_command_status_readonly.json`只读取现有commandId/status/reason和当前床状态。提交超时只能查询原commandId，不换operation_id重发；queued/started不是设置重生点或入睡成功。每步独立BDS证明、STOP/危险抢占不变；床请求总限90分钟/24格，每次实际输入重计240秒终点期限。
 
 ## 2026-11-04 — 床流程版本与实机验收
 
