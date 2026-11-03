@@ -1,3 +1,9 @@
+## 2026-11-04 — 实际自身角色member，服务端启用哈希方块ID
+
+源码638e31f经sync50通过Mint996/996、Mac334 skip3，原批准restart51完成PID1507358→1513191。只读52确认source=start_game_self、role=member、blockNetworkIdsHashed=true、authoritativeInventory=true，sneaking=false/usingItem=false；door单独权限位仍未知，不推断为允许或拒绝。当前没有新点击（blockClicksSerialized=0），个人床仍not_verified；没有为采集数据重发旧床请求。
+
+接下来先只读离线安装注册表spruce_door的顺序状态ID/可能network_id字段和注册表API键，比较真实服务器的哈希模式与原生activateBlock使用stateId的逻辑。离线结果只证明库的数据结构，不是当前游戏方块状态或交互成功。该检查不创建游戏客户端、不查询BDS、不读玩家/身份文件、不改注册表、包或权限。
+
 ## 2026-11-04 — 自身权限来源继续分辨
 
 只读49确认观察器已加载在PID1507358（原批准restart48成功），但未取得匹配自身ID的update_abilities；其role=unknown是缺证据，不是权限被拒。对照公开协议，start_game.permission_level本身就是该登录玩家角色。补充读取此初始自身字段（source=start_game_self）及原始block_network_ids_are_hashes/server_authoritative_inventory布尔标志；对实际已有click_block仅记录公开方块ID、客户端状态ID与注册表network_id，避免猜测新版本网络ID映射是否一致。仍只观察，不改包/不申请权限/不增加点击。Node30项通过，完整测试与加载待回执。原1bb…命令在46已明确failed/bed_request_expired，不重做。

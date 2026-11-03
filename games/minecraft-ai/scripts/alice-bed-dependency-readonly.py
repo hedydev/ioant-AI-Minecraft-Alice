@@ -40,14 +40,35 @@ def interaction_policy(home):
         result['gameMode']=props['gamemode']
     return result
 
-REMOTE="import hashlib,json,re\nfrom pathlib import Path\n"+inspect.getsource(read_plugins)+'\n'+inspect.getsource(interaction_policy)+"\nprint(json.dumps({'plugins':read_plugins(Path.home()/'minecraft-ai/bedrock-native/experiment/node_modules/mineflayer/lib/bedrock_plugins'),'serverInteractionPolicy':interaction_policy(Path.home())}))\n"
+NODE_REGISTRY=r'''
+const {createRequire}=require('node:module'),path=require('node:path');
+const req=createRequire(path.join(process.cwd(),'package.json'));
+let registry=null,requested=null;
+for(const version of ['bedrock_1.26.51','bedrock_1.26.50']){
+ try{registry=req('prismarine-registry')(version);requested=version;break}catch{}
+}
+if(!registry)throw Error('installed_registry_unavailable');
+const block=registry.blocksByName?.spruce_door;
+const samples=[];
+if(Number.isSafeInteger(block?.minStateId))for(const stateId of [block.minStateId,block.minStateId+1]){
+ const state=registry.blockStates?.[stateId],byId=registry.blocksByStateId?.[stateId];
+ samples.push({stateId,networkId:state?.network_id??state?.networkId??null,
+  stateKeys:state?Object.keys(state).slice(0,15):[],
+  registryBlockKeys:byId?Object.keys(byId).filter(k=>/id|state|network|hash/i.test(k)).slice(0,15):[],
+  stateExcerpt:state?JSON.stringify(state).slice(0,800):null});
+}
+console.log(JSON.stringify({requested,loadedVersion:registry.version?.minecraftVersion,
+ registryKeys:Object.keys(registry).filter(k=>/block|hash|runtime/i.test(k)).slice(0,25),
+ spruceDoor:block?{id:block.id,minStateId:block.minStateId,maxStateId:block.maxStateId}:null,samples}));
+'''
+REMOTE="import hashlib,json,re,subprocess\nfrom pathlib import Path\n"+inspect.getsource(read_plugins)+'\n'+inspect.getsource(interaction_policy)+"\nnode=Path.home()/'.local/share/alice-bedrock/node24/current/bin/node'\np=subprocess.run([str(node),'-'],input="+repr(NODE_REGISTRY)+",cwd=Path.home()/'minecraft-ai/bedrock-native/experiment',capture_output=True,text=True,timeout=15,check=False)\nregistry=json.loads(p.stdout) if p.returncode==0 and len(p.stdout)<6000 else {'state':'unavailable'}\nprint(json.dumps({'plugins':read_plugins(Path.home()/'minecraft-ai/bedrock-native/experiment/node_modules/mineflayer/lib/bedrock_plugins'),'serverInteractionPolicy':interaction_policy(Path.home()),'installedRegistry':registry}))\n"
 def run(folder):
     if folder.is_symlink() or not folder.is_dir():raise ValueError('output')
     p=subprocess.run(['/usr/bin/ssh','-T','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes',
       '-o','ConnectTimeout=8','tedz@192.168.0.104','/usr/bin/python3 -c '+shlex.quote(REMOTE)],
       capture_output=True,text=True,timeout=25,check=False)
     report=json.loads(p.stdout) if p.returncode==0 and len(p.stdout)<40000 else None
-    if not isinstance(report,dict) or set(report)!={'plugins','serverInteractionPolicy'} or not isinstance(report['plugins'],list):raise ValueError('dependency_read_unavailable')
+    if not isinstance(report,dict) or set(report)!={'plugins','serverInteractionPolicy','installedRegistry'} or not isinstance(report['plugins'],list):raise ValueError('dependency_read_unavailable')
     fd=os.open(folder/'native_interaction_source.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL|getattr(os,'O_NOFOLLOW',0),0o600)
     with os.fdopen(fd,'w') as f:json.dump({'readOnly':True,'gameCommandSent':False,**report},f)
     print(json.dumps({'state':'observed','plugins':len(report['plugins'])}))
