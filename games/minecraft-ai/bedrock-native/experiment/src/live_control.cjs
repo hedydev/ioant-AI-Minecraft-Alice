@@ -50,6 +50,13 @@ class LiveSettings {
 // The Mac SSH control reader enforces a hard 4 KiB limit. Large read-only
 // terrain surveys must not prevent fresh online/position/safety heartbeats.
 const STATUS_MAX_BYTES=4096
+function compactBedWitness(w){
+  if(w?.version!==1||w.state!=='needs_evidence'||
+     !['intent','endpoint'].includes(w.kind)||
+     ![w.at,w.expiresAt,w.loginAt,w.lifeEpochAt].every(Number.isSafeInteger))return null
+  return {version:1,kind:w.kind,state:w.state,at:w.at,expiresAt:w.expiresAt,
+    loginAt:w.loginAt,lifeEpochAt:w.lifeEpochAt,permissionGranted:false,querySent:false}
+}
 function compactBedRequest(p){
   if(!p||!['sleep','set_spawnpoint'].includes(p.action)||
      !['door','approach','awaiting_step','interact'].includes(p.stage))return null
@@ -106,6 +113,7 @@ function compactStatus(state){
     const w=data.worldRoutine
     data.worldRoutine={phase:w.phase,tick:w.tick,weather:w.weather,
       bedRequest:compactBedRequest(w.bedRequest),
+      bedWitness:compactBedWitness(w.bedWitness),
       bedLogicVersion:w.bedLogicVersion,canSleep:w.canSleep,
       idleGate:w.idleGate,safeToExplore:w.safeToExplore,decision:w.decision,
       cooldowns:w.cooldowns,escapeSurvey:w.escapeSurvey,
@@ -157,6 +165,7 @@ function compactStatus(state){
     const w=data.worldRoutine,d=w.escapeSurvey?.door
     data.worldRoutine={phase:w.phase,tick:w.tick,weather:w.weather,
       bedRequest:compactBedRequest(w.bedRequest),
+      bedWitness:compactBedWitness(w.bedWitness),
       bedLogicVersion:w.bedLogicVersion,canSleep:w.canSleep,
       idleGate:w.idleGate,decision:w.decision,idleHold:w.idleHold,nightSurvival:w.nightSurvival,
       sleepOpportunity:w.sleepOpportunity,
@@ -273,6 +282,7 @@ function compactStatus(state){
         permissionGranted:false,querySent:false}},
     worldRoutine:{phase:str(w.phase,25),tick:num(w.tick),
       bedRequest:compactBedRequest(w.bedRequest),
+      bedWitness:compactBedWitness(w.bedWitness),
       bedLogicVersion:num(w.bedLogicVersion),canSleep:typeof w.canSleep==='boolean'?w.canSleep:null,
       weather:str(w.weather,20),idleGate:str(w.idleGate,48),
       // A bounded recent door decision must retain BOTH provenance fields
@@ -311,6 +321,7 @@ function compactStatus(state){
   const bedPrioritized={...bedCompact,worldRoutine:{
     phase:essential.worldRoutine.phase,
     bedRequest:essential.worldRoutine.bedRequest,
+    bedWitness:essential.worldRoutine.bedWitness,
     bedLogicVersion:essential.worldRoutine.bedLogicVersion,canSleep:essential.worldRoutine.canSleep,
     idleGate:essential.worldRoutine.idleGate,
     decision:essential.worldRoutine.decision,

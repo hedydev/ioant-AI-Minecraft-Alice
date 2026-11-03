@@ -6,6 +6,31 @@ SOURCE=Path(__file__).resolve().parents[1]/"scripts"/"alice-bds-demand-timer.py"
 spec=importlib.util.spec_from_file_location("alice_bds_demand_timer",SOURCE)
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 class DemandTimerTests(unittest.TestCase):
+    def test_typed_bed_intent_crosses_only_unrelated_cooldown_with_current_life(self):
+        x={"state":"IDLE","connected":True,"sessionEstablished":True,"health":20,
+          "settings":{"autonomyEnabled":True,"agentMode":"autonomous"},
+          "worldRoutine":{"idleGate":"work_cooldown","bedWitness":{
+            "version":1,"kind":"intent","state":"needs_evidence","at":90000,
+            "expiresAt":990000,"loginAt":1,"lifeEpochAt":2,
+            "permissionGranted":False,"querySent":False}},
+          "movementEvidence":{"loginAt":1,"lifeEpochAt":2,
+            "witnessDemand":{"state":"needs_two_fresh_samples","positionGateSatisfied":False}}}
+        self.assertTrue(m.demand_now(x,100000))
+        self.assertFalse(m.demand_now(x,990000))
+        self.assertFalse(m.demand_now(x,89999))
+        for key,value in (("lifeEpochAt",3),("loginAt",2),("permissionGranted",True),
+                          ("state","completed"),("expiresAt",99999999),("at",True)):
+            w={**x["worldRoutine"],"bedWitness":{**x["worldRoutine"]["bedWitness"],key:value}}
+            self.assertFalse(m.demand_now({**x,"worldRoutine":w},100000))
+        for gate in ("human_stop","follow_intent","threat_nearby","post_threat_window",
+                     "vertical_hold","startup_observation_pending"):
+            self.assertFalse(m.demand_now({**x,"worldRoutine":{
+                **x["worldRoutine"],"idleGate":gate}},100000))
+        self.assertFalse(m.demand_now({**x,"job":"EXPLORE"},100000))
+        self.assertFalse(m.demand_now({**x,"followTarget":"test"},100000))
+        b=m.budget_value(3601,{"version":1,"hour":1,"used":40,"lastBatch":3500})
+        self.assertFalse(m.budget_allows_batch(3601,b))
+
     def test_budget_same_hour_and_reset_next_hour(self):
         m.selftest()
         old={"version":1,"hour":20,"used":40,"lastBatch":72000}

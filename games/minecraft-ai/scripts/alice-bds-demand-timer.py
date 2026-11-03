@@ -148,7 +148,32 @@ def safe_daytime_door_witness_need(d, now_ms=None):
     )
 
 
-def demand_now(d):
+def safe_bed_witness_need(d, now_ms=None):
+    # A current-life typed bed intent or an ALREADY issued bed step needs
+    # evidence even while unrelated autonomous work is cooling down. This
+    # descriptor is emitted only after runtime STOP/FOLLOW/threat checks.
+    wr = d.get("worldRoutine") or {}
+    b = wr.get("bedWitness") or {}
+    e = d.get("movementEvidence") or {}
+    now_ms = int(time.time() * 1000) if now_ms is None else now_ms
+    if not isinstance(b, dict) or b.get("kind") not in ("intent", "endpoint"):
+        return False
+    at, end = b.get("at"), b.get("expiresAt")
+    return bool(
+        wr.get("idleGate") in ("work_cooldown", "human_grace_period",
+            "position_witness_unverified", "eligible_for_work") and
+        d.get("job") is None and d.get("followTarget") is None and
+        b.get("version") == 1 and b.get("state") == "needs_evidence" and
+        b.get("permissionGranted") is False and b.get("querySent") is False and
+        type(at) is int and type(end) is int and type(now_ms) is int and
+        at <= now_ms < end and 0 < end-at <= (
+            240000 if b["kind"] == "endpoint" else 90*60000) and
+        type(b.get("loginAt")) is int and b["loginAt"] == e.get("loginAt") and
+        type(b.get("lifeEpochAt")) is int and b["lifeEpochAt"] == e.get("lifeEpochAt")
+    )
+
+
+def demand_now(d, now_ms=None):
     e = d.get("movementEvidence") or {}
     settings = d.get("settings") or {}
     wr = d.get("worldRoutine") or {}
@@ -165,7 +190,8 @@ def demand_now(d):
         (wr.get("idleGate") in
             ("position_witness_unverified", "eligible_for_work") or
          safe_night_witness_need(d) or
-         safe_daytime_door_witness_need(d)) and
+         safe_daytime_door_witness_need(d) or
+         safe_bed_witness_need(d, now_ms)) and
         isinstance(need, dict) and
         need.get("state") in
             ("needs_two_fresh_samples", "needs_second_fresh_sample") and

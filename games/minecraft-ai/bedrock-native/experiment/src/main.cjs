@@ -1,4 +1,5 @@
 'use strict'
+const {bedWitnessDemand}=require('./features/bed/witness_demand.cjs')
 // Register BEFORE emitting any production logs. Simulation/check invocations
 // and the independent operator CLI retain their existing output contracts.
 if(process.argv.includes('--production-start'))
@@ -286,7 +287,8 @@ async function main(args=process.argv.slice(2)){
         witnessDemand:witnessDemand({connected:!!connected,sessionEstablished:networkSessionEstablished,
           bot,evidence:movementEvidence})},
       ...(outboundSummary?{outboundInput:outboundSummary}:{}),
-      worldRoutine:{...environment(bot),bedLogicVersion:3,idleGate:runtime.idleGateReason(),
+      worldRoutine:{...environment(bot),bedLogicVersion:4,idleGate:runtime.idleGateReason(),
+        bedWitness:bedWitnessDemand(runtime),
         verticalSafety:runtime.verticalWatch.summary(),
         cooldowns:runtime.failureMemory.summary(self),
         explorationProgress:runtime.explorationProgress.summary(),

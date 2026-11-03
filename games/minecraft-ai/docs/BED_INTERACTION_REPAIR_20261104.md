@@ -1,3 +1,9 @@
+## 2026-11-04 — 床取证需求与等待期限解耦（版本4，待实机加载）
+
+源码确认两条独立路径存在循环等待：显式pendingBedRequest提前暂停普通自主准入，但取证定时器只识别普通自主/夜间/白天门需求；自动床单格输入后的独立终点也可能被work_cooldown屏蔽。新增只读features/bed/witness_demand.cjs，由同一运行实例生成有界、当前epoch/login/life的intent或endpoint描述。只有原健康IDLE、无任务/STOP/FOLLOW/危险/垂直hold、autonomy开启时输出。既有opt-in定时器验证精确描述、时限与生命身份后允许证据采样；不开放任意work_cooldown，不改变查询40/h、180秒间隔、10分钟停滞退避、4秒/.75格双样本、逐格碰撞/终点验证，描述本身permissionGranted=false/querySent=false。
+
+初始等待证据的意图期限改为15分钟，覆盖10分钟退避与下一个180秒采样槽；总任务仍90分钟/24阶段，实际输入后的240秒终点期限不延长。所有压缩层保留匿名有界bedWitness。bedLogicVersion=4仅作加载诊断，typed一次性床脚本要求版本4。旧f482…已failed，不重放；新代码仍须原批准的Alice-only生命周期加载后分别实证床到达、重生点和睡眠。定向Node44项、Mac Python327项（3 skip）源码验证；Mint完整回归和真实加载待记录。恢复只读22确认PID1380268/version3仍在线，bed not_verified，原命令仍expired。
+
 ## 2026-11-04 — 额度暂停前最终回执
 
 源码de5b6eb已推送，固定任务alice_bed_repair_heartbeat_mint_20261104_k4n8v2cs_21实际非重启sync通过：Mint Node24 984/984，Mac Python326（3 skip），未重启Alice/BDS、未发游戏控制命令、未改世界。压缩心跳补丁已同步但运行PID1380268未加载；床实机仍未通过。当前无已知在途任务。下一编号22；先读最新handoff与Git，不重复旧床请求f482…或原重启。实际五小时used95%/remaining5%，按用户要求暂停；额度真实恢复后由bed-only接续alice-2继续，旧网页巡检alice保持PAUSED。下一重点是有界显式床取证需求与初始240秒意图期限；保留全部查询预算与安全审核。

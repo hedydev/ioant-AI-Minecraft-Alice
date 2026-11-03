@@ -10,6 +10,10 @@ const {candidateOneBlockJump}=require('./one_block_jump.cjs')
 const {outcome,message}=require('./bed_request_outcome.cjs')
 const {selectBedDoor,resumeBedDoor}=require('./features/bed/door_stage.cjs')
 const TIMEOUT=240000
+// Evidence admission may have to wait for the existing ten-minute stalled
+// backoff plus the next 180s timer slot. This is an INTENT lease only;
+// an issued physical step still expires after 240s, with a 90m global cap.
+const INTENT_WAIT=15*60000
 const MAX_STEPS=24,GLOBAL_TIMEOUT=90*60000
 const TYPES=new Set(['sleep','set_spawnpoint'])
 // A personal spawn packet at login can describe a DIFFERENT location.
@@ -157,7 +161,7 @@ function requestBed(r,action,source,report=null){
  r.plannerAbort?.abort?.()
  r.epoch++
  r.lastHumanAt=now
- const p={action,source,report,at:now,expiresAt:now+TIMEOUT,
+ const p={action,source,report,at:now,expiresAt:now+INTENT_WAIT,
    globalExpiresAt:now+GLOBAL_TIMEOUT,steps:0,
    stage:doorStage?'door':needsApproach?'approach':'interact',
    epoch:r.epoch,loginAt:ev?.loginAt??null,lifeEpochAt:ev?.lifeEpochAt??null,
@@ -238,7 +242,7 @@ function resumeBed(r){
    return deny('bed_step_independent_endpoint_unconfirmed')
   p.steps++
   if(p.steps>MAX_STEPS||now>=p.globalExpiresAt)return deny('bed_approach_step_limit')
-  p.stage='approach';p.expiresAt=Math.min(p.globalExpiresAt,now+TIMEOUT)
+  p.stage='approach';p.expiresAt=Math.min(p.globalExpiresAt,now+INTENT_WAIT)
   clearTimeout(p.timer)
   p.timer=setTimeout(()=>{if(r.pendingBedRequest===p)cancelBed(r,'bed_request_expired')},
     Math.max(1,p.expiresAt-now));p.timer.unref?.()

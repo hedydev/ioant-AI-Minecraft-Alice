@@ -448,6 +448,9 @@ test('minimal oversized status retains a bounded bed-admission hold reason',()=>
      rememberedBeds:{knownBeds:2},
      bedRequest:{action:'set_spawnpoint',stage:'door',steps:0,
        expiresAt:340000,bed:{x:900,y:60,z:900},raw:'private'.repeat(2000)},
+     bedWitness:{version:1,kind:'intent',state:'needs_evidence',
+       at:100000,expiresAt:340000,loginAt:10,lifeEpochAt:20,
+       permissionGranted:false,querySent:false,raw:'private'.repeat(2000)},
      homeBed:{status:'not_verified'},
      homeBase:{status:'not_established'},
      lastSpawnpointAttempt:{reason:'bed_needs_verified_approach',
@@ -462,6 +465,9 @@ test('minimal oversized status retains a bounded bed-admission hold reason',()=>
  assert.equal(data.worldRoutine.rememberedBeds.knownBeds,2)
  assert.deepEqual(data.worldRoutine.bedRequest,{action:'set_spawnpoint',
    stage:'door',steps:0,expiresAt:340000,serverMovementVerified:false})
+ assert.deepEqual(data.worldRoutine.bedWitness,{version:1,kind:'intent',
+   state:'needs_evidence',at:100000,expiresAt:340000,loginAt:10,lifeEpochAt:20,
+   permissionGranted:false,querySent:false})
  assert.equal(data.worldRoutine.homeBed.status,'not_verified')
  assert.equal(data.worldRoutine.lastSpawnpointAttempt.reason,'bed_needs_verified_approach')
  assert.equal(data.worldRoutine.bedApproachAction.status,'held')

@@ -32,7 +32,7 @@ def ready(data):
             r.get('world') == 'Bedrock level' and r.get('serverPort') == 17879 and
             r.get('sessionEstablished') is True and r.get('connected') is True and
             type(r.get('producerPid')) is int and
-            (r.get('worldRoutine') or {}).get('bedLogicVersion') == 3 and
+            (r.get('worldRoutine') or {}).get('bedLogicVersion') == 4 and
             r.get('state') == 'IDLE' and not r.get('job') and
             type(r.get('health')) in (int, float) and 16 <= r['health'] <= 20)
 
@@ -87,6 +87,8 @@ def inspect_state(folder, api=request):
               'bedLogicVersion': w.get('bedLogicVersion'), 'isSleeping': r.get('isSleeping'),
               'canSleep': w.get('canSleep'), 'personalBedStatus': safe((w.get('homeBed') or {}).get('status')),
               'bedRequestStage': safe((w.get('bedRequest') or {}).get('stage')),
+              'bedWitnessKind': safe((w.get('bedWitness') or {}).get('kind')),
+              'bedWitnessState': safe((w.get('bedWitness') or {}).get('state')),
               'idleGate': safe(w.get('idleGate')),
               'witnessDemandState': safe(witness.get('state')),
               'positionGateSatisfied': witness.get('positionGateSatisfied') is True,

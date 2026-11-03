@@ -111,8 +111,28 @@ test('follow and imminent danger invalidate the prior bed plan',()=>{
 test('time-limited pending request cannot be rearmed by old witness',()=>{
  const {r,calls}=fixture()
  requestBed(r,'sleep','控制台')
+ now+=15*60000+1
+ assert.equal(resumeBed(r).state,'rejected')
+ assert.equal(calls.length,0)
+})
+test('initial intent survives a normal ten-minute backoff without moving or renewing evidence',()=>{
+ const {r,calls}=fixture()
+ requestBed(r,'sleep','控制台')
+ const expiry=r.pendingBedRequest.expiresAt
+ now+=10*60000+180000
+ assert.equal(resumeBed(r).state,'waiting')
+ assert.equal(r.pendingBedRequest.expiresAt,expiry)
+ assert.equal(calls.length,0)
+ cancelBed(r)
+})
+test('a longer intent does not prolong an already issued step endpoint',()=>{
+ const {r,calls}=fixture()
+ requestBed(r,'sleep','控制台')
+ r.pendingBedRequest.stage='awaiting_step'
+ r.pendingBedRequest.expiresAt=now+240000
  now+=240001
  assert.equal(resumeBed(r).state,'rejected')
+ assert.equal(r.pendingBedRequest,null)
  assert.equal(calls.length,0)
 })
 test('same observed bed confirmed this session does not activate again',()=>{

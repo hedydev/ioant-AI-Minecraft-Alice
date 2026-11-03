@@ -31,3 +31,5 @@ Maintenance and terrain method bodies continue executing with the original Alice
 - bed/sleep_opportunity.cjs: one shared synchronous sleep admission for maintenance and freshly accepted independent BDS witnesses; pending proof/approach does not spend interaction retries.
 
 - bed/door_stage.cjs: bounded bed goal transition through existing independently guarded door executors; no second navigation engine.
+
+- bed/witness_demand.cjs: read-only, current-life typed bed intent/endpoint descriptor; no query, timer or movement permission. Existing opt-in demand service owns budget/backoff.
