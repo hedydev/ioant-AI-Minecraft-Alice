@@ -464,3 +464,39 @@ test('minimal oversized status retains a bounded bed-admission hold reason',()=>
  assert.equal(data.worldRoutine.bedApproachAction.reason,'directional_bed_no_safe_closer_flat_cell')
  assert(Buffer.byteLength(JSON.stringify(data))<=4096)
 }))
+
+
+test('minimal 4KiB heartbeat keeps timed daytime door-witness decision and rejects invalid time',()=>withDir(root=>{
+ const pub=new LiveStatus({root});
+ const at=1793710800123;
+ const state={producerPid:1008401,producerStartToken:'731222000',
+   connected:true,sessionEstablished:true,world:'Bedrock level',serverPort:17879,
+   settings:{...DEFAULTS,agentMode:'autonomous',autonomyEnabled:true},
+   state:'IDLE',health:20,food:20,job:null,followTarget:null,
+   movementEvidence:{loginAt:1000,independentSamples:2,independentAt:9000,
+     independentPreviousAt:8700,independentSource:'bds_querytarget',
+     independentLatestFeet:{x:2,y:65,z:3},enormousDiagnostic:'a'.repeat(14000),
+     witnessDemand:{state:'needs_two_fresh_samples',
+       samplesNeeded:2,positionGateSatisfied:false}},
+   worldRoutine:{phase:'day',idleGate:'work_cooldown',
+     decision:{goal:'FIND_ROOM_EXIT',action:'WAIT',
+       reason:'observed_indoor_wooden_door_first',phase:'day',at},
+     escapeSurvey:{extra:'z'.repeat(22000)}},
+   agent:{extra:'x'.repeat(22000)}};
+ pub.publish(state);
+ const get=()=>JSON.parse(fs.readFileSync(path.join(root,'status.json'),'utf8'));
+ const saved=get();
+ assert.equal(saved.statusMinimal,true);
+ assert.equal(saved.worldRoutine.decision.at,at);
+ assert.equal(saved.worldRoutine.decision.phase,'day');
+ assert.equal(saved.worldRoutine.decision.reason,'observed_indoor_wooden_door_first');
+ assert.equal(saved.movementEvidence.witnessDemand.positionGateSatisfied,false);
+ assert(Buffer.byteLength(JSON.stringify(saved))<=4096);
+ pub.publish({...state,worldRoutine:{...state.worldRoutine,
+   decision:{...state.worldRoutine.decision,phase:'night',at:'invalid'}}});
+ const invalid=get();
+ assert.equal(invalid.statusMinimal,true);
+ assert.equal(invalid.worldRoutine.decision.phase,'night');
+ assert.equal(invalid.worldRoutine.decision.at,null);
+ assert(Buffer.byteLength(JSON.stringify(invalid))<=4096);
+}));

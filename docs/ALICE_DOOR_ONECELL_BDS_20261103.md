@@ -159,3 +159,10 @@
 
 - `alice_r75_door_diag_live_09` 实际执行了扩展版只读报告，验证PID1008401、当前独立样本16和 night、历史 `WAIT/FIND_ROOM_EXIT/observed_indoor_wooden_door_first`，但发现扫描、资源、idle gate日志全部为0，不能据此得出运行期从未发生这些事件。
 - 源码 `src/main.cjs` 的 `--production-start` 在任何业务日志前通过 `timestamped_stdio.cjs` 给每行加上 `[ISO8601 PID=N] ` 前缀。原脚本用 `line.startswith('[Alice ...')` 全部漏计，属于**证据读取器假阴性**。修订为只接受与 owner PID 完全一致的时间戳前缀，在有界250KB已有日志尾内去前缀后再按原枚举事件解析；增加 `scannedLogLines`、`ownerStampedLogLines` 用于识别日志为空与解析失败；自测同时覆盖正确时间戳与无前缀反例。只有后续真实新报告才可确定门事件是否发生，历史0次计数不得作为否定性证据。不读取私有世界、不会请求BDS/走动/重启。
+
+
+### rev75 白天木门 BDS 需求：最小状态序列化契约补丁（待运行期加载）
+
+- 核实 `src/runtime.cjs#recordAutonomousDecision` 正常生成 `decision.phase` 和 `decision.at`；但 `src/live_control.cjs#compactStatus` 的 4KiB 最小化 `essential.worldRoutine.decision` 仅保留 `action/goal/reason`。rev74 的 Mint `safe_daytime_door_witness_need()` 必须同时检查 phase=day 和最新<=90秒的 at；最小压缩状态把两者删除后，该专用分支必然为 false。实时 `alice_r75_door_prefix_live_11` 的 `decisionAgeBand=unknown` 与此一致；`demandNow=true` 当时可能由另一条 `eligible_for_work` 进入，不能当作 rev74 专用分支成功证据。
+- 本补丁只在最小状态保留白名单决策字段 `phase`（限25字符）和合法正安全整数 `at`，不保存玩家数据或地图坐标，不改变控制命令、BDS 查询预算、STOP/FOLLOW、威胁、移动与起终点门禁。新增 Node 回归强制大对象落入 `statusMinimal`，验证日间意图及时间被保留、非法时间变 null、整体仍<=4096字节。
+- **部署界限**：代码提交后仅固定MCP同步与 Node24/ Python 回归，不在当前18样本、已成功3次门前BDS端点的 PID1008401 上贸然重启。重新加载后的实际白天见证分支和完整门/床进度仍待后续实机证明。

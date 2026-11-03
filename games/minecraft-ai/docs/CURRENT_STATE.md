@@ -1,3 +1,7 @@
+## 2026-11-03 — rev75 门口权威端点与最小状态见证字段
+
+修正 timestamped_stdio 前缀的只读诊断后，真实 `alice_r75_door_prefix_live_11` 回执：PID1008401、本生命18次独立样本、4次木门优先、3次门前approach结果、**3次独立BDS门前单格终点verified**、0次拒绝、0次开门。旧门事件=0审计是假阴性，不是 Alice 一直未动；当前客户端区块缓存门仍关闭、名义五格路线仍非端点证明。另发现最小4KiB heartbeat 丢失 door-witness 决策phase/at，使 rev74 daytime 特殊需求在压缩时无法触发；补丁保留白名单字段及严格时间类型，新增正反Node测试，须在未来合法客户端重载后才可宣称实机生效。原查询40/h、180s/批、240s/格全保留。
+
 ## 2026-11-03 — rev75 当前实机门/床只读验收
 
 注意：原 `alice-door-lifecycle-readonly.py` 对时间戳前缀的 `startswith` 匹配会造成业务事件全部漏计，旧事件0次数不可靠；已补 owner PID 和 ISO8601 前缀解析并增加有限读取计数，需用新 task 回执重测。新 OpenClaw rev75 固定任务验证 current Alice owner 在线、独立 BDS 样本12、累计 serverTravel2.62格、2次已 BDS 验证部分路线、0次完整终点。木门动作日志0；只读客户端碰撞扫描门相对(-3,-3)关闭，门前名义五格路径，记忆两床最近约12.7格但尚非可用的加载床。个人重生点/HOME未证。预算32/40、停滞2、无暂停，禁止人工追加坐标命令。新增仅诊断脚本的匿名现有日志门禁摘要用于隔离根因，无游戏副作用，未重启客户端/BDS。详见根 docs/ALICE_DOOR_ONECELL_BDS_20261103.md。

@@ -260,8 +260,13 @@ function compactStatus(state){
         permissionGranted:false,querySent:false}},
     worldRoutine:{phase:str(w.phase,25),tick:num(w.tick),
       weather:str(w.weather,20),idleGate:str(w.idleGate,48),
+      // A bounded recent door decision must retain BOTH provenance fields
+      // through minimal-status compaction; the witness timer still enforces
+      // STOP/FOLLOW, 90s freshness, BDS 40/hour and 180s service pacing.
       decision:w.decision&&{action:str(w.decision.action,45),
-        goal:str(w.decision.goal,65),reason:str(w.decision.reason,120)},
+        goal:str(w.decision.goal,65),reason:str(w.decision.reason,120),
+        phase:str(w.decision.phase,25),
+        at:Number.isSafeInteger(w.decision.at)&&w.decision.at>0?w.decision.at:null},
       idleHold:w.idleHold&&{reason:str(w.idleHold.reason,110),
         nextReviewAt:num(w.idleHold.nextReviewAt)},
       nightSurvival:w.nightSurvival&&{reason:str(w.nightSurvival.reason,80)}}

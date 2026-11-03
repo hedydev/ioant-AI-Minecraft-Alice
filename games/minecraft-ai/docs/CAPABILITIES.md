@@ -1136,3 +1136,9 @@ PID3923865. The MCP task lane accepts work again (exact doc-sync passed preservi
 edits). New restart schema3 distinguishes positively verified process exit from
 unknown login; it does not auto-retry or grant new gameplay/BDS capabilities.
 See root docs/ALICE_RESTART_INCONCLUSIVE_RECOVERY_20261103.md.
+
+
+## 2026-11-03 — 最小 4KiB 状态中的白天木门 BDS 需求字段（已实现，待客户端加载）
+
+- `live_control.cjs` 仅把运行时经过来源记录的 `worldRoutine.decision.phase` 与正安全整数 `decision.at` 继续保留到 `statusMinimal`，供既有 Mint BDS 按需服务做90秒门前意图检查；字段本身**不批准移动或BDS查询**。
+- Node24 全量与实机客户端加载分别验收。40/h/180s、STOP/FOLLOW/危险和单格独立 BDS 双样本不变。只读证据表明当前PID已3次通过门前单格 BDS终点，但开门、出门、床重生点/HOME尚未通过。
