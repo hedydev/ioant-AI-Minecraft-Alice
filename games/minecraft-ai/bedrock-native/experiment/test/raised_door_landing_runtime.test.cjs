@@ -1,21 +1,18 @@
 'use strict'
 const test=require('node:test'),assert=require('node:assert/strict')
-const fs=require('node:fs'),path=require('node:path')
 const {verifyRaisedDoorThreshold}=require('../src/raised_door_threshold.cjs')
 const {verifyRaisedDoorLanding}=require('../src/raised_door_landing_witness.cjs')
 const {verifyDoorCrossing}=require('../src/door_crossing_witness.cjs')
 const {chooseAdjacentMovement}=require('../src/adjacent_motion_decision.cjs')
 const {scoutStartProof}=require('../src/scout_start_proof.cjs')
-const src=fs.readFileSync(path.join(__dirname,'../src/runtime.cjs'),'utf8')
-const first=src.indexOf('  settlePendingDoorCrossingOnWitness(){')
-const last=src.indexOf('  recordEscapePassage(',first)
-assert(first>=0&&last>first)
+const {createDoorRuntimeMethods}=require('../src/features/door/runtime_methods.cjs')
 let jumps=0
-const Runtime=new Function('verifyRaisedDoorThreshold','verifyRaisedDoorLanding',
- 'verifyDoorCrossing','chooseAdjacentMovement','scoutStartProof','performOneBlockJump',
- 'return class VerifiedDoorRuntime {\n'+src.slice(first,last)+'\n}')(
- verifyRaisedDoorThreshold,verifyRaisedDoorLanding,verifyDoorCrossing,
- chooseAdjacentMovement,scoutStartProof,async()=>{jumps++;return {attempted:true}})
+const Runtime=class VerifiedDoorRuntime {}
+Object.assign(Runtime.prototype,createDoorRuntimeMethods({
+  verifyRaisedDoorThreshold,verifyRaisedDoorLanding,verifyDoorCrossing,
+  chooseAdjacentMovement,scoutStartProof,
+  performOneBlockJump:async()=>{jumps++;return {attempted:true}}
+}))
 const v=(x,y,z)=>({x,y,z,offset(a,b,c){return v(x+a,y+b,z+c)}})
 function fixture(){
  jumps=0

@@ -1,25 +1,19 @@
 'use strict'
 const test=require('node:test'),assert=require('node:assert/strict')
-const fs=require('node:fs'),path=require('node:path')
 const {scoutStartProof}=require('../src/scout_start_proof.cjs')
 const {selectDirectionalBedStep}=require('../src/bed_directional_step.cjs')
 const {chooseAdjacentMovement}=require('../src/adjacent_motion_decision.cjs')
 const {candidateOneBlockJump,performOneBlockJump}=require('../src/one_block_jump.cjs')
 const {verifyBedStep}=require('../src/bed_step_witness.cjs')
 const {surveyEscape}=require('../src/escape_survey.cjs')
-// Actual controller methods are isolated, not rewritten as optimistic mocks.
-// This checks the asynchronous 180s post-input evidence gap and manual-mode gate.
-const text=fs.readFileSync(path.join(__dirname,'../src/runtime.cjs'),'utf8')
-const first=text.indexOf('  settlePendingBedStepOnWitness(){')
-const last=text.indexOf('  observeHomeTick(',first)
-assert(first>=0&&last>first)
-const Runtime=new Function('scoutStartProof','selectDirectionalBedStep','verifyBedStep',
- 'surveyEscape','HOSTILES','selectAdjacentBed','candidateOneBlockJump',
- 'performOneBlockJump','chooseAdjacentMovement',
- 'return class BedMethodContract {\n'+text.slice(first,last)+'\n}')(
- scoutStartProof,selectDirectionalBedStep,verifyBedStep,surveyEscape,
- new Set(['zombie','skeleton']),()=>({bed:null,reason:'bed_needs_verified_approach'}),
- candidateOneBlockJump,performOneBlockJump,chooseAdjacentMovement)
+const {createBedRuntimeMethods}=require('../src/features/bed/runtime_methods.cjs')
+const Runtime=class BedMethodContract {}
+Object.assign(Runtime.prototype,createBedRuntimeMethods({
+  scoutStartProof,selectDirectionalBedStep,verifyBedStep,surveyEscape,
+  HOSTILES:new Set(['zombie','skeleton']),
+  selectAdjacentBed:()=>({bed:null,reason:'bed_needs_verified_approach'}),
+  candidateOneBlockJump,performOneBlockJump,chooseAdjacentMovement
+}))
 const vec=(x,y,z)=>({x,y,z,offset:(a,b,c)=>vec(x+a,y+b,z+c)})
 function fixture({autonomous=false,blocked=false}={}){
  let now=100000,inputs=0

@@ -1,3 +1,7 @@
+### Feature 原码隔离测试的兼容入口（2026-11-03）
+
+原 test/bed_jump_runtime.test.cjs、bed_runtime_step_contract.test.cjs 和 raised_door_landing_runtime.test.cjs 通过源码文本截取的方法已更新为直接 import 对应 src/features/bed 或 src/features/door 的真实工厂方法，以相同 fixture 注入原策略、BDS 见证和跳跃执行器。新增领域模块不得再依赖 runtime.cjs 文本行号或通过 new Function 从主类切片重建方法；需要真实方法则对模块工厂显式注入依赖。行为保护断言不得删改为静态存在性检查。
+
 ## 2026-11-03 — Feature 文件夹职责及状态所有权
 
 src/features/bed/runtime_methods.cjs 拥有床任务/个人重生点及等待独立 BDS 单格端点的方法；src/features/door/runtime_methods.cjs 拥有门前接近、门槛、门后落点和室内出口扫描的方法。唯一的 bot、任务生命周期、clock、优先级、BDS 见证所有权仍在 AliceBedrockRuntime；原 public 实例方法通过 apply(this,args) 转发，显式依赖注入，不新增第二套状态或操作世界的接口。后续单独分拆 autonomous idle、movement/safety 协调器，每批必须先过 Node24/Python 回归，不能放松权威 BDS、安全/STOP/FOLLOW 条件。

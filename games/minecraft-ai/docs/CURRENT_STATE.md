@@ -1,3 +1,7 @@
+## 2026-11-03 — 功能模块重构测试兼容修复
+
+首个 feature 提取提交 064703b 的 Mac Python321(skip3)通过，但 Mint Node24 首轮只通过 931/934，3 个失败文件为 bed_jump_runtime.test.cjs、bed_runtime_step_contract.test.cjs、raised_door_landing_runtime.test.cjs；原因是旧测试用 fs.readFileSync 直接截取 runtime.cjs 实例方法来 new Function 构造测试类，搬迁后首尾源码位置已不存在，并非 BDS 实机行为失败。当前这 3 个原断言文件改为从 src/features/bed 或 src/features/door 直接加载真实方法工厂，保持原 fixture、独立 BDS 延迟端点、STOP/FOLLOW、跳跃及门槛的行为测试，禁止通过跳过测试放行。Mint 新提交须重新验收；未重启 Alice/BDS，不改世界或命令配额。
+
 ## 2026-11-03 — Bedrock runtime 第一批功能目录拆分（源码/回归阶段）
 
 Bedrock runtime.cjs 中床/重生点 6 个实例方法、木门/开门/穿越/室内出口及 BDS 见证 7 个实例方法原样迁入 src/features/bed/runtime_methods.cjs 与 src/features/door/runtime_methods.cjs。原实例仍提供同名代理并保留 this/状态归属；依赖从 runtime 显式注入，无第二个客户端或后台定时器。runtime.cjs 由 3566 行降至 2965 行；新增 test/runtime_feature_modules.test.cjs 验证兼容入口和床/门独立 BDS 端点不冒充成功。STOP/FOLLOW、健康/威胁/碰撞、单步240秒、40/h/180秒查询配额及服务器位置权威均未改变。非重启源同步与测试不表示原17879世界 Alice 进程已热加载，也不表示床重生点、开门或完整穿门已验收。
