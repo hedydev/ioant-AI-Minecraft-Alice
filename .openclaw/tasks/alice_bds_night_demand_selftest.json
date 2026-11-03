@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "title": "Pure Python self-test for narrowly gated nighttime BDS demand (no server calls)",
+  "steps": [
+    {
+      "name": "pure_night_demand_selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-bds-demand-timer.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 20
+    }
+  ],
+  "artifacts": []
+}
