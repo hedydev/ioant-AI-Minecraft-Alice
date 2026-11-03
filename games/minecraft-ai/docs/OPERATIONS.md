@@ -1,3 +1,9 @@
+## 2026-11-04 — 门交互失败已有当前进程证据
+
+原固定只读bed任务35成功读当前PID1475661日志：床door阶段确实被接纳，随后一次door interaction返回door_state_change_not_observed，attempted=true；任务结果ok=false、serverMovementVerified=false。当前HP20、无跟随/工作、夜间、床未确认。这解释了为何不能把BDS取证成功当成到床成功；后续不重发sleep命令或反复点击门。
+
+新增固定只读alice_bed_dependency_readonly：仅检查实际Mint安装的mineflayer/lib/bedrock_plugins公开JS交互实现（activateBlock/sleep），最多6个文件/24KB片段，拒绝symlink和超大文件；不读取配置、世界或账号文件、不调用游戏/模型。需要先核对真实适配器后再修正门或床交互。新增2项限定路径、内容和尺寸测试通过。
+
 ## 2026-11-04 — 取证准入已接通，继续审计门阶段
 
 首次生命兼容源码8ce3cd3实际通过非重启sync26：Mint990/990、Mac327 skip3；批准restart27完成PID1471802→1475661，owner/连接/会话正常。新的一次性sleep验收29（与旧set_spawnpoint不同的新版本测试）commandId60fa201b1a6e4ab7b63cd49716f6bd83曾started，读回30已出现door阶段、bedWitness=intent/needs_evidence；只读31实际demandNow=true，说明床取证需求已进入原定时器。

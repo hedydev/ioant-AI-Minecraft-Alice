@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "title": "Read installed native interaction implementation for bed and door diagnosis only",
+  "steps": [
+    {"name":"selftest","runtime":"python","script":"games/minecraft-ai/scripts/alice-bed-dependency-readonly.py","args":["--self-test"],"timeoutSeconds":10},
+    {"name":"read_installed_plugins","runtime":"python","script":"games/minecraft-ai/scripts/alice-bed-dependency-readonly.py","args":["--read","@output_dir"],"timeoutSeconds":35}
+  ],
+  "artifacts": [{"id":"native_source","file":"native_interaction_source.json","format":"json"}]
+}
