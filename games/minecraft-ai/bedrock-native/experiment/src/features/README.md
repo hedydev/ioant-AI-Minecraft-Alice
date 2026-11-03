@@ -24,3 +24,6 @@ Module factories are not independent controllers: no extra event loops, actor in
 - navigation/terrain_methods.cjs: BDS-authorized vertical candidate verification and bounded earthwork/bridge requests.
 
 Maintenance and terrain method bodies continue executing with the original Alice runtime state. Async maintenance proxies must return their original Promise directly.
+
+- autonomy/resource_strategy.cjs: synchronous resource/tree opportunity and previously gated gather/craft admission.
+- autonomy/door_strategy.cjs: synchronous fresh-door review and WAIT-mode door task admission, preserving async job callback implementation unchanged.

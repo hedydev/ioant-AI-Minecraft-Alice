@@ -66,3 +66,7 @@ After the fourth wave, source dimensions are root runtime **687 lines**, autonom
 - OpenClaw Mac `alice_r78_size_guard_mac_08`: 321 Python tests, 3 skipped, 0 failed; tracked worktree clean.
 - OpenClaw Mint `alice_r78_size_guard_mint_09`: Node24 **964/964**, 0 failures, 0 skipped; nonrestart source sync PASSED, 321 Mac Python tests (3 skipped), `aliceRestarted=false`, `bdsRestarted=false`, `worldModifiedByTask=false`, `consoleCommandSent=false`.
 - This confirms maintained source-test compatibility, not a live module reload, game movement or door/bed success. Exact stage receipts and historical failures remain in prior docs and MCP project operations.
+
+## 2026-11-04 — Fifth wave, staged
+
+Resource and wooden-door strategy branches moved to synchronous feature factories, with original async job closures unchanged. Final regression pending.

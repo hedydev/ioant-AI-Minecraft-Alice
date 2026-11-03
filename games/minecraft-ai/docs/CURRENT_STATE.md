@@ -1,3 +1,7 @@
+## 2026-11-04 — Fifth wave: resource/door strategy source extraction (pending full regression)
+
+Verified revision79, clean matching local/remote d4432cf and previous Mint 964/964 receipts. Split original IDLE resource opportunity (natural tree, gather/craft, motion evidence, night fallback), current/stale door candidate review, and WAIT-door task admission into synchronous `resource_strategy.cjs` and `door_strategy.cjs`. Preserve old method body line order and runIdleDecision async scheduler, no extra await or new actor/timer, same BDS proof/door approach/stop/follow/safety cooldown. Added six source-level behavioral fixture tests; no Alice/BDS restart, command or world change. Mac/Mint full receipt pending.
+
 ## 2026-11-03 — 第四批最终结构约束已验收
 
 提交 `8cc17fd51963fe9ebb8dbc5640a144d0615f2a81` 已实际通过固定 OpenClaw MCP 执行器：`alice_r78_size_guard_mac_08` Mac Python 321项，3 skip，0 fail；`alice_r78_size_guard_mint_09` Mint Node24 **964/964**，0 skip/fail。新门禁主 runtime 不超过800行、单 feature 不超过650行已被完整 Node24 测试覆盖。执行器回执 `aliceRestarted=false`，`bdsRestarted=false`，`worldModifiedByTask=false`，`consoleCommandSent=false`，Mac/Git工作区保持干净。第四批最终 main 源码687行、IDLE动作592行、同步准入180行、survival149行、terrain48行。原运行进程未热加载新模块；这只是自动化回归通过，不等于原世界门/床/HOME真实行为验收。

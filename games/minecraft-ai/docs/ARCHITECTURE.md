@@ -1,3 +1,7 @@
+## 2026-11-04 — Resource and door strategy ownership
+
+`features/autonomy/resource_strategy.cjs` owns synchronous observed resource opportunities and existing gather/craft admission; `door_strategy.cjs` owns fresh/stale wooden-door selection and guarded WAIT-door job admission. Callers keep same Alice `this`, async IDLE body, action callbacks and BDS/collision/safety proof; no extra async boundary or second controller.
+
 ## 2026-11-03 — 模块大小维护上限更新
 
 第四批完成后：主 runtime 687行、IDLE执行592行、IDLE准入180行、survival维护149行、terrain行动48行。新增/收紧结构测试让主类最多800行、单 feature 最多650行，超过需再拆职责。保留原同步准入与一个异步IDLE执行入口，原 this/任务/BDS 证明 ownership 不变。实机行为仍需独立门/床/HOME后验确认。
