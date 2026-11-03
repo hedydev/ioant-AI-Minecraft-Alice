@@ -1,3 +1,7 @@
+## 2026-11-03 — 最终结构测试验收（真实 OpenClaw 回执）
+
+Commit `0dbb85c20472d412a22e811afa946dfca662a6ea` 的固定执行回执 `alice_r77_structure_mac_11` Mac Python321(skip3) 0失败；`alice_r77_structure_mint_12` Mint Node24 **955/955**，0 fail/skip，Mac Python321，nonrestart sync PASSED，且 `aliceRestarted=false`、`bdsRestarted=false`、`worldModifiedByTask=false`、`consoleCommandSent=false`。这证明结构预算、三批模块抽取和原核心功能自动化回归兼容；不能推导正在运行的 Alice 已热加载/完成开门、穿门、睡觉或HOME。
+
 ## 2026-11-03 — 三批模块化完成 + 代码增长结构门禁
 
 自主生存 Bedrock 源码已按功能分离：runtime.cjs 从3566行（204.5KiB）降到855行（52.2KiB），10个 feature CJS 文件分别承担床、门、护卫安全、跟随、夜间、模型、IDLE决策、指令、工作、受控探索。第一批Node943/943、第二批Node948/948、第三批Node952/952；Mac Python321(skip3) 全部通过，原Mint源码均以不重启方式同步。详情见 docs/RUNTIME_MODULARIZATION_20261103.md。新增纯源码结构测试 runtime_modularization_structure.test.cjs，以主文件1000行、单feature800行为明确维护上限，要求7个业务目录齐全，防止未来重复堆成单体。该新结构测试需在本次提交经Mac和Mint全量回归后方能称通过，不代替真实游戏实机验收。未重启当前Alice/BDS，不改世界，不发送游戏命令；旧进程未热加载。

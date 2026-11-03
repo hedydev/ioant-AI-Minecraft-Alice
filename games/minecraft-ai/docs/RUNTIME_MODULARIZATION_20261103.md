@@ -36,3 +36,11 @@ Three consecutive, behavior-preserving extraction waves reduced `bedrock-native/
 4. Do not use `fs.readFileSync(runtime.cjs)` source-text slicing to test behavior after methods move; target actual owners or instantiate real methods with bounded fixtures.
 5. Run complete Mac Python and Mint Node24 regression with the approved pinned MCP executor before sync, and keep production reload as a distinct authorized game-lifecycle decision.
 6. Next maintainability candidates: split the 755-line autonomous IDLE method into smaller reason-labeled decision stages; isolate runtime constructor status assembly. Both require their own equivalence testing, not a blanket move in one pass.
+
+## Final structure test acceptance
+
+- Committed code SHA `0dbb85c20472d412a22e811afa946dfca662a6ea`.
+- Fixed MCP `alice_r77_structure_mac_11`: Mac Python **321 tests, 3 skipped, 0 failed**, clean checkout.
+- Fixed MCP `alice_r77_structure_mint_12`: Mint Node24 **955/955, zero failures/skips**, Mac Python321, non-restart sync, no client/BDS restart, world mutation or console command.
+- The guard is now part of Node24 automated tests, not only a documentation recommendation.
+- Running Node client code loading and BDS gameplay proof remain independently unverified.

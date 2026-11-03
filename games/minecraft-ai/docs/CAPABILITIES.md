@@ -1,3 +1,7 @@
+## 2026-11-03 — 最终结构测试验收（真实 OpenClaw 回执）
+
+Commit `0dbb85c20472d412a22e811afa946dfca662a6ea` 的固定执行回执 `alice_r77_structure_mac_11` Mac Python321(skip3) 0失败；`alice_r77_structure_mint_12` Mint Node24 **955/955**，0 fail/skip，Mac Python321，nonrestart sync PASSED，且 `aliceRestarted=false`、`bdsRestarted=false`、`worldModifiedByTask=false`、`consoleCommandSent=false`。这证明结构预算、三批模块抽取和原核心功能自动化回归兼容；不能推导正在运行的 Alice 已热加载/完成开门、穿门、睡觉或HOME。
+
 ## 2026-11-03 — Bedrock runtime 三批结构维护（并非行为能力升级）
 
 床/门/安全/跟随/模型/夜间/IDLE/指令/工作/scout 共10个 feature 文件完成结构提取，runtime.cjs 从3566减至855行。先前三批真实 Mint Node24 分别943、948、952项全部通过；新增行数预算结构测试另行回归。保留 STOP/FOLLOW、危险抢占与独立BDS位置证明，生产 Alice 未重启或加载新模块，不宣称开门、穿门或床重生点已完成。
