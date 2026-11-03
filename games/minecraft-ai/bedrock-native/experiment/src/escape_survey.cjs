@@ -186,4 +186,4 @@ function surveyEscape(bot,{radius=6,maxNodes=MAX_NODES,bedPositions=[]}={}){
     data.unknownCells?'cache_incomplete':'do_not_dig_without_explicit_policy_and_verified_capabilities'
   return data
 }
-module.exports={surveyEscape,fullSupport,MAX_RADIUS,MAX_NODES,MAX_READS}
+module.exports={surveyEscape,fullSupport,knownWalkingClear,MAX_RADIUS,MAX_NODES,MAX_READS}
