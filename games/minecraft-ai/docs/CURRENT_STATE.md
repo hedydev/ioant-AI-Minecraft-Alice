@@ -1,3 +1,7 @@
+## 2026-11-03 — rev75 实机补充验收与状态压缩修复回执
+
+固定只读PID1008401在2026-11-03晚间已获得24个同登录独立BDS样本、serverTravel6.6格；真实门事件审计纠正timestamp前缀后确认3次独立BDS单格门前端点、4次门优先、0次开门。白天新调查 `no_non_destructive_exit_observed`，但client world-view仍可见关闭云杉门且相对名义5格中心线；不代表当前BDS可执行。最小状态丢失decision.at/phase问题源码提交aaedef48，Node24 Mint 940/940、Mac Python321通过，非重启同步；当前Alice进程未重载这项Node补丁，不称实机修复成功。最新服务配额10/40、180秒节流，暂停0/停滞1，门打开/穿门/床重生点/HOME均未验收。根文档ALICE_DOOR_ONECELL_BDS_20261103.md有逐条MCP回执。
+
 ## 2026-11-03 — rev75 门口权威端点与最小状态见证字段
 
 修正 timestamped_stdio 前缀的只读诊断后，真实 `alice_r75_door_prefix_live_11` 回执：PID1008401、本生命18次独立样本、4次木门优先、3次门前approach结果、**3次独立BDS门前单格终点verified**、0次拒绝、0次开门。旧门事件=0审计是假阴性，不是 Alice 一直未动；当前客户端区块缓存门仍关闭、名义五格路线仍非端点证明。另发现最小4KiB heartbeat 丢失 door-witness 决策phase/at，使 rev74 daytime 特殊需求在压缩时无法触发；补丁保留白名单字段及严格时间类型，新增正反Node测试，须在未来合法客户端重载后才可宣称实机生效。原查询40/h、180s/批、240s/格全保留。
