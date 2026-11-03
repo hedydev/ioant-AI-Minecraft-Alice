@@ -83,3 +83,11 @@
 - `alice_r72_door_audit_live_18` selftest和真实 owner 检查均 PASS：`PID4147538` 连接正常，独立 BDS 样本2，当前还没有封闭木门优先/门口第一格/开门的日志事件（各计数0）。该诊断**不会自动读取未来**，每次观察必须用新的只读 operation ID。
 - `alice_r72_door_audit_gate_19`：同 PID 自主 IDLE、HP20、`movingQueued=6`，`nightSurvivalReason=scout_step_awaiting_new_bds_pair`，表示夜间短距离 SCOUT 已经发送输入但缺少独立 BDS 终点证明；不能宣称走动成功，也不能重复启动另一个短程动作。
 - `alice_r72_post_probe_demand_20`：service owner/timer/opt-in 有效，`demandNow=true`，budget32/40，距上次批次151.2秒，stalledPairs1，当前独立 BDS 样本仍2、serverTravel0。必须由原带冷却/配额/固定见证的服务自行完成后续样本，**不强行延长单格240秒截止或补发手动querytarget**。
+
+### PID4147538 后续真实BDS认证首格（rev72 2026-11-03 09:50新加坡时间）
+
+- 定时器自动服务后的只读 `alice_r72_next_pair_demand_22`：独立 BDS 样本由 **2→4**，本登录会话 `serverTravel=0.82` 格（原0），`lastServiceResult=position_pair_verified`、`budgetUsed=34/40`、timerEnabled=true、stalledPairs0，**不是客户端自报预测**。
+- `alice_r72_next_pair_model_23` 的同生命 acceptance journal：`endpointFeedbackCount=1`，`partialEndpointCount=1`、`confirmedEndpointCount=0`、`unverifiedEndpointCount=0`，确认**一段真实局部探索已由BDS验证**，但未到达任何整条路线/木门/床的最终目标。原报告的 `clientServerAxisDelta x=0.684` 是该时点客户端位置差，不可替代下一次新鲜双BDS见证。
+- `alice_r72_next_pair_door_24`：可重用纯只读诊断 PASS；尚无 `enclosed-door priority`、door approach、door opening或对应门口BDS端点事件。这不是门逻辑本身失败；当前游戏夜间，新增门优先级**明确只在日间安全资源探索阶段触发**，不能夜间强行带 Alice 离开庇护所。
+- `alice_r72_next_pair_home_25`：game phase=night，记忆两床，但 `sleepOpportunity=bed_blocks_unverified`、`lastSpawnpointReason=bed_needs_verified_approach`、`bedStepReason=jump_origin_support_or_headroom_unverified`，`bedStepAttempted=false`，HOME/respawn/return均未验证。**不能为了睡床跳过头顶空间和起跳地面支撑检查**。
+- 下一轮应重点处理床附近真实空间/门口方位的形状验证，在**白天**读取新 `alice-door-lifecycle-readonly.py` 事件，验证优先级是否被触发及第一格是否BDS成功。此前真实移动不用重复制造；原系统d 40/h预算不应手动耗尽。上线客户端PID4147538健康，原BDS17879与存档未操作。
