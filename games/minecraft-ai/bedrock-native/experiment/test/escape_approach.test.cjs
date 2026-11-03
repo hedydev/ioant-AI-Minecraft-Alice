@@ -62,6 +62,35 @@ test('seven-cell observed door route is eligible but drives only the first one',
  assert.deepEqual(f.events.filter(e=>e[0]==='goto')[0],['goto',0,65,1])
  assert.equal(f.events.some(e=>e[0]==='activate'||e[0]==='dig'),false)
 })
+test('zero-collision torch in room and doorway headspace is passable, without removing physics proof',async()=>{
+ const f=fixture()
+ const original=f.bot.blockAt
+ f.bot.blockAt=p=>{
+   const x=Math.floor(p.x),y=Math.floor(p.y),z=Math.floor(p.z)
+   if(x===0&&y===66&&(z===0||z===1))
+     return {name:'torch',boundingBox:'empty',shapes:[]}
+   return original(p)
+ }
+ assert.equal(validateApproach(f.bot,f.door).ok,true)
+ const result=await approachDoor(f.bot,f.door,config)
+ assert.equal(result.reason,'approach_first_cell_awaits_independent_bds_pair')
+ assert.equal(result.serverMovementVerified,false)
+ assert.equal(f.events.filter(x=>x[0]==='goto').length,1)
+})
+test('torch-shaped obstacle never bypasses the actual swept collision gate',async()=>{
+ const f=fixture()
+ const original=f.bot.blockAt
+ f.bot.blockAt=p=>{
+   const x=Math.floor(p.x),y=Math.floor(p.y),z=Math.floor(p.z)
+   if(x===0&&y===66&&z===1)
+     return {name:'torch',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}
+   return original(p)
+ }
+ const result=await approachDoor(f.bot,f.door,config)
+ assert.equal(result.attempted,false)
+ assert.equal(result.serverMovementVerified,false)
+ assert.equal(f.events.filter(x=>x[0]==='goto').length,0)
+})
 test('missing terrain denies approach before any movement',async()=>{
  const f=fixture({unknown:true})
  assert.equal(validateApproach(f.bot,f.door).reason,'approach_cell_blocked_or_unloaded')
