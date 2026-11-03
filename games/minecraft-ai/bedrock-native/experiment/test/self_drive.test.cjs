@@ -18,6 +18,23 @@ test('outside-like wide reachable local area is evidence, NOT proof of outdoor/B
  assert.equal(s.reason,'wide_loaded_reachable_area')
  assert.equal(s.reachableCells,91)
 })
+test('small room radius frontier does not hide safe wooden door candidate',()=>{
+ const corridor={center:[0,65,0],reachableCells:17,
+   openFrontier:{target:[-6,65,0],steps:6},
+   door:{position:[-3,65,-4],kind:'wooden_door',
+     approach:{steps:6,serverVerified:false}},
+   passageAction:null}
+ const scene=sceneFromSurvey(corridor)
+ assert.equal(scene.kind,'door_limited_area')
+ assert.equal(scene.reason,'small_loaded_area_frontier_not_outdoor_proof')
+ const decision=selectDrive({decision:wait,world:{phase:'day'},
+   survey:corridor,woodFailure:true,doorExecutable:true})
+ assert.equal(decision.driveGoal,'FIND_ROOM_EXIT')
+ assert.equal(decision.decision.action,'WAIT')
+ assert.equal(decision.physicalActionAuthorized,false)
+ const wider=sceneFromSurvey({...corridor,reachableCells:32})
+ assert.equal(wider.kind,'open_local_area')
+})
 test('old house door behind her does not steal nighttime self-driven goal',()=>{
  const a=selectDrive({decision:wait,world:{phase:'night'},
    survey:openScene,woodFailure:true,doorExecutable:true})
