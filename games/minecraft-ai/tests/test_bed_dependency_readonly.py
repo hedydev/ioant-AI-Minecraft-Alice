@@ -8,9 +8,10 @@ class BedDependencyReadTest(unittest.TestCase):
             root=Path(tmp);(root/'bed.js').write_text('async function sleep() {}\n')
             (root/'settings.json').write_text('private credentials')
             (root/'unrelated.js').write_text('no matching public function')
+            (root/'interact.js').write_text('bot._genericPlace = (b, face) => send(b, face)\n')
             (root/'escape.js').symlink_to(root/'settings.json')
             rows=m.read_plugins(root)
-            self.assertEqual([x['plugin'] for x in rows],['bed.js'])
+            self.assertEqual([x['plugin'] for x in rows],['bed.js','interact.js'])
             self.assertNotIn('private',str(rows));self.assertEqual(len(rows[0]['sha256']),64)
             compile(m.REMOTE,'<readonly>','exec')
     def test_symlink_root_is_rejected_and_source_size_bounded(self):

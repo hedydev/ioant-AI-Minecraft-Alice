@@ -11,10 +11,10 @@ def read_plugins(root):
         if file.is_symlink() or not file.is_file() or file.stat().st_size>100000:continue
         if not file.resolve().is_relative_to(root.resolve()):raise ValueError('plugin_escape')
         raw=file.read_bytes();text=raw.decode('utf-8');lines=text.splitlines()
-        hits=[i for i,line in enumerate(lines) if re.search(r'(function activateBlock|activateBlock\s*=|async function sleep|bot\.sleep\s*=)',line)]
+        hits=[i for i,line in enumerate(lines) if re.search(r'(function activateBlock|activateBlock\s*=|_genericPlace\s*=|async function sleep|bot\.sleep\s*=)',line)]
         if not hits:continue
         selected=set()
-        for index in hits[:4]:selected.update(range(max(0,index-8),min(len(lines),index+100)))
+        for index in hits[:4]:selected.update(range(max(0,index-8),min(len(lines),index+150)))
         snippet='\n'.join(str(i+1)+': '+lines[i] for i in sorted(selected))[:min(remaining,14000)]
         rows.append({'plugin':file.name,'sha256':hashlib.sha256(raw).hexdigest(),'source':snippet})
         remaining-=len(snippet)

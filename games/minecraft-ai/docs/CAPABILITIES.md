@@ -1,3 +1,7 @@
+## 2026-11-04 — 原生交互API现场源码证据
+
+固定只读36已取得Mint实际安装bed.js/interact.js公开源码：activateBlock默认faceVector=(0,1,0)，委托_genericPlace；sleep只等待服务器sleep事件，不能把调用当成功。当前门执行器点击下半门时未传faceVector，故默认点击上表面，且lookAt指向方块整数角。是否导致BDS拒绝仍须核对_genericPlace实际包构造，先将原只读源码审计补充该函数，禁止直接猜包或反复点击。
+
 ## 2026-11-04 — 门交互失败已有当前进程证据
 
 原固定只读bed任务35成功读当前PID1475661日志：床door阶段确实被接纳，随后一次door interaction返回door_state_change_not_observed，attempted=true；任务结果ok=false、serverMovementVerified=false。当前HP20、无跟随/工作、夜间、床未确认。这解释了为何不能把BDS取证成功当成到床成功；后续不重发sleep命令或反复点击门。
