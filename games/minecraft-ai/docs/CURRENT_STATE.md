@@ -1,3 +1,7 @@
+## 2026-11-03 — 第四批最终模块大小与测试结果
+
+本次完成两阶段：自主 IDLE 同步安全准入拆分（950ad29：Mint Node24 960/960，Mac Python321 skip3），生存维护和地形执行拆分（00d854b：Mint Node24 964/964，Mac Python321 skip3）。核心 runtime.cjs 从最初 3566 行降为 **687 行**（约 41.9KiB），autonomy/idle_methods.cjs 592 行，idle_admission.cjs 180 行，survival/maintenance_methods.cjs 149 行，navigation/terrain_methods.cjs 48 行。严格约束继续保留 4s/0.75m 独立BDS、40/h/180s、单格240s、STOP/FOLLOW/危险抢占；不重启 Alice/BDS、不更改正式世界。新增结构预算加严：主文件最多800行，每个feature最多650行；本提交仅更改结构测试和文档，需新测试回执证明。详见 docs/RUNTIME_MODULARIZATION_20261103.md。
+
 ## 2026-11-03 — 第四批第二阶段：生存维护与地形动作再拆分
 
 在同步 IDLE 准入模块 Node24 960/960 的基础上，将 runtime.cjs 中 observeHomeTick/maintenanceTick（140行）迁至 features/survival/maintenance_methods.cjs，将 verifyVerticalTransition/maybeStartEarthwork（39行）迁至 features/navigation/terrain_methods.cjs；原 Alice runtime 方法名与 this 不变，异步方法薄代理直接返回模块的 Promise，不新增微任务。runtime.cjs 从855行降至687行。生存维护仍保留装备、床睡眠、进食、HOME观察原顺序，地形工作依然经独立 BDS proof、危险与玩家意图保护。新增定向回归，扩展结构测试要求 survival 目录；改动仅代码结构，当前原服 Alice 不重启/不热加载，Mint/Node24 全量通过前不宣称验收。

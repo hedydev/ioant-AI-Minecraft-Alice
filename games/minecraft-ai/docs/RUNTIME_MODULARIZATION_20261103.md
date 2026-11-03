@@ -2,23 +2,26 @@
 
 ## Scope and rationale
 
-Three consecutive, behavior-preserving extraction waves reduced `bedrock-native/experiment/src/runtime.cjs` from **3,566 lines / 204.5 KiB** to **855 lines / 52.2 KiB**. The old runtime is still the one owner of actor identity, state, clocks, BDS witness, controls and tasks. Domain methods forward with `.apply(this,args)` and explicitly injected existing policy dependencies. Async delegation returns the feature's original Promise directly, avoiding extra adoption/microtask ordering (critical to the existing 120s cooldown test).
+Four staged, behavior-preserving extraction waves reduced `bedrock-native/experiment/src/runtime.cjs` from **3,566 lines / 204.5 KiB** to **687 lines / 41.9 KiB**. The old runtime is still the one owner of actor identity, state, clocks, BDS witness, controls and tasks. Domain methods forward with `.apply(this,args)` and explicitly injected existing policy dependencies. Async delegation returns the feature's original Promise directly, avoiding extra adoption/microtask ordering (critical to the existing 120s cooldown test).
 
 ## Ownership by feature file
 
 | File, relative to src/ | Lines | Responsibilities |
 |---|---:|---|
-| runtime.cjs | 855 | Alice actor construction, lifecycle, signals, scheduling entrypoints and feature forwarding |
-| features/autonomy/idle_methods.cjs | 755 | Autonomous objective selection, IDLE work admission, optional resource/door work |
+| runtime.cjs | 687 | Alice actor construction, lifecycle, signals, scheduling entrypoints and feature forwarding |
+| features/autonomy/idle_methods.cjs | 592 | IDLE work scheduling, resource/door executor and bounded action cadence |
+| features/autonomy/idle_admission.cjs | 180 | Synchronous BDS/STOP/FOLLOW/HOME safety and environment admission |
 | features/autonomy/model_methods.cjs | 108 | Allowlisted model-goal proposals and decision journaling |
 | features/autonomy/night_methods.cjs | 61 | Guarded night survival reposition |
 | features/bed/runtime_methods.cjs | 343 | Sleep/spawnpoint request, bed approach, independent post-input BDS endpoint |
 | features/door/runtime_methods.cjs | 297 | Door approach, opening/crossing and BDS landing witness, escape survey |
 | features/navigation/follow_methods.cjs | 213 | FOLLOW and bounded short-step fallback |
 | features/navigation/scout_methods.cjs | 345 | One-cell scouting, full-route safety and independent endpoint confirmation |
+| features/navigation/terrain_methods.cjs | 48 | Vertical candidate evidence and guarded terrain/bridge work |
 | features/safety/runtime_methods.cjs | 236 | True threat evidence, escort and safety preemption |
 | features/commands/runtime_methods.cjs | 202 | Typed player requests and restricted text command parsing/execution |
 | features/tasks/work_methods.cjs | 310 | Preemptible job lifetime, resource work and crafting |
+| features/survival/maintenance_methods.cjs | 149 | Periodic equipment, bed/HOME observation, sleep and safe food tasks |
 
 ## Regression receipts and safety
 
@@ -30,12 +33,12 @@ Three consecutive, behavior-preserving extraction waves reduced `bedrock-native/
 
 ## Guardrails for future development
 
-1. Keep root `runtime.cjs` at **≤1000 lines** and each `src/features/**/*.cjs` at **≤800 lines**, enforced by `test/runtime_modularization_structure.test.cjs`. These are architecture budgets, not gameplay permission.
+1. Keep root `runtime.cjs` at **≤800 lines** and each `src/features/**/*.cjs` at **≤650 lines**, enforced by `test/runtime_modularization_structure.test.cjs`. These are architecture budgets, not gameplay permission.
 2. Extend a named domain or create a separate cohesive file instead of appending 200+ lines to the root runtime. No second bot/identity, timers, BDS query engine, model-driven raw scripts or private state store inside feature folders.
 3. Keep the existing instance method names and `this` semantics. Return original async Promises directly; ensure lifecycle and invariant-focused tests cover each affected path.
 4. Do not use `fs.readFileSync(runtime.cjs)` source-text slicing to test behavior after methods move; target actual owners or instantiate real methods with bounded fixtures.
 5. Run complete Mac Python and Mint Node24 regression with the approved pinned MCP executor before sync, and keep production reload as a distinct authorized game-lifecycle decision.
-6. Next maintainability candidates: split the 755-line autonomous IDLE method into smaller reason-labeled decision stages; isolate runtime constructor status assembly. Both require their own equivalence testing, not a blanket move in one pass.
+6. Next maintainability candidates: split the remaining 592-line autonomous IDLE work execution into narrower resource-vs-door stages and extract runtime constructor/status setup with separate equivalence tests. Both require their own equivalence testing, not a blanket move in one pass.
 
 ## Final structure test acceptance
 
@@ -47,8 +50,12 @@ Three consecutive, behavior-preserving extraction waves reduced `bedrock-native/
 
 ## Fourth wave: decision admission extraction
 
-Synchronous preflight is now at `src/features/autonomy/idle_admission.cjs` and is called from the original async IDLE method before model/work execution. The original async method remains one Promise layer; do not convert the preflight into a new async wrapper. Receipt pending.
+Synchronous preflight is now at `src/features/autonomy/idle_admission.cjs` and is called from the original async IDLE method before model/work execution. The original async method remains one Promise layer; do not convert the preflight into a new async wrapper. Validated in commit `950ad29` with OpenClaw Mac Python321 (3 skipped) and Mint Node24 **960/960**; initial `af43f0b` was **958/959** due to an inline bare BDS-proof early return, fixed without changing the 120-second or 240-second gates.
 
 ## Wave 4.2: maintenance and terrain extraction
 
-Root runtime maintenance/home and vertical/earthwork methods now live in survival/maintenance_methods.cjs and navigation/terrain_methods.cjs. Root remains sole state owner, no additional async adoption or gameplay privilege. Final Node24/Python acceptance pending.
+Root runtime maintenance/home and vertical/earthwork methods now live in survival/maintenance_methods.cjs and navigation/terrain_methods.cjs. Root remains sole state owner, no additional async adoption or gameplay privilege. Validated in commit `00d854b` with Mac Python321 (3 skipped) and Mint Node24 **964/964**. No client/BDS restart, world modification or console command.
+
+## Tightened growth budgets and final validation plan
+
+After the fourth wave, source dimensions are root runtime **687 lines**, autonomy IDLE work **592**, synchronous admission **180**, survival maintenance **149**, and navigation terrain **48**. The architecture growth guard now caps the root at **800 lines** and each feature module at **650 lines** (previously 1000/800). Future changes must split cohesive functionality before exceeding those ceilings. This is a source-maintainability constraint only; it cannot authorize game movement or relax the existing BDS evidence contract.

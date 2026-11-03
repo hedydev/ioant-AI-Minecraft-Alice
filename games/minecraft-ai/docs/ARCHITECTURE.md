@@ -1,3 +1,7 @@
+## 2026-11-03 — 模块大小维护上限更新
+
+第四批完成后：主 runtime 687行、IDLE执行592行、IDLE准入180行、survival维护149行、terrain行动48行。新增/收紧结构测试让主类最多800行、单 feature 最多650行，超过需再拆职责。保留原同步准入与一个异步IDLE执行入口，原 this/任务/BDS 证明 ownership 不变。实机行为仍需独立门/床/HOME后验确认。
+
 ## 2026-11-03 — Survival 与 Terrain 模块职责
 
 新增 features/survival/maintenance_methods.cjs 持有定期装备、安全进食、床位机会观察及 HOME 结构只读观察；features/navigation/terrain_methods.cjs 持有受服务器证据与空间碰撞约束的单格上下行/地形土工动作请求。方法体从 runtime.cjs 原样抽出，原实例 API 通过普通同步代理返回原 async Promise。runtime 独占 bot/epoch/job/clock/BDS state，不给功能模块添加独立计时器或任何 MC 管理命令。
