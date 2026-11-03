@@ -1,3 +1,7 @@
+## 2026-11-04 — 有限床指令与实际回执
+
+固定动作使用已有 localhost 控制台和运行时 typed bed reader：`alice_bed_set_spawnpoint_once.json`、`alice_bed_sleep_once.json`，要求已加载bedLogicVersion2、原世界17879和健康IDLE。不发送BDS OP命令、不重载。`alice_bed_command_status_readonly.json`只读取现有commandId/status/reason和当前床状态。提交超时只能查询原commandId，不换operation_id重发；queued/started不是设置重生点或入睡成功。每步独立BDS证明、STOP/危险抢占不变；床请求总限90分钟/24格，每次实际输入重计240秒终点期限。
+
 ## 2026-11-04 — 床流程版本与实机验收
 
 `alice-17879-bed-readonly.py --inspect OUTPUT_DIR` / `.openclaw/tasks/alice_17879_bed_readonly.json` 只读取原17879当前owner和新鲜心跳，不触发querytarget、输入、重载或世界写入。检查 `bedLogicVersion=1` 后，仍要分别读取个人床服务器确认、睡眠状态和接近的独立BDS终点；只有文件mtime不证明加载。原`alice-mac.sh sync`和`.openclaw/tasks/alice_mint_nonrestart_sync.json`不重启客户端，完整Mint Node24通过后才可在明确用户授权和平台审核下使用原已批准`alice_17879_client_restart.json`，不得换名重放历史被拒操作。

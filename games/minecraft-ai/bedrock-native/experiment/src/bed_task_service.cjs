@@ -9,6 +9,7 @@ const {selectDirectionalBedStep}=require('./bed_directional_step.cjs')
 const {candidateOneBlockJump}=require('./one_block_jump.cjs')
 const {outcome,message}=require('./bed_request_outcome.cjs')
 const TIMEOUT=240000
+const MAX_STEPS=24,GLOBAL_TIMEOUT=90*60000
 const TYPES=new Set(['sleep','set_spawnpoint'])
 // A personal spawn packet at login can describe a DIFFERENT location.
 // Only an interaction-confirmed current-session bed can satisfy this task.
@@ -151,7 +152,7 @@ function requestBed(r,action,source,report=null){
  r.epoch++
  r.lastHumanAt=now
  const p={action,source,report,at:now,expiresAt:now+TIMEOUT,
-   globalExpiresAt:now+1200000,steps:0,
+   globalExpiresAt:now+GLOBAL_TIMEOUT,steps:0,
    stage:needsApproach?'approach':'interact',
    epoch:r.epoch,loginAt:ev?.loginAt??null,lifeEpochAt:ev?.lifeEpochAt??null,
    dimension:r.bot.game?.dimension,
@@ -210,7 +211,7 @@ function resumeBed(r){
      last.serverMovementVerified!==true)
    return deny('bed_step_independent_endpoint_unconfirmed')
   p.steps++
-  if(p.steps>8||now>=p.globalExpiresAt)return deny('bed_approach_step_limit')
+  if(p.steps>MAX_STEPS||now>=p.globalExpiresAt)return deny('bed_approach_step_limit')
   p.stage='approach';p.expiresAt=Math.min(p.globalExpiresAt,now+TIMEOUT)
   clearTimeout(p.timer)
   p.timer=setTimeout(()=>{if(r.pendingBedRequest===p)cancelBed(r,'bed_request_expired')},
@@ -219,12 +220,20 @@ function resumeBed(r){
  const choice=selectAdjacentBed(r.bot,[p.position],{radius:16})
  if(!choice.bed&&choice.reason==='bed_needs_verified_approach'&&
     p.stage==='approach'){
+  if(p.steps>=MAX_STEPS)return deny('bed_approach_step_limit')
   if(typeof r.resumeBedApproachOnWitness!=='function')
    return deny('bed_approach_executor_unavailable')
   const step=r.resumeBedApproachOnWitness({
     bedPosition:p.position,source:p.source})
   if(step.state!=='started')return deny(step.reason||'bed_step_not_admitted')
   p.stage='awaiting_step';p.stepIssuedAt=now;p.epoch=r.epoch
+  // Waiting ~180s for permission and another ~180s for its endpoint are
+  // DIFFERENT phases. Start a fresh bounded endpoint deadline on input;
+  // otherwise the request expires before the scheduled proof can arrive.
+  p.expiresAt=Math.min(p.globalExpiresAt,now+TIMEOUT)
+  clearTimeout(p.timer)
+  p.timer=setTimeout(()=>{if(r.pendingBedRequest===p)cancelBed(r,'bed_request_expired')},
+    Math.max(1,p.expiresAt-now));p.timer.unref?.()
   return {state:'approaching',reason:'bed_one_cell_started_endpoint_unverified'}
  }
  if(!choice.bed||['x','y','z'].some(k=>choice.bed.position[k]!==p.position[k]))

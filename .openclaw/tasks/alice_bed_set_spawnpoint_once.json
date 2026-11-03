@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "title": "One typed Alice set_spawnpoint request via existing localhost dashboard; queued is not success",
+  "steps": [
+    {
+      "name": "request_once",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-bed-command-once.py",
+      "args": [
+        "set_spawnpoint",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 45
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "bed_command",
+      "file": "bed_command.json",
+      "format": "json"
+    }
+  ]
+}

@@ -42,7 +42,7 @@ here; neither audit sends game commands.
 - Mac Node26 full suite: two test files cannot load the absent `vec3` dependency;
   this is not a passing full suite. Use the existing dependency-complete Mint
   Node24 regression through `.openclaw/tasks/alice_mint_nonrestart_sync.json`.
-- `bedLogicVersion=1` in the owner-verified heartbeat identifies this new runtime
+- `bedLogicVersion=2` in the owner-verified heartbeat identifies this new runtime
   path; it is not a source hash or gameplay acceptance. `isSleeping` reflects the
   adapter's server-observed sleeping flag, not a submitted sleep command.
 - No Alice/BDS restart, world edit, movement or bed interaction has been done by
@@ -57,9 +57,41 @@ historical restart, clear a lock, alter BDS or start a second client.
 
 ## Actual acceptance still required
 
-Observe independently, in this order: new owner and `bedLogicVersion=1`; fresh
+Observe independently, in this order: new owner and `bedLogicVersion=2`; fresh
 independent BDS-confirmed bedward steps; bed within interaction range; a new
 personal-spawn acknowledgement from that bed; and server-observed sleep entry
 during a natural sleep window. Entry, waking and skipping the night are separate
 facts. A wall/door/step must keep its existing collision/action requirements.
 Do not report success from test counts, local pathfinding or a task exit code.
+
+## Follow-up: bounded intent lifetime and typed real-game acceptance
+
+The old request deadline included both waiting up to ~180s for admission and
+waiting another ~180s for the next independent endpoint. It could expire at
+240s before that endpoint arrived. Each actual one-cell input now arms its own
+240s endpoint phase, within a strict 90-minute total request lifetime and 24-step
+cap (previously 20 minutes / 8 steps, insufficient for a bed observed 16 cells
+away). STOP/life/session/task fences, BDS 4s/.75, hourly budget, 180s service
+spacing and one-cell-at-a-time execution are unchanged. This is not a continuous
+movement permit or an infinite bed search. Live version 2 identifies this change.
+
+New maintained Mac-only acceptance entrypoints:
+- `.openclaw/tasks/alice_bed_set_spawnpoint_once.json`
+- `.openclaw/tasks/alice_bed_sleep_once.json`
+- `.openclaw/tasks/alice_bed_command_status_readonly.json`
+
+They use `scripts/alice-bed-command-once.py`, the existing loopback dashboard
+API and its original typed command reader. Only `设置重生点` / `睡觉` can be
+submitted, after current world/17879, online healthy IDLE and version2 checks.
+Submission intent is persisted before POST. On timeout, do not resend under a
+new operation: use the readonly task and match `commandId`. Queued/started is
+not gameplay completion. No arbitrary console command, OP/teleport/world edit,
+new model, BDS query, reset or restart is exposed. The tests exercise one send,
+HTTP ambiguity, repeat refusal, strict live guards and privacy-filtered reads.
+
+First rollout (version1): source 81af5dd, Mac321(skip3), Mint979/979.
+Approved lifecycle `alice_bed_repair_client_restart_20261104_k4n8v2cs_04`
+completed: old1319142 -> new1367454, current owner/heartbeat/connection/session
+all verified, BDS/world unchanged. Version1 readonly receipt05: day, canSleep
+false, personalBedStatus not_verified. This is loading acceptance only.
+Version2 follow-up full tests and runtime loading are still pending.

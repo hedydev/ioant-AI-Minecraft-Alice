@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "title": "Read only current loaded Alice bed request and actual command receipt; no send or retry",
+  "steps": [
+    {
+      "name": "read_existing_bed_receipt",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-bed-command-once.py",
+      "args": [
+        "inspect",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 25
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "bed_state",
+      "file": "bed_state.json",
+      "format": "json"
+    }
+  ]
+}

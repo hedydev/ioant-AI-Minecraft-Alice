@@ -80,6 +80,27 @@ test('a fresh pair starts at most ONE one-cell step, no duplicate on job flight'
  assert.equal(f.steps(),1)
  cancelBed(f.r)
 })
+test('waiting for first proof must not consume the later endpoint deadline',()=>{
+ const f=world();requestBed(f.r,'set_spawnpoint','控制台')
+ f.advance(180000);f.setProof(true)
+ assert.equal(resumeBed(f.r).state,'approaching')
+ assert.equal(f.r.pendingBedRequest.expiresAt,520000)
+ f.advance(180000);f.r.job=null;f.r.pendingBedStep=null
+ f.r.bot.entity.position=vec(1.5,65,.5)
+ f.r.lastBedApproachAction={status:'verified',serverMovementVerified:true,at:460000}
+ assert.equal(resumeBed(f.r).state,'started')
+ assert.equal(f.interactions(),1)
+})
+test('known sixteen-block beds have a finite step budget beyond eight, with hard stop',()=>{
+ const f=world();requestBed(f.r,'set_spawnpoint','控制台');f.setProof(true)
+ f.r.pendingBedRequest.steps=8
+ assert.equal(resumeBed(f.r).state,'approaching')
+ cancelBed(f.r)
+ const g=world();requestBed(g.r,'set_spawnpoint','控制台');g.setProof(true)
+ g.r.pendingBedRequest.steps=24
+ assert.equal(resumeBed(g.r).reason,'bed_approach_step_limit')
+ assert.equal(g.steps(),0)
+})
 test('only a later independent endpoint can advance bed task to interaction',()=>{
  const f=world()
  requestBed(f.r,'set_spawnpoint','控制台')
