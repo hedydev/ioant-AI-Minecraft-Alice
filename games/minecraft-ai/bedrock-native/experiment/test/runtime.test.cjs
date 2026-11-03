@@ -979,6 +979,47 @@ test('daylight autonomous resource goal prioritizes enclosed wooden exit before 
  e.stop()
 })
 
+test('narrow six-cell corridor frontier does not suppress daylight wooden door priority',async()=>{
+ let now=100000,opened=0,dug=0
+ const evidence={get:()=>({independentSource:'bds_querytarget',
+  independentSamples:3,independentAt:99980,independentPreviousAt:99950,
+  loginAt:90000,lifeEpochAt:null,independentLatestFeet:{x:.5,y:65,z:.5}})}
+ const f=fixture(()=>now),e=new AliceBedrockRuntime({...f,policies:await policies(),movementEvidence:evidence})
+ f.bot.entity.position=vec(.5,65,.5);f.bot.entity.onGround=true
+ f.bot.time={timeOfDay:6000}
+ f.api.GoalNear=class{constructor(x,y,z){Object.assign(this,{x,y,z})}}
+ f.api.Movements=class{constructor(){this.openable=new Set()}}
+ f.bot.pathfinder.goto=async g=>{
+  f.calls.push(['goto',g.x,g.y,g.z])
+  f.bot.entity.position=vec(g.x+.5,g.y,g.z+.5)
+ }
+ f.bot.activateBlock=()=>{opened++}
+ f.bot.dig=()=>{dug++}
+ f.bot.blockAt=p=>{
+  const x=Math.floor(p.x),y=Math.floor(p.y),z=Math.floor(p.z)
+  if(x===0&&z===7&&y===65)return {name:'spruce_door',boundingBox:'block',
+    getProperties:()=>({open_bit:0,upper_block_bit:0})}
+  if(x===0&&z>=0&&z<=6)return y===64?
+    {name:'oak_planks',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}:
+    {name:'air',boundingBox:'empty',shapes:[]}
+  return {name:'stone_bricks',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}
+ }
+ e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true
+ e.lastHumanAt=0;e.nextIdleAt=0
+ assert.equal(Boolean(e.failureMemory.blocked('wood',f.bot.entity.position)),false)
+ await e.idleTick()
+ assert(e.lastEscapeSurvey?.openFrontier,'the narrow corridor reaches the scan boundary')
+ assert.equal(e.lastEscapeSurvey?.door?.approach?.steps,6)
+ assert.equal(e.lastIdleDecision?.goal,'FIND_ROOM_EXIT')
+ for(let i=0;i<30&&!e.lastEscapeDoorAction;i++)await new Promise(r=>setImmediate(r))
+ assert.equal(f.calls.filter(x=>x[0]==='goto').length,1)
+ assert.deepEqual(f.calls.filter(x=>x[0]==='goto')[0],['goto',0,65,1])
+ assert.equal(e.pendingDoorApproachStep?.target.z,1)
+ assert.equal(e.lastEscapeDoorAction?.serverMovementVerified,false)
+ assert.equal(opened,0)
+ assert.equal(dug,0)
+ e.stop()
+})
 test('indoor WAIT approaches a four-cell doorway without opening or mining until resurvey',async()=>{
  let now=100000,activations=0,digs=0
  let evidenceState={independentSource:'bds_querytarget',independentSamples:3,
