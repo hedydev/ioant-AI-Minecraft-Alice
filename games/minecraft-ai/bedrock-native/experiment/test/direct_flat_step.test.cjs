@@ -37,6 +37,29 @@ test('never attempts a jump, vertical step, far target, or off-ground input',()=
  b.entity.onGround=false
  assert.equal(verifyFlatFirstStep(b,candidate).ok,false)
 })
+test('edge-overhang 3-of-9 feet probes refuse first flat step before ANY input',()=>{
+ const b=fixture()
+ b.entity.position=vec(.11,65,.60)
+ b.blockAt=p=>{
+  const x=Math.floor(p.x),y=Math.floor(p.y),z=Math.floor(p.z)
+  if(y===64&&x===-1&&z===0)return full
+  if(y===67)return full
+  return air
+ }
+ const one={kind:'observed_voxel_walking_only',waypoints:[{x:-1,y:65,z:0}]}
+ const denied=verifyFlatFirstStep(b,one)
+ assert.equal(denied.ok,false)
+ assert.equal(denied.reason,'direct_flat_unsupported_footprint')
+ assert.equal(denied.attempted,false)
+ assert.equal(denied.serverMovementVerified,false)
+ const controls=[];b.setControlState=(k,on)=>controls.push([k,on])
+ return probeFlatInput(b,one,{sleep:async()=>{throw Error('must not move')}}).then(r=>{
+  assert.equal(r.reason,'direct_flat_unsupported_footprint')
+  assert.equal(r.attempted,false)
+  assert.deepEqual(controls,[])
+ })
+})
+
 test('bounded forward pulses use actual Bedrock input and never call local motion server proof',async()=>{
  const b=fixture(),controls=[]
  let active=false

@@ -32,3 +32,15 @@ The original 17879 running Alice PID1971786 does **not** publish `onGround` in i
 This telemetry-only source change adds `alice.onGround` as strict tri-state `true/false/null` to the **passive** world-view snapshot (not the control API or movement code). It outputs `null` whenever the client has no valid boolean or is offline; it is **not** server-ground truth and never authorizes movement. The original bounded read-only `alice-collision-shape-readonly.py` maps that field into `footprint.onGround=client_true/client_false/not_published`; legacy snapshots remain `not_published`. Contact updates even if cached voxel geometry is reused, and tests cover all three states plus invalid forged strings. No new BDS query, game packet, block interaction, auth data, world read, or daemon operation.
 
 **Activation boundary:** On the live PID this field will remain `not_published` until the **original Alice client** is normally updated. There is no restart or deployment authorization in this diagnostic phase, so do not reload just to get this boolean. It is not a replacement for precise independently witnessed BDS feet or an actual swept AABB collision test; onGround alone cannot justify edge recovery. Keep STOP/FOLLOW/combat, 4s/0.75m, single-cell, 240s endpoint, 40/h witness-budget protection.
+
+## Reproducing the exact WALK-versus-JUMP disagreement
+
+Bounded synthetic fixture using the **existing** production decision functions, not a reconstructed planner: local feet `(.11,65,.60)` within an anonymous cell, only the adjacent left `(-1,64,0)` full stone support, a full cobblestone roof `y+2`, all other cells known air, and a hypothetical distant bed direction `(-6,-5)`. The fixture forces `onGround=true` **only for offline testing** because the live runtime has not published this bit; it is not evidence that live Alice is grounded.
+
+- `verifyFlatFirstStep` explicitly rejects: `direct_flat_unsupported_footprint` before a movement input.
+- `selectDirectionalBedStep` aggregates candidates: `directional_bed_no_collision_verified_flat_cell`.
+- `chooseAdjacentMovement` then tries `candidateOneBlockJump` as fallback and finally reports `jump_origin_support_or_headroom_unverified`, masking the earlier flat-step reason.
+- The pure WALK control fixture on continuous known full floor under the same low roof admits a WALK *candidate*, never a movement permit.
+- Tests forbid any input invocation and assert `permitted=false`/`serverMovementVerified=false`. This proves the exact code path **under the stated hypothetical geometry**; it does not prove live BDS physics, live onGround, actual foot AABB, or a safe edge recovery.
+
+No production movement policy was changed. If a future correction records both candidate rejection reasons, do it as passive diagnostics; never treat a fallback reason as an authorization to remove support/ceiling checks.

@@ -60,6 +60,47 @@ test('two-high wall, unloaded neighbor, air start and entity occupation are not 
   assert.equal(plan.ok,false,JSON.stringify(opts))
  }
 })
+test('3-of-9 edge support: WALK denies first, JUMP fallback reason must not disguise it',()=>{
+ const stone={name:'stone',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}
+ const empty={name:'air',boundingBox:'empty',shapes:[]}
+ const bot={game:{dimension:'overworld'},entity:{position:v(.11,65,.60),onGround:true},
+  entities:{},blockAt(p){
+   const x=Math.floor(p.x),y=Math.floor(p.y),z=Math.floor(p.z)
+   if(y===64&&x===-1&&z===0)return stone
+   if(y===67)return stone
+   return empty
+  },setControlState(){throw Error('must never move')}}
+ const target={x:-6,y:65,z:-5}
+ const {selectDirectionalBedStep}=require('../src/bed_directional_step.cjs')
+ const {verifyFlatFirstStep}=require('../src/direct_flat_step.cjs')
+ const flat=verifyFlatFirstStep(bot,{
+   kind:'observed_voxel_walking_only',waypoints:[{x:-1,y:65,z:0}]})
+ assert.equal(flat.reason,'direct_flat_unsupported_footprint')
+ const directional=selectDirectionalBedStep(bot,target)
+ assert.equal(directional.reason,'directional_bed_no_collision_verified_flat_cell')
+ const final=chooseAdjacentMovement(bot,{
+   toward:target,allowDirectional:true,allowJump:true})
+ assert.equal(final.ok,false)
+ assert.equal(final.reason,'jump_origin_support_or_headroom_unverified')
+ assert.equal(final.permitted,false)
+ assert.equal(final.serverMovementVerified,false)
+})
+test('edge fixture control with continuous full floor and low roof still admits pure WALK',()=>{
+ const stone={name:'stone',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}
+ const empty={name:'air',boundingBox:'empty',shapes:[]}
+ const bot={game:{dimension:'overworld'},entity:{position:v(.11,65,.60),onGround:true},
+  entities:{},blockAt(p){
+   const y=Math.floor(p.y)
+   return y===64||y===67?stone:empty
+  },setControlState(){throw Error('must never move')}}
+ const plan=chooseAdjacentMovement(bot,{
+  toward:{x:-6,y:65,z:-5},allowDirectional:true,allowJump:true})
+ assert.equal(plan.ok,true)
+ assert.equal(plan.action,'WALK')
+ assert.equal(plan.permitted,false)
+ assert.equal(plan.serverMovementVerified,false)
+})
+
 test('only a read-only proven flat route may choose a planned waypoint',()=>{
  const f=scene({roofAt:67})
  const route={status:'observed_route_candidate',routeComplete:true,

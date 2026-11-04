@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "title": "Offline Node geometry regression of client-edge walk and jump rejection without game activity",
+  "steps": [
+    {
+      "name": "direct_flat_edge_test",
+      "runtime": "node",
+      "script": "games/minecraft-ai/bedrock-native/experiment/test/direct_flat_step.test.cjs",
+      "args": [],
+      "timeoutSeconds": 60
+    },
+    {
+      "name": "adjacent_edge_decision_test",
+      "runtime": "node",
+      "script": "games/minecraft-ai/bedrock-native/experiment/test/adjacent_motion_decision.test.cjs",
+      "args": [],
+      "timeoutSeconds": 60
+    }
+  ],
+  "artifacts": []
+}
