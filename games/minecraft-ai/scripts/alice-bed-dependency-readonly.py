@@ -42,18 +42,18 @@ def interaction_policy(home):
 
 def mapping_sources(base):
     base=Path(base);rows=[];budget=14000
-    for package in ('prismarine-chunk','prismarine-block','prismarine-registry'):
+    for package in ('prismarine-registry','prismarine-block','prismarine-chunk'):
         root=base/package
         if not root.is_dir() or root.is_symlink():continue
-        files=[root/'index.js']+list((root/'src').rglob('*.js'))+list((root/'lib').rglob('*.js'))
+        files=sorted(root.glob('*.js'))+sorted((root/'lib').rglob('*.js'))+sorted((root/'src').rglob('*.js'))
         for file in files[:100]:
             if not file.is_file() or file.is_symlink() or file.stat().st_size>100000:continue
             if not file.resolve().is_relative_to(root.resolve()):continue
             text=file.read_text();lines=text.splitlines()
-            hits=[i for i,line in enumerate(lines) if re.search('fnv|networkId|NetworkId|runtimeIdTo|stateIdTo|blockMappings|block_network_ids_are_hashes',line)]
+            hits=[i for i,line in enumerate(lines) if re.search('fnv|hashedRuntime|blocksByRuntimeId|stateIdTo|blockMappings|block_network_ids_are_hashes|handleStartGame',line,re.I)]
             if not hits:continue
             selected=set()
-            for i in hits[:5]:selected.update(range(max(0,i-8),min(len(lines),i+30)))
+            for i in hits[:8]:selected.update(range(max(0,i-15),min(len(lines),i+65)))
             source='\n'.join(str(i+1)+': '+lines[i] for i in sorted(selected))[:min(budget,5000)]
             rows.append({'plugin':str(file.relative_to(base)),'sha256':hashlib.sha256(text.encode()).hexdigest(),'source':source})
             budget-=len(source)

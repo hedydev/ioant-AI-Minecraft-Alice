@@ -3,6 +3,13 @@ from pathlib import Path
 spec=importlib.util.spec_from_file_location('bed_dep',Path(__file__).resolve().parents[1]/'scripts/alice-bed-dependency-readonly.py')
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 class BedDependencyReadTest(unittest.TestCase):
+    def test_mapping_reader_includes_capitalized_hash_helper_and_package_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)/'prismarine-registry';root.mkdir()
+            (root/'hash.js').write_text('function loadHashedRuntimeIds() { return true }')
+            rows=m.mapping_sources(Path(tmp))
+            self.assertEqual(len(rows),1)
+            self.assertIn('loadHashedRuntimeIds',rows[0]['source'])
     def test_mapping_sources_are_fixed_packages_and_never_follow_external_source(self):
         with tempfile.TemporaryDirectory() as tmp:
             base=Path(tmp);pkg=base/'prismarine-chunk'/'src';pkg.mkdir(parents=True)

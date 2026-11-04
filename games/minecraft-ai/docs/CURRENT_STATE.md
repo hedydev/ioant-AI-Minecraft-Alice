@@ -1,3 +1,7 @@
+## 2026-11-04 — 恢复本轮床修复，额度预算70%
+
+用户确认尚未交接其他AI，授权继续使用本轮约70%额度，剩余约30%前收尾。只读55确认PID1513191仍在线/HP20；日志已有bed_step_new_independent_endpoint_confirmed，但个人床仍not_verified。已有click_block的blockRuntimeId/localStateId=7871，服务器哈希模式开启；仍需核对在线映射，不能由此断定根因。扩展原只读依赖审计覆盖包根JS与大小写Hashed helper；仅读公共源码，无点击/游戏查询/模型。
+
 ## 2026-11-04 — 额度交接：仍未完成，在线方块映射待核实
 
 运行PID1513191/version5，最后加载638e31f；sync50为Mint996/996、Mac334（3 skip）。床、个人重生点、睡眠均未通过实机验收。代码/只读审计已推送a891c26，接手详见BED_REPAIR_CHECKPOINT_20261104.md，该文已替换过期运行状态与额度自动恢复规则。
