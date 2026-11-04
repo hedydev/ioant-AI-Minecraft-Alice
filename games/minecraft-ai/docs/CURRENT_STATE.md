@@ -1,3 +1,7 @@
+## 2026-11-04 — Version10 已实机加载；床目标保留成功，但移动被脚底/净空门禁拒绝
+
+原批准受控 Alice-only lifecycle `alice_r89_v10_approved_client_restart_20261104_95` 已完成 PID1826633→1971786，owner、17879、游戏/会话/心跳正常，BDS/世界未重启或更改。96 独立读回 `bedLogicVersion=10`。97按需BDS有效（预算2/40），98只发送一次 typed `set_spawnpoint`，commandId `4e68d700e949453d8e19161d84bfbdb9`；99确实进入 `approach/intent/needs_evidence`，证明版本10保留有界床目标。100有限210秒读到合格静止对齐0.00格（无输入、BDS位移0）；101最终确认唯一请求 `failed/jump_origin_support_or_headroom_unverified`，个人重生点/到床/睡眠仍未验收，严禁重发。102/103缓存碰撞检查发现所在格无已证实dy=-1完整支撑，附近有实心地板，但 swept firstCellCandidates 为空且真实脚底足迹未验证；不得据名义网格放宽安全门禁。历史63开门、72独立穿门、86一格跳跃终点仍成立。完整逐条回执和安全下一步见 [LIVE_ACCEPTANCE_V10_20261104.md](LIVE_ACCEPTANCE_V10_20261104.md)。本次仅文档，不改源码；上次 Mint1012/1012、Mac337(skip3) 无失败，未重复运行。网页监督及 alice-2 继续PAUSED。
+
 ## 2026-11-04 — 本轮预算收尾：版本10全量通过，尚未加载
 
 92在源码0c7f4e17b11ac297db200a690171de5c65f9aaac通过Mint1012/1012、0skip，Mac337项（3skip，其余通过）；只做非重启sync。生产仍原批准87加载的PID1826633/version9（运行源码8c2e7ef），版本10未加载，typed新验收入口要求10，不得对版本9误发。90确认当前最后89命令3c219128a38e487c9ee94cf0352ab3b8已经rejected/bed_needs_verified_approach，不是进行中。没有新的床请求或在途MCP任务，下一新编号93。
