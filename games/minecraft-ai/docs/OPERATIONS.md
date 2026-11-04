@@ -1,3 +1,9 @@
+## 2026-11-04 — 原生门/床交互哈希ID兼容（版本6，待实机）
+
+实际源码56确认：区块解码将哈希runtimeId转换为顺序stateId；注册表通过Block.getHash建立哈希→stateId映射，而interact.js把本地stateId直接写入交易block_runtime_id。只读55已有实际交易7871，构成发送标识错误的证据链。新增公开activateBlock边界适配，仅限已观察木门/床，复用实际安装prismarine-block的getHash，必须在在线registry.blocksByRuntimeId精确反查同一stateId；未知模式/不匹配即拒绝。网络使用uint32位模式，不改世界Block、包结构、registry、背包或安全规则，不增加一次调用的发送次数。非哈希模式与其他交互保持原API。
+
+bedLogicVersion=6、typed验收入口要求6；现PID1513191仍版本5。新增伪造/缺映射、this/返回/目标不变、关闭恢复和实际Mint库+Chunk往返测试。源码/测试不是开门或睡觉成功；全量sync与原批准加载后须重新独立验收。
+
 ## 2026-11-04 — 恢复本轮床修复，额度预算70%
 
 用户确认尚未交接其他AI，授权继续使用本轮约70%额度，剩余约30%前收尾。只读55确认PID1513191仍在线/HP20；日志已有bed_step_new_independent_endpoint_confirmed，但个人床仍not_verified。已有click_block的blockRuntimeId/localStateId=7871，服务器哈希模式开启；仍需核对在线映射，不能由此断定根因。扩展原只读依赖审计覆盖包根JS与大小写Hashed helper；仅读公共源码，无点击/游戏查询/模型。

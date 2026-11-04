@@ -1,3 +1,9 @@
+## 2026-11-04 — 原生门/床交互哈希ID兼容（版本6，待实机）
+
+实际源码56确认：区块解码将哈希runtimeId转换为顺序stateId；注册表通过Block.getHash建立哈希→stateId映射，而interact.js把本地stateId直接写入交易block_runtime_id。只读55已有实际交易7871，构成发送标识错误的证据链。新增公开activateBlock边界适配，仅限已观察木门/床，复用实际安装prismarine-block的getHash，必须在在线registry.blocksByRuntimeId精确反查同一stateId；未知模式/不匹配即拒绝。网络使用uint32位模式，不改世界Block、包结构、registry、背包或安全规则，不增加一次调用的发送次数。非哈希模式与其他交互保持原API。
+
+bedLogicVersion=6、typed验收入口要求6；现PID1513191仍版本5。新增伪造/缺映射、this/返回/目标不变、关闭恢复和实际Mint库+Chunk往返测试。源码/测试不是开门或睡觉成功；全量sync与原批准加载后须重新独立验收。
+
 ## 2026-11-04 — 自身权限来源继续分辨
 
 只读49确认观察器已加载在PID1507358（原批准restart48成功），但未取得匹配自身ID的update_abilities；其role=unknown是缺证据，不是权限被拒。对照公开协议，start_game.permission_level本身就是该登录玩家角色。补充读取此初始自身字段（source=start_game_self）及原始block_network_ids_are_hashes/server_authoritative_inventory布尔标志；对实际已有click_block仅记录公开方块ID、客户端状态ID与注册表network_id，避免猜测新版本网络ID映射是否一致。仍只观察，不改包/不申请权限/不增加点击。Node30项通过，完整测试与加载待回执。原1bb…命令在46已明确failed/bed_request_expired，不重做。

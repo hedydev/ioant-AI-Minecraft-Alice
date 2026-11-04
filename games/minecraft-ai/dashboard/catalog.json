@@ -1,6 +1,6 @@
 {
   "version": "Bedrock native 1.26.51 / control-center 0.4",
-  "asOf": "2026-11-02",
+  "asOf": "2026-11-04",
   "notice": "2026-11-01 phase5：Mint Node24 718/718 Mac Python269，原17879客户端only安全重连PASS，新证据生命周期拒绝死亡前/旧登录样本。真实BDS见证状态 prior_login_witness，independentSamples0 movingQueued0；正式世界无Script API行为包、Beta实验、专属网络权限；源码/接收器就绪≠服务端独立坐标供源。未动BDS/世界；床5步仍只是只读路线。",
   "statusNames": {
     "observed": "已有实机证据",
@@ -14,7 +14,7 @@
       "icon": "🛏️",
       "group": "生存与庇护",
       "status": "staged",
-      "detail": "排除实体列表内Alice自身的占位误判，保留其他实体阻断；同一新鲜BDS回调调度相邻床睡眠，证据过期/床太远不消耗交互冷却；个人spawn需对应当前床。PID1380268已加载bedLogicVersion=3；版本4已加载PID1471802，Mint989/989、Mac327（3 skip）；首次生命修正已通过Mint990/990并加载PID1475661。床取证已接通；门真实交互未观察状态改变。版本5已加载PID1495260，Mint993/993；实机门状态仍未改变。被动自身权限/交互序列化诊断新增，待全量回归和加载。真实床请求曾接纳，现已bed_request_expired；个人床not_verified、未入睡。只读bed_state已补充准入原因；压缩心跳保留床阶段与取证描述，初始等待15分钟、物理终点240秒。床实机尚未验收。"
+      "detail": "版本6源码新增原生木门/床交互哈希网络ID兼容，使用实际安装Block.getHash并精确反查在线注册表；未改本地方块、安全门禁或查询预算。当前运行PID1513191仍版本5；Mint完整回归、原批准加载、真实开门/床到达/个人重生点/睡眠分别待验收。此前BDS独立床步骤终点已有记录，不能当成床使用成功。"
     },
     {
       "name": "已验证木门门槛后的单格安全跳跃",

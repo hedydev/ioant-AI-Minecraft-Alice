@@ -35,3 +35,4 @@ Maintenance and terrain method bodies continue executing with the original Alice
 - bed/witness_demand.cjs: read-only, current-life typed bed intent/endpoint descriptor; no query, timer or movement permission. Existing opt-in demand service owns budget/backoff.
 
 - interaction_audit.cjs (root observer): exact-self ability provenance and queue-only click diagnostics; never grants permissions or emits packets.
+- block_interaction_compat.cjs (root adapter): wooden-door/bed activateBlock references use the installed hash only after exact online registry inverse validation; world-local state IDs stay unchanged.
