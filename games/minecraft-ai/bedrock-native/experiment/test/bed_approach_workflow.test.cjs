@@ -127,12 +127,21 @@ test('independently verified one-cell endpoint allows adjacent bed interaction',
  assert.equal(f.interactions(),1)
  assert.equal(f.steps(),1)
 })
-test('solid wall makes bed route read-only and rejects a direct step',()=>{
+test('solid wall permits bounded bed intent but fresh geometry still rejects any direct step',()=>{
  const f=world({walled:true})
  const reply=requestBed(f.r,'sleep','控制台')
- assert.equal(reply.status,'rejected')
+ assert.equal(reply.status,'started')
  assert.equal(f.steps(),0)
  assert.equal(f.interactions(),0)
+ f.r.resumeBedApproachOnWitness=()=>{
+  const plan=require('../src/adjacent_motion_decision.cjs').chooseAdjacentMovement(f.r.bot,
+    {toward:bedPosition,allowDirectional:true,allowJump:true})
+  assert.equal(plan.ok,false)
+  return {state:'held',reason:plan.reason}
+ }
+ f.setProof(true)
+ assert.equal(resumeBed(f.r).state,'rejected')
+ assert.equal(f.steps(),0);assert.equal(f.interactions(),0)
 })
 
 test('bed behind a door preserves intent without pretending to walk through',()=>{
