@@ -1,3 +1,11 @@
+## 2026-11-04 — 穿门已获BDS确认；带顶棚单格跳跃轨迹预检（版本8待测）
+
+版本7的只读72实证door_crossing_new_independent_bds_confirmed/serverMovementVerified=true；不是本地路径结果。原10597…请求73明确rejected/bed_route_requires_door，未重发；实际穿门由原自主门流程完成。74当前地形显示门在身后、床约7.8格且高1格，近侧屋顶在脚下+3，向床一侧有完整方块台阶。
+
+跳跃代码原注释三格净空、实现却读取0..3四格；真实Vec3在执行器对象展开后还丢失offset/clone。版本8保留原开放净空路径，只有第四格是已知完整顶棚时，额外用当前固定Physics/PlayerState在克隆状态上做20tick/最多120方块的离线碰撞预检，必须预测单格落地且不越窄走廊；未知/危险/低顶/半块顶仍拒绝。不apply、不事件、不改活体属性/控制、不发包或更改世界，不替代BDS新终点。位置与初始速度用clone保留，避免空中复查丢Vec3或借用当前空中速度。
+
+10项本地跳跃通过；真实固定Physics的顶棚/低顶/Vec3三项必须Mint执行，尚未加载。仍需逐项床到达、个人床服务端确认、真实睡眠验收。当前PID1804956仍版本7。物理源码依据固定依赖：https://github.com/Pix3lPirat3/prismarine-physics/blob/e6181bf79c19db3eafc8a589e984f7ba623556f6/index.js 。
+
 ## 2026-11-04 — 版本7已加载，保留独立床确认与睡眠布尔回执
 
 火把通行源码e94d283经sync66通过Mint1003/1003（含真实库torch空碰撞验证）、Mac336；原批准restart68完成PID1797241→1804956，只读69确认版本7，原ac288…请求已failed/bed_request_expired，未重发。新版本一次性set_spawnpoint验收70的commandId=10597f8f1f894d558a01895f901789e1，仅发一次，后续只读。71为有界210秒观察，不发BDS查询。

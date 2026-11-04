@@ -32,7 +32,7 @@ def ready(data):
             r.get('world') == 'Bedrock level' and r.get('serverPort') == 17879 and
             r.get('sessionEstablished') is True and r.get('connected') is True and
             type(r.get('producerPid')) is int and
-            (r.get('worldRoutine') or {}).get('bedLogicVersion') == 7 and
+            (r.get('worldRoutine') or {}).get('bedLogicVersion') == 8 and
             r.get('state') == 'IDLE' and not r.get('job') and
             type(r.get('health')) in (int, float) and 16 <= r['health'] <= 20)
 

@@ -6,6 +6,7 @@ const {knownAir}=require('./scout_routes.cjs')
 const {fullSupport,knownWalkingClear}=require('./escape_survey.cjs')
 const {observedDoorBits}=require('./escape_door_action.cjs')
 const {planOpenDoorLane}=require('./door_lane.cjs')
+const {previewCeilingLimitedJump}=require('./jump_clearance_preview.cjs')
 const WOOD_DOOR=/^(oak|spruce|birch|jungle|acacia|dark_oak|mangrove|cherry|bamboo|crimson|warped|pale_oak|wooden)_door$/
 const finite=p=>p&&[p.x,p.y,p.z].every(Number.isFinite)
 const normal=p=>String(p?.name||'').replace(/^minecraft:/,'')
@@ -23,16 +24,20 @@ function candidateOneBlockJump(bot,{toward=null}={}){
   try{return bot.blockAt(pos.offset(x-pos.x,y-pos.y,z-pos.z))||null}
   catch{return null}
  }
- // Passive torches with VERIFIED empty collision boxes are valid body/jump\n // clearance, just like in the swept flat/door checks. Unknown blocks, roof\n // shapes, and unsupported collision boxes still fail closed.\n // The start cell needs solid support and three known-clear blocks of
- // vertical jump clearance, not just normal 2-block walking clearance.
+ // Three clear cells above the floor fit a 1.8-high player and a one-block
+ // rise. A full roof in the FOURTH cell caps normal jump velocity; permit
+ // that case only after the pinned collision engine proves the whole landing.
  const origin=read(root.x,root.y,root.z),upper=read(root.x,root.y+1,root.z)
  const lowBits=observedDoorBits(origin),upBits=observedDoorBits(upper)
  const openDoorOrigin=WOOD_DOOR.test(normal(origin))&&
    normal(origin)===normal(upper)&&
    lowBits.open===true&&lowBits.upper===false&&upBits.upper===true
  if(!fullSupport(read(root.x,root.y-1,root.z))||
-    !(openDoorOrigin?[2,3].every(d=>knownWalkingClear(read(root.x,root.y+d,root.z))):
-      [0,1,2,3].every(d=>knownWalkingClear(read(root.x,root.y+d,root.z)))))
+    !(openDoorOrigin?[2].every(d=>knownWalkingClear(read(root.x,root.y+d,root.z))):
+      [0,1,2].every(d=>knownWalkingClear(read(root.x,root.y+d,root.z)))))
+   return fail('jump_origin_support_or_headroom_unverified')
+ const originRoof=read(root.x,root.y+3,root.z)
+ if(!knownWalkingClear(originRoof)&&!fullSupport(originRoof))
    return fail('jump_origin_support_or_headroom_unverified')
  const steps=[]
  for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){
@@ -47,7 +52,9 @@ function candidateOneBlockJump(bot,{toward=null}={}){
   }
   // The top of the raised block becomes the new floor; two-block body
   // clearance plus extra rise headroom are required.
-  if(![1,2,3].every(d=>knownWalkingClear(read(x,y+d,z))))continue
+  if(![1,2].every(d=>knownWalkingClear(read(x,y+d,z))))continue
+  const landingRoof=read(x,y+3,z)
+  if(!knownWalkingClear(landingRoof)&&!fullSupport(landingRoof))continue
   // Do not enter a space occupied by a monster, player, or other entity,
   // regardless of whether that entity is currently attacking.
   if(Object.values(bot.entities||{}).some(e=>finite(e?.position)&&
@@ -57,13 +64,15 @@ function candidateOneBlockJump(bot,{toward=null}={}){
   const before=toward?Math.hypot(pos.x-toward.x,pos.z-toward.z):null
   const after=toward?Math.hypot(x+.5-toward.x,z+.5-toward.z):null
   if(toward&&after>=before-.15)continue
-  steps.push({to,remaining:after??0})
+  const capped=!knownWalkingClear(originRoof)||!knownWalkingClear(landingRoof)
+  if(capped&&!previewCeilingLimitedJump(bot,to).ok)continue
+  steps.push({to,remaining:after??0,capped})
  }
  if(!steps.length)return fail('no_observed_one_block_jump_landing')
  steps.sort((a,b)=>a.remaining-b.remaining)
  const to=steps[0].to
  return {ok:true,reason:'observed_one_block_ascent_candidate',
-   action:'JUMP_UP',target:to,from:root,permitted:false,
+   action:'JUMP_UP',target:to,from:root,ceilingLimited:steps[0].capped,permitted:false,
    serverMovementVerified:false}
 }
 async function performOneBlockJump(bot,candidate,{
@@ -80,7 +89,10 @@ async function performOneBlockJump(bot,candidate,{
    return deny('jump_landing_changed')
  if(typeof bot.lookAt!=='function'||typeof bot.setControlState!=='function')
    return deny('jump_physical_input_unavailable')
- const start={...bot.entity.position}
+ // Real Vec3 stores offset/clone on its prototype; object spread loses them
+ // and makes every mid-action geometry recheck fail before the first input.
+ const start=bot.entity.position.clone?.()||{...bot.entity.position}
+ const startVelocity=bot.entity.velocity?.clone?.()
  const direction={x:target.x+.5-start.x,z:target.z+.5-start.z}
  const axis=Math.hypot(direction.x,direction.z)
  if(axis<.5||axis>1.8)return deny('jump_takeoff_not_adjacent')
@@ -96,7 +108,8 @@ async function performOneBlockJump(bot,candidate,{
  const geometryUnchanged=()=>{
    // Re-evaluate the ORIGINAL surveyed origin/landing while airborne.
    // In-flight local onGround=false is expected and not a new failure.
-   const original={...bot.entity,position:start,onGround:true}
+   const original={...bot.entity,position:start,onGround:true,
+     ...(startVelocity?{velocity:startVelocity}:{} )}
    const view={...bot,entity:original}
    const current=candidateOneBlockJump(view,
      {toward:{x:target.x+.5,y:target.y,z:target.z+.5}})

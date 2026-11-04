@@ -15,7 +15,7 @@ class BedCommandOnceTest(unittest.TestCase):
         return {'online': True, 'canCommand': True, 'runtime': {
             'world': 'Bedrock level', 'serverPort': 17879, 'connected': True,
             'sessionEstablished': True, 'producerPid': 123, 'state': 'IDLE',
-            'health': 20, 'worldRoutine': {'bedLogicVersion': 7}}}
+            'health': 20, 'worldRoutine': {'bedLogicVersion': 8}}}
 
     def test_only_one_typed_request_and_persisted_receipt(self):
         calls = []

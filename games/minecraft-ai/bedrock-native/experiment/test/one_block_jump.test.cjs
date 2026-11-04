@@ -122,3 +122,15 @@ test('shape changing after planning stops before physical input',async()=>{
  assert.equal(res.attempted,false)
  assert.equal(f.events.length,0)
 })
+test('prototype vector methods survive original-origin geometry checks',async()=>{
+ class Vector{
+  constructor(x,y,z){Object.assign(this,{x,y,z})}
+  clone(){return new Vector(this.x,this.y,this.z)}
+  offset(x,y,z){return new Vector(this.x+x,this.y+y,this.z+z)}
+ }
+ const f=scene();f.bot.entity.position=new Vector(.5,65,.5)
+ const c=candidateOneBlockJump(f.bot,{toward:{x:3.5,y:66,z:.5}})
+ const res=await performOneBlockJump(f.bot,c,{safe:()=>true,pulses:1,sleep:async()=>{}})
+ assert.equal(res.attempted,true)
+ assert.equal(f.events.filter(x=>x[0]==='jump'&&x[1]).length,1)
+})

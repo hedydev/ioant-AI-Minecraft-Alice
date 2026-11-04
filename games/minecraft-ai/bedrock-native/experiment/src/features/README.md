@@ -36,3 +36,5 @@ Maintenance and terrain method bodies continue executing with the original Alice
 
 - interaction_audit.cjs (root observer): exact-self ability provenance and queue-only click diagnostics; never grants permissions or emits packets.
 - block_interaction_compat.cjs (root adapter): wooden-door/bed activateBlock references use the installed hash only after exact online registry inverse validation; world-local state IDs stay unchanged.
+
+- jump_clearance_preview.cjs (root geometry): capped-ceiling jumps require an isolated, read-bounded pinned Physics landing preview; no live state/controls or server evidence.
