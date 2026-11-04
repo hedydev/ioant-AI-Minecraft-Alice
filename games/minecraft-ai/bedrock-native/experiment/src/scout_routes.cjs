@@ -8,8 +8,15 @@ const BAD=/lava|fire|magma|cactus|campfire|powder_snow|water|bubble_column|sweet
 const HOSTILE=/^(zombie|husk|drowned|skeleton|stray|bogged|spider|cave_spider|creeper|witch|pillager|ravager|phantom|slime|silverfish|endermite)$/
 const integer=(x)=>Number.isFinite(x)?Math.floor(x):null
 function blockName(b){return String(b?.name||'').replace(/^minecraft:/,'')}
-function knownAir(b){return !!b&&b.boundingBox==='empty'&&!BAD.test(blockName(b))&&
-  /^(air|cave_air|void_air|grass|short_grass|tall_grass|fern|large_fern|dead_bush|dandelion|poppy|blue_orchid|allium|azure_bluet|oxeye_daisy|cornflower|lily_of_the_valley)$/.test(blockName(b))}
+function knownAir(b){
+ if(!b||b.boundingBox!=='empty'||BAD.test(blockName(b)))return false
+ if(/^(air|cave_air|void_air|grass|short_grass|tall_grass|fern|large_fern|dead_bush|dandelion|poppy|blue_orchid|allium|azure_bluet|oxeye_daisy|cornflower|lily_of_the_valley)$/.test(blockName(b)))return true
+ // A wall/standing torch has a selection outline but no physical collision.
+ // Require actual empty collision shapes as well as the known safe block;
+ // never infer passability from a torch name or rewrite cached geometry.
+ return /^(torch|wall_torch|redstone_torch|unlit_redstone_torch|redstone_wall_torch)$/.test(blockName(b))&&
+   Array.isArray(b.shapes)&&b.shapes.length===0
+}
 function fullFloor(b){
   if(!b||b.boundingBox!=='block'||!SAFE_SURFACE.test(blockName(b)))return false
   // If collision shapes are present they MUST describe a full 1x1x1 cube.

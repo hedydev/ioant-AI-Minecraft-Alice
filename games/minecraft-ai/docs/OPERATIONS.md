@@ -1,3 +1,9 @@
+## 2026-11-04 — 真实开门已通过；火把碰撞通行修复待加载（版本7）
+
+sync57通过Mint1002/1002（0 skip，含真实注册表/Chunk往返）、Mac336；原批准restart58完成PID1513191→1797241，只读59确认版本6。新sleep请求60的commandId=ac28889a8cc5430f8c3e9d1daa0804ee，61/65仍started，禁止重发。只读63实证一次交易runtimeId4142737989/localStateId7871，随后door_open_observed_exit_unverified；哈希交互修复已取得真实开门证据，但跨门返回crossing_opposite_side_blocked_or_unknown，尚未到床/设置重生点/睡眠。
+
+只读64在当前近侧格头部观察到torch，knownAir白名单此前明确拒绝torch，因此即使门已开仍会否决近侧净空。版本7只允许已知安全火把且boundingBox=empty、shapes=[]；未知/缺形状/实心/危险仍拒绝，不改方块或几何。新增本格火把通过、未知/实心/火焰拒绝和实际Mint库torch空碰撞验证。完整回归与原批准必要加载后待独立跨门/床验收，先核对原60终态。
+
 ## 2026-11-04 — 原生门/床交互哈希ID兼容（版本6，待实机）
 
 实际源码56确认：区块解码将哈希runtimeId转换为顺序stateId；注册表通过Block.getHash建立哈希→stateId映射，而interact.js把本地stateId直接写入交易block_runtime_id。只读55已有实际交易7871，构成发送标识错误的证据链。新增公开activateBlock边界适配，仅限已观察木门/床，复用实际安装prismarine-block的getHash，必须在在线registry.blocksByRuntimeId精确反查同一stateId；未知模式/不匹配即拒绝。网络使用uint32位模式，不改世界Block、包结构、registry、背包或安全规则，不增加一次调用的发送次数。非哈希模式与其他交互保持原API。

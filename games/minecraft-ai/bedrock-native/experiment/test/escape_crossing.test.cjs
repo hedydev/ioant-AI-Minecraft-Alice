@@ -45,6 +45,18 @@ test('open lower and upper wooden door with known opposite safe cell is eligible
  assert.equal(validateCrossing(f.bot,Door).ok,true)
  assert.deepEqual(validateCrossing(f.bot,Door).beyond,[0,65,2])
 })
+test('observed empty-shape torch at own head is not an opposite-side wall',()=>{
+ const f=room(),read=f.bot.blockAt
+ f.bot.blockAt=p=>Math.floor(p.x)===0&&Math.floor(p.z)===0&&Math.floor(p.y)===66?
+   {name:'torch',boundingBox:'empty',shapes:[]}:read(p)
+ assert.equal(validateCrossing(f.bot,Door).ok,true)
+ for(const obstacle of [null,{name:'torch',boundingBox:'empty'},
+   {name:'torch',boundingBox:'block',shapes:[[0,0,0,1,1,1]]},
+   {name:'fire',boundingBox:'empty',shapes:[]}]){
+  f.bot.blockAt=p=>Math.floor(p.x)===0&&Math.floor(p.z)===0&&Math.floor(p.y)===66?obstacle:read(p)
+  assert.equal(validateCrossing(f.bot,Door).ok,false)
+ }
+})
 test('crossing uses at most eight bounded forward pulses without pathfinder or door activation',async()=>{
  const f=room()
  const r=await crossDoor(f.bot,Door,options(f))

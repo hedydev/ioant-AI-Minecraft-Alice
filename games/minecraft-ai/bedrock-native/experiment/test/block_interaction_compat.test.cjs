@@ -58,6 +58,11 @@ test('installed Bedrock registry and real chunk round-trip local IDs to exact ru
  const {Vec3}=nativeRequire('vec3'),pos=new Vec3(1,64,1)
  r.handleStartGame({itemstates:[],block_network_ids_are_hashes:true})
  const chunk=new Chunk({x:0,z:0})
+ const torchId=r.blocksByName.torch.defaultState
+ chunk.setBlockStateId(pos,torchId)
+ const torch=chunk.getBlock(pos)
+ assert.equal(torch.boundingBox,'empty');assert.deepEqual(torch.shapes,[])
+ assert.equal(require('../src/scout_routes.cjs').knownAir(torch),true)
  for(const name of ['spruce_door','bed']){
   const stateId=r.blocksByName[name].minStateId
   chunk.setBlockStateId(pos,stateId)
