@@ -1,3 +1,9 @@
+## 2026-11-04 — 本轮预算收尾：版本10全量通过，尚未加载
+
+92在源码0c7f4e17b11ac297db200a690171de5c65f9aaac通过Mint1012/1012、0skip，Mac337项（3skip，其余通过）；只做非重启sync。生产仍原批准87加载的PID1826633/version9（运行源码8c2e7ef），版本10未加载，typed新验收入口要求10，不得对版本9误发。90确认当前最后89命令3c219128a38e487c9ee94cf0352ab3b8已经rejected/bed_needs_verified_approach，不是进行中。没有新的床请求或在途MCP任务，下一新编号93。
+
+真实开门63、独立BDS穿门72、台阶跳跃终点86已确认；床到达、个人重生点、睡眠仍未通过。版本10新增已观察床目标的有界意图保存，原始动作/墙体/未知/危险/STOP/FOLLOW/BDS门禁不变，后续需要原批准客户端正常加载及独立实机验收。本轮约70%预算已到，仅收取已启动测试和交接，不再开发部署。自动接续继续PAUSED。
+
 # Alice床流程检查点 — 2026-11-04 本轮继续
 
 ## 目标与额度
@@ -26,7 +32,7 @@
 6. 被动interaction_audit与固定只读脚本区分自身权限、已有交易序列化、spawnConfirmed/sleepEntered/woke，不把发送当成功，不输出身份/原始日志/坐标。
 
 ## 当前一次性请求：只能查，不重发
-89 alice_bed_repair_v9_spawn_accept_20261104_k4n8v2cs_89 已提交一次set_spawnpoint：commandId=3c219128a38e487c9ee94cf0352ab3b8。MCP提交回执passed/queued，仅证明入队；运行时最终结果仍待只读核对。不能声称已到床，也不能换ID重发。
+89 alice_bed_repair_v9_spawn_accept_20261104_k4n8v2cs_89 的commandId=3c219128a38e487c9ee94cf0352ab3b8，90明确rejected/bed_needs_verified_approach，已结束，禁止重放。版本10源码0c7f4e1已通过92完整回归并同步Mint，但未加载，不能对当前版本9运行新typed验收。
 
 旧命令均已结束，禁止重放：
 - 4c1ecaf627f74174b78b2d3ea338efea：v2拒绝bed_route_requires_door。
@@ -44,4 +50,4 @@
 固定任务artifact：alice_17879_bed_readonly→bed_now；alice_bed_command_status_readonly→bed_state；alice_bds_demand_state_readonly_20261102→demand_state；alice_home_door_voxels_readonly→door_voxels；alice_mint_nonrestart_sync→mint_sync。有限观察最多210秒，不触发BDS查询。
 所有任务project_key=alice-ai、repository_task/current/精确完整HEAD。当前main，不创建分支/worktree或reset/clean/stash。源码提交保留AI-Agent/AI-Session。新Chat要新conversation_key并先resume；摘要不是权限或回执。详细进展见CURRENT_STATE、BED_INTERACTION_REPAIR_20261104、OPERATIONS。
 
-截至89无已知在途MCP执行任务，但89游戏请求待核对。下一新后缀90。持久交接最新已知revision87，保存前读最新CAS。最终交付前更新这里的当前请求状态/后缀，不恢复旧网页监督。
+截至92无已知在途MCP任务，最后89游戏请求明确rejected。下一新后缀93。持久交接在最终收尾时更新，接手读取最新resume，不固定revision。自动接续保持PAUSED，不恢复旧网页监督。
