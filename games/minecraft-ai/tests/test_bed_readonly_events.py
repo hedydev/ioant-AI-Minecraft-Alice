@@ -3,6 +3,12 @@ from pathlib import Path
 spec=importlib.util.spec_from_file_location('bed_readonly',Path(__file__).resolve().parents[1]/'scripts/alice-17879-bed-readonly.py')
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 class BedReadonlyEventsTest(unittest.TestCase):
+    def test_independent_spawn_and_sleep_booleans_are_preserved_without_private_details(self):
+        raw='[Alice Bedrock] verified job result: '+json.dumps({'reason':'sleep_entry_confirmed',
+            'ok':True,'spawnConfirmed':False,'sleepEntered':True,'woke':False,'bed':[1,2,3],'private':'secret'})
+        rows=m.summarize_bed_log(raw)
+        self.assertEqual(rows,[{'kind':'job_result','reason':'sleep_entry_confirmed','ok':True,
+            'spawnConfirmed':False,'sleepEntered':True,'woke':False}])
     def test_current_process_events_keep_only_bounded_typed_outcomes(self):
         line='[Alice exploration] doorway approach outcome: '
         text=line+json.dumps({'reason':'approach_current_cell_unverified','attempted':False,

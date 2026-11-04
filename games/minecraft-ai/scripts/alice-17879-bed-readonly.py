@@ -26,7 +26,7 @@ def summarize_bed_log(text):
             if isinstance(reason,str):reason=reason.split(':',1)[0]
             reason=reason if isinstance(reason,str) and re.fullmatch('[A-Za-z0-9_]{1,110}',reason) else None
             event={'kind':kind,'reason':reason}
-            for key in ('attempted','serverMovementVerified','ok'):
+            for key in ('attempted','serverMovementVerified','ok','spawnConfirmed','sleepEntered','woke'):
                 if type(value.get(key)) is bool:event[key]=value[key]
             if type(value.get('steps')) is int and 0<=value['steps']<=24:event['steps']=value['steps']
             events.append(event)
@@ -116,10 +116,10 @@ def validate(x):
             if any(v is not None and (type(v) is not int or not 0<=v<=4294967295) for k,v in q.items() if k in ids):return None
             if any(v is not None and type(v) is not bool for k,v in q.items() if k not in ids|{'face'}):return None
     for event in x['bedEvents']:
-        if not isinstance(event,dict) or set(event)-{'kind','reason','attempted','serverMovementVerified','ok','steps'}:return None
+        if not isinstance(event,dict) or set(event)-{'kind','reason','attempted','serverMovementVerified','ok','steps','spawnConfirmed','sleepEntered','woke'}:return None
         if event.get('kind') not in ('bed_admission','door_approach','door_approach_gate','door_interaction','door_interaction_gate','door_passage','door_endpoint','passage_endpoint','bed_endpoint','job_result'):return None
         if event.get('reason') is not None and not re.fullmatch('[A-Za-z0-9_]{1,110}',event['reason']):return None
-        for field in ('attempted','serverMovementVerified','ok'):
+        for field in ('attempted','serverMovementVerified','ok','spawnConfirmed','sleepEntered','woke'):
             if field in event and type(event[field]) is not bool:return None
         if 'steps' in event and (type(event['steps']) is not int or not 0<=event['steps']<=24):return None
     return x

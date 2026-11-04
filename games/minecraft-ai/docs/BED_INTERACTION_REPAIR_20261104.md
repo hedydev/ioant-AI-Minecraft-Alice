@@ -1,3 +1,9 @@
+## 2026-11-04 — 版本7已加载，保留独立床确认与睡眠布尔回执
+
+火把通行源码e94d283经sync66通过Mint1003/1003（含真实库torch空碰撞验证）、Mac336；原批准restart68完成PID1797241→1804956，只读69确认版本7，原ac288…请求已failed/bed_request_expired，未重发。新版本一次性set_spawnpoint验收70的commandId=10597f8f1f894d558a01895f901789e1，仅发一次，后续只读。71为有界210秒观察，不发BDS查询。
+
+原只读床日志汇总补充spawnConfirmed/sleepEntered/woke三个严格布尔字段，不输出床坐标、原始消息或身份；避免短暂入睡后醒来无法读到历史事实。这是Mac读回增强，不改运行时代码、不需要重载。4项匿名/伪造/长度回归通过。床与睡眠尚待当前真实回执。
+
 ## 2026-11-04 — 真实开门已通过；火把碰撞通行修复待加载（版本7）
 
 sync57通过Mint1002/1002（0 skip，含真实注册表/Chunk往返）、Mac336；原批准restart58完成PID1513191→1797241，只读59确认版本6。新sleep请求60的commandId=ac28889a8cc5430f8c3e9d1daa0804ee，61/65仍started，禁止重发。只读63实证一次交易runtimeId4142737989/localStateId7871，随后door_open_observed_exit_unverified；哈希交互修复已取得真实开门证据，但跨门返回crossing_opposite_side_blocked_or_unknown，尚未到床/设置重生点/睡眠。
