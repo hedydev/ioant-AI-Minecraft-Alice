@@ -35,6 +35,53 @@ function fixture(){
  }
  return {r,calls,reports,report:(...x)=>reports.push(x)}
 }
+function afterDoorFixture(){
+ const f=fixture(),r=f.r,target=vec(4,66,0)
+ r.bot.blockAt=p=>{
+  const x=Math.floor(p.x),y=Math.floor(p.y),z=Math.floor(p.z)
+  if(x===4&&y===66&&z===0)return{name:'red_bed',position:target,boundingBox:'block'}
+  const solid=y===64||y===68||(x>=1&&x<=4&&z===0&&y===65)
+  return{name:solid?'stone':'air',position:vec(x,y,z),boundingBox:solid?'block':'empty',
+   shapes:solid?[[0,0,0,1,1,1]]:[]}
+ }
+ r.movementEvidence.get=()=>({loginAt:6,lifeEpochAt:7,independentSamples:4,
+  independentSource:'bds_querytarget',independentPreviousAt:now-1100,
+  independentAt:now-100,independentLatestFeet:{x:.5,y:65,z:.5}})
+ r.pendingBedRequest={action:'set_spawnpoint',source:'控制台',stage:'door',
+  at:now-180000,expiresAt:now+240000,globalExpiresAt:now+3600000,
+  epoch:r.epoch,loginAt:6,lifeEpochAt:7,dimension:'overworld',position:target,
+  steps:1,report:f.report,timer:null}
+ r.liveBehavior={settings:{autonomyEnabled:true}}
+ r.resumeBedApproachOnWitness=({bedPosition})=>{
+  assert.equal(bedPosition,target);f.calls.push(['next_bed_cell']);return{state:'started'}
+ }
+ return f
+}
+test('fresh post-door bed intent replans the next guarded step when no door remains on the route',()=>{
+ const {r,calls}=afterDoorFixture()
+ const out=resumeBed(r)
+ assert.equal(out.state,'approaching',JSON.stringify(out))
+ assert.equal(r.pendingBedRequest.stage,'awaiting_step')
+ assert.deepEqual(calls,[['next_bed_cell']]);cancelBed(r)
+})
+test('pending independent door endpoint prevents bed replan and any extra movement',()=>{
+ const {r,calls}=afterDoorFixture();r.pendingDoorCrossing={}
+ assert.equal(resumeBed(r).state,'waiting')
+ assert.equal(r.pendingBedRequest.stage,'door');assert.equal(calls.length,0);cancelBed(r)
+})
+test('a verified bed cell settles before reselecting the next stage with the same target',()=>{
+ const {r,calls}=afterDoorFixture()
+ r.pendingBedRequest.stage='awaiting_step';r.pendingBedRequest.stepIssuedAt=now-1000
+ r.lastBedApproachAction={status:'verified',serverMovementVerified:true,at:now-10}
+ assert.equal(resumeBed(r).state,'approaching')
+ assert.equal(r.pendingBedRequest.steps,2);assert.equal(calls.length,1);cancelBed(r)
+})
+test('missing independent proof never replans or starts a next bed cell',()=>{
+ const {r,calls}=afterDoorFixture()
+ r.movementEvidence.get=()=>({loginAt:6,lifeEpochAt:7})
+ assert.equal(resumeBed(r).state,'waiting')
+ assert.equal(r.pendingBedRequest.stage,'door');assert.equal(calls.length,0);cancelBed(r)
+})
 test('bed response differentiates personal spawn and actual sleep',()=>{
  assert.equal(outcome('set_spawnpoint',{spawnConfirmed:true}).ok,true)
  assert.equal(outcome('sleep',{spawnConfirmed:true,sleepWindow:false}).ok,false)

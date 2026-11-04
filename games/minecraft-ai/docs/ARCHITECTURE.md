@@ -1,3 +1,9 @@
+## 2026-11-04 — 实机复现床阶段丢失；按新鲜BDS原点重算阶段（版本9待测）
+
+76通过Mint1007/1007、Mac337（3 skip），原批准77加载PID1818511/version8。新79 set_spawnpoint commandId=bcb05070d9e74de69e778d94c6c09288在84明确failed/bed_door_route_no_longer_observed；不重发。84同时显示原自主流程已发出一格跳跃、pending独立终点（bed_jump_waiting_for_new_independent_endpoint），尚未确认跳跃成功，不能重载来冒充其成功。
+
+测试先复现：已过门后仍固定stage=door，即使当前床前有合法下一步、无门需要打开，也直接拒绝旧门不可见。现在先结算旧床步独立终点，再在同一新鲜BDS原点为同一床重算interact/approach/door；任何pending床/门终点都先等待。目标、owner/session/life、15分钟意图/240秒物理终点、24阶段/90分钟、STOP/FOLLOW/危险与BDS门禁均不变。新增穿门后接续、pending禁止额外移动、已验证步先结算、缺证据不重算测试，未增加输入或查询。当前进程仍版本8。
+
 ## 2026-11-04 — 穿门已获BDS确认；带顶棚单格跳跃轨迹预检（版本8待测）
 
 版本7的只读72实证door_crossing_new_independent_bds_confirmed/serverMovementVerified=true；不是本地路径结果。原10597…请求73明确rejected/bed_route_requires_door，未重发；实际穿门由原自主门流程完成。74当前地形显示门在身后、床约7.8格且高1格，近侧屋顶在脚下+3，向床一侧有完整方块台阶。

@@ -1,3 +1,9 @@
+## 2026-11-04 — 实机复现床阶段丢失；按新鲜BDS原点重算阶段（版本9待测）
+
+76通过Mint1007/1007、Mac337（3 skip），原批准77加载PID1818511/version8。新79 set_spawnpoint commandId=bcb05070d9e74de69e778d94c6c09288在84明确failed/bed_door_route_no_longer_observed；不重发。84同时显示原自主流程已发出一格跳跃、pending独立终点（bed_jump_waiting_for_new_independent_endpoint），尚未确认跳跃成功，不能重载来冒充其成功。
+
+测试先复现：已过门后仍固定stage=door，即使当前床前有合法下一步、无门需要打开，也直接拒绝旧门不可见。现在先结算旧床步独立终点，再在同一新鲜BDS原点为同一床重算interact/approach/door；任何pending床/门终点都先等待。目标、owner/session/life、15分钟意图/240秒物理终点、24阶段/90分钟、STOP/FOLLOW/危险与BDS门禁均不变。新增穿门后接续、pending禁止额外移动、已验证步先结算、缺证据不重算测试，未增加输入或查询。当前进程仍版本8。
+
 ## 2026-11-04 — 顶棚轨迹真实物理测试通过，修正回归拒绝原因兼容
 
 sync75实际执行Mint1007项，1006通过、1失败；新增真实固定Physics三项全部通过，失败为旧adjacent_motion_decision夹具（无速度/registry）期待原headroom拒绝原因。该夹具仍未获跳跃许可，只是错误分类变成no_observed_landing。现保留原headroom未验证原因，不修改旧断言或扩大许可；需新完整sync验证。未加载版本8，生产仍PID1804956/version7。

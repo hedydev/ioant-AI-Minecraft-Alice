@@ -210,6 +210,39 @@ function resumeBed(r){
  const proof=scoutStartProof(r.bot,r.movementEvidence,r.clock)
  if(!proof.ok)return proof.reason==='scout_bds_position_unavailable'?
    {state:'waiting',reason:proof.reason}:deny(proof.reason)
+ // A completed local GoalNear cannot certify the prior one-cell step.
+ // The callback first settles its later independent BDS endpoint. Refuse
+ // both duplicate movement and bed activation until that succeeds.
+ if(p.stage==='awaiting_step'){
+  if(r.pendingBedStep||r.job)
+   return {state:'waiting',reason:'bed_step_waiting_for_independent_endpoint'}
+  const last=r.lastBedApproachAction
+  if(last?.status!=='verified'||last.at<p.stepIssuedAt||
+     last.serverMovementVerified!==true)
+   return deny('bed_step_independent_endpoint_unconfirmed')
+  p.steps++
+  if(p.steps>MAX_STEPS||now>=p.globalExpiresAt)return deny('bed_approach_step_limit')
+  p.stage='approach';p.expiresAt=Math.min(p.globalExpiresAt,now+INTENT_WAIT)
+  clearTimeout(p.timer)
+  p.timer=setTimeout(()=>{if(r.pendingBedRequest===p)cancelBed(r,'bed_request_expired')},
+    Math.max(1,p.expiresAt-now));p.timer.unref?.()
+ }
+ // Re-evaluate navigation stage against THIS fresh independent origin.
+ // Login/local planning and a completed doorway must not pin a stale door
+ // forever. Keep the same bed, lifetime, owner and guarded one-cell executor.
+ if(['door','approach'].includes(p.stage)){
+  if(r.pendingBedStep||r.pendingDoorCrossing||r.pendingDoorApproachStep)
+   return {state:'waiting',reason:'bed_step_waiting_for_independent_endpoint'}
+  const current=selectAdjacentBed(r.bot,[p.position],{radius:16})
+  if(!current.bed&&current.reason!=='bed_needs_verified_approach')
+   return deny('bed_changed_or_no_longer_available')
+  if(current.bed)p.stage='interact'
+  else{
+   const map=surveyEscape(r.bot,{radius:7,maxNodes:100,bedPositions:[p.position]})
+   p.stage=flatBedRoute(map.bedApproach,r.bot.entity?.position)?'approach':
+    selectBedDoor(r.bot,map,p.position)?'door':'approach'
+  }
+ }
  if(p.stage==='door'){
   const choice=selectAdjacentBed(r.bot,[p.position],{radius:16})
   if(!choice.bed&&choice.reason!=='bed_needs_verified_approach')
@@ -229,23 +262,6 @@ function resumeBed(r){
    }
    return stage
   }
- }
- // A completed local GoalNear cannot certify the prior one-cell step.
- // The callback first settles its later independent BDS endpoint. Refuse
- // both duplicate movement and bed activation until that succeeds.
- if(p.stage==='awaiting_step'){
-  if(r.pendingBedStep||r.job)
-   return {state:'waiting',reason:'bed_step_waiting_for_independent_endpoint'}
-  const last=r.lastBedApproachAction
-  if(last?.status!=='verified'||last.at<p.stepIssuedAt||
-     last.serverMovementVerified!==true)
-   return deny('bed_step_independent_endpoint_unconfirmed')
-  p.steps++
-  if(p.steps>MAX_STEPS||now>=p.globalExpiresAt)return deny('bed_approach_step_limit')
-  p.stage='approach';p.expiresAt=Math.min(p.globalExpiresAt,now+INTENT_WAIT)
-  clearTimeout(p.timer)
-  p.timer=setTimeout(()=>{if(r.pendingBedRequest===p)cancelBed(r,'bed_request_expired')},
-    Math.max(1,p.expiresAt-now));p.timer.unref?.()
  }
  const choice=selectAdjacentBed(r.bot,[p.position],{radius:16})
  if(!choice.bed&&choice.reason==='bed_needs_verified_approach'&&
