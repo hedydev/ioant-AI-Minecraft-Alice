@@ -190,10 +190,13 @@ def summarize(view):
                 matched+=int(found)
                 if unknown and not found:uncertain+=1
         roof=block(0,2,0)
+        client_contact=(view.get('alice') or {}).get('onGround')
+        contact='client_true' if client_contact is True else (
+            'client_false' if client_contact is False else 'not_published')
         return {'state':'client_fraction_observed',
                 'source':'rounded_client_cache_not_bds',
                 'movementPermitted':False,'serverMovementVerified':False,
-                'onGround':'not_published',
+                'onGround':contact,
                 'feetFraction':[fx,fy,fz],
                 'originNominalFloorFullCube':full(block(0,-1,0)),
                 'originRoofPlusTwoFullCube':full(roof),
@@ -305,6 +308,15 @@ def selftest():
     assert ledge['supportedFootprintProbes']==3
     assert ledge['supportingRelativeColumns']==[[-1,0,-1]]
     assert ledge['validMovementStart'] is False
+    # Read-only client physics contact only; legacy snapshots remain unknown.
+    view['alice']['onGround']=True
+    assert summarize(view)['footprint']['onGround']=='client_true'
+    view['alice']['onGround']=False
+    assert summarize(view)['footprint']['onGround']=='client_false'
+    view['alice']['onGround']='false'
+    assert summarize(view)['footprint']['onGround']=='not_published'
+    del view['alice']['onGround']
+    assert summarize(view)['footprint']['onGround']=='not_published'
     view['alice']={'local':[123,0,.5]}
     assert summarize(view)['footprint']['state']=='client_feet_unavailable'
     print('ALICE_COLLISION_SHAPE_READONLY_SELFTEST_PASS')

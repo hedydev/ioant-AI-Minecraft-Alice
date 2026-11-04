@@ -49,6 +49,10 @@ function snapshot(bot,{connected=false,movement=null,state='IDLE',job=null,jobSt
     dimension:String(bot?.game?.dimension||'unknown').slice(0,25),
     alice:{
       local:ready?coord(self):null,
+      // Local physics contact is passive telemetry, never independent BDS proof.
+      // Missing/invalid adapter state is unknown, never assumed grounded.
+      onGround:ready&&typeof bot?.entity?.onGround==='boolean'?
+        bot.entity.onGround:null,
       yaw:Number.isFinite(bot?.entity?.yaw)?Math.round(bot.entity.yaw*1000)/1000:null,
       server:authoritative?coord(ownFeet):null,
       serverSampleAgeMs:authoritative?age:null,

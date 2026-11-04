@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "title": "Mac local Node built-in regression for passive Alice onGround snapshot only",
+  "steps": [
+    {
+      "name": "world_view_ground_node_test",
+      "runtime": "node",
+      "script": "games/minecraft-ai/bedrock-native/experiment/test/world_view.test.cjs",
+      "args": [],
+      "timeoutSeconds": 65
+    }
+  ],
+  "artifacts": []
+}

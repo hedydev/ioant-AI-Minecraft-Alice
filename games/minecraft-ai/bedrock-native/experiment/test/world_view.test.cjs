@@ -28,8 +28,24 @@ test('only a bounded, real cached 3D block neighborhood is exposed',()=>{
  assert(!JSON.stringify(view).includes('xuid'))
  assert.deepEqual(view.alice.local,[10.5,65,20.5])
  assert.equal(view.alice.positionLabel,'client_prediction_unverified')
+ assert.equal(view.alice.onGround,null,'unknown client contact must stay unknown')
  assert.equal(view.entities.length,1)
  assert.equal(view.entities[0].kind,'zombie')
+})
+test('passive client ground contact is tri-state and cannot grant movement',()=>{
+ const {bot}=fixture()
+ bot.entity.onGround=true
+ let view=snapshot(bot,{connected:true,now:()=>20000})
+ assert.equal(view.alice.onGround,true)
+ bot.entity.onGround=false
+ view=snapshot(bot,{connected:true,now:()=>21000,cachedTerrain:view})
+ assert.equal(view.alice.onGround,false,'collision cache reuse must not reuse contact')
+ bot.entity.onGround='true'
+ view=snapshot(bot,{connected:true,now:()=>22000})
+ assert.equal(view.alice.onGround,null)
+ view=snapshot(bot,{connected:false,now:()=>23000})
+ assert.equal(view.alice.onGround,null)
+ assert.equal(view.alice.positionLabel,'client_prediction_unverified')
 })
 test('reuse terrain sample only within same coarse coordinates and 4s',()=>{
  const {bot,reads}=fixture()
