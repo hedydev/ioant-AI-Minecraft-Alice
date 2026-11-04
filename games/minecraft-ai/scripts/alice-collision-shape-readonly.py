@@ -149,10 +149,66 @@ def summarize(view):
             if b and (b['name']!='air' or b['box']!='empty' or b['shapes']!=[]):
                 columns.append({'dy':y,**b})
         samples.append({'dx':x,'dz':z,'centerCandidate':role(x,z),'blocks':columns})
+    def current_footprint():
+        # Privacy: report only offsets WITHIN the existing anonymous cache cell,
+        # never the world's X/Y/Z, usernames, BDS witness secrets or raw files.
+        # Rounded local physics is NOT an authoritative BDS position.
+        invalid={'state':'client_feet_unavailable','source':'rounded_client_cache_not_bds',
+                 'movementPermitted':False,'onGround':'not_published'}
+        local=(view.get('alice') or {}).get('local')
+        origin=view.get('origin')
+        if (not isinstance(local,list) or not isinstance(origin,list) or
+            len(local)!=3 or len(origin)!=3 or
+            any(type(v) not in (int,float) or not -30000000<=v<=30000000 for v in local) or
+            any(type(v) is not int or not -30000000<=v<=30000000 for v in origin)):
+            return invalid
+        frac=[round(local[i]-origin[i],2) for i in range(3)]
+        if any(not -.01<=n<=1.01 for n in frac):return invalid
+        fx,fy,fz=[max(0,min(1,n)) for n in frac]
+        matched=0;uncertain=0;matchedCells=set()
+        for sx in (-.29,0,.29):
+            for sz in (-.29,0,.29):
+                px,pz=fx+sx,fz+sz
+                bx,bz=int(px//1),int(pz//1)
+                found=False;unknown=False
+                for by in (-2,-1,0):
+                    b=block(bx,by,bz)
+                    if b is None or b['box']=='unverified' or b['shapes'] is None:
+                        unknown=True;continue
+                    if b['box']!='block':continue
+                    if any(t in b['name'] for t in hazards) or b['name'].endswith(('_door','trapdoor')):
+                        unknown=True;continue
+                    for shape in b['shapes']:
+                        if (not isinstance(shape,list) or len(shape)!=6 or
+                            any(type(n) not in (int,float) or not 0<=n<=1 for n in shape)):
+                            unknown=True;continue
+                        if (abs(by+shape[4]-fy)<=.03 and
+                            shape[0]-.0001<=px-bx<=shape[3]+.0001 and
+                            shape[2]-.0001<=pz-bz<=shape[5]+.0001):
+                            found=True;matchedCells.add((bx,bz,by));break
+                    if found:break
+                matched+=int(found)
+                if unknown and not found:uncertain+=1
+        roof=block(0,2,0)
+        return {'state':'client_fraction_observed',
+                'source':'rounded_client_cache_not_bds',
+                'movementPermitted':False,'serverMovementVerified':False,
+                'onGround':'not_published',
+                'feetFraction':[fx,fy,fz],
+                'originNominalFloorFullCube':full(block(0,-1,0)),
+                'originRoofPlusTwoFullCube':full(roof),
+                'sampledFootprintProbes':9,
+                'supportedFootprintProbes':matched,
+                'unverifiedFootprintProbes':uncertain,
+                'supportingRelativeColumns':[
+                    [x,z,y] for x,z,y in sorted(matchedCells)][:12],
+                'validMovementStart':False}
+
     return {'state':'observed','source':'client_chunk_cache_not_bds',
        'bdsEndpointVerified':False,'movementPermitted':False,
        'collisionRadius':7,'records':len(cells),'unknown':0,
        'sweptDoorSurvey':door_walk_survey(doorpoints),
+       'footprint':current_footprint(),
        'doorColumns':[{'dx':x,'dz':z,
                        'lower':block(x,0,z),'upper':block(x,1,z)}
                       for x,z in doorpoints[:2]],
@@ -231,6 +287,26 @@ def selftest():
             cell[3:5]=[1,2]
     blocked=summarize(view)
     assert blocked['sweptDoorSurvey']['doorApproaches']==[]
+    # Anonymous rounded world-view offsets diagnose overlap at a ledge.
+    # They NEVER grant movement, even with nine supported probes.
+    view['origin']=[0,0,0]
+    view['alice']={'local':[.5,0,.5]}
+    solid=summarize(view)['footprint']
+    assert solid['state']=='client_fraction_observed'
+    assert solid['supportedFootprintProbes']==9
+    assert solid['validMovementStart'] is False
+    assert solid['movementPermitted'] is False
+    assert solid['feetFraction']==[.5,0,.5]
+    view['alice']['local']=[.05,0,.5]
+    for cell in cells:
+        if cell[:3]==[0,-1,0]:cell[3:5]=[0,1]
+    ledge=summarize(view)['footprint']
+    assert ledge['originNominalFloorFullCube'] is False
+    assert ledge['supportedFootprintProbes']==3
+    assert ledge['supportingRelativeColumns']==[[-1,0,-1]]
+    assert ledge['validMovementStart'] is False
+    view['alice']={'local':[123,0,.5]}
+    assert summarize(view)['footprint']['state']=='client_feet_unavailable'
     print('ALICE_COLLISION_SHAPE_READONLY_SELFTEST_PASS')
 def run(out):
     out=Path(out)
