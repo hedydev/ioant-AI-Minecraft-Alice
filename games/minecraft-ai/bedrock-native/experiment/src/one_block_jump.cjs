@@ -39,7 +39,7 @@ function candidateOneBlockJump(bot,{toward=null}={}){
  const originRoof=read(root.x,root.y+3,root.z)
  if(!knownWalkingClear(originRoof)&&!fullSupport(originRoof))
    return fail('jump_origin_support_or_headroom_unverified')
- const steps=[]
+ const steps=[];let cappedUnverified=false
  for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){
   const x=root.x+dx,y=root.y,z=root.z+dz
   const block=read(x,y,z)
@@ -65,10 +65,11 @@ function candidateOneBlockJump(bot,{toward=null}={}){
   const after=toward?Math.hypot(x+.5-toward.x,z+.5-toward.z):null
   if(toward&&after>=before-.15)continue
   const capped=!knownWalkingClear(originRoof)||!knownWalkingClear(landingRoof)
-  if(capped&&!previewCeilingLimitedJump(bot,to).ok)continue
+  if(capped&&!previewCeilingLimitedJump(bot,to).ok){cappedUnverified=true;continue}
   steps.push({to,remaining:after??0,capped})
  }
- if(!steps.length)return fail('no_observed_one_block_jump_landing')
+ if(!steps.length)return fail(cappedUnverified?
+   'jump_origin_support_or_headroom_unverified':'no_observed_one_block_jump_landing')
  steps.sort((a,b)=>a.remaining-b.remaining)
  const to=steps[0].to
  return {ok:true,reason:'observed_one_block_ascent_candidate',

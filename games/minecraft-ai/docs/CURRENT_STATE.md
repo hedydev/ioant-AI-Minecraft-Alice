@@ -1,3 +1,7 @@
+## 2026-11-04 — 顶棚轨迹真实物理测试通过，修正回归拒绝原因兼容
+
+sync75实际执行Mint1007项，1006通过、1失败；新增真实固定Physics三项全部通过，失败为旧adjacent_motion_decision夹具（无速度/registry）期待原headroom拒绝原因。该夹具仍未获跳跃许可，只是错误分类变成no_observed_landing。现保留原headroom未验证原因，不修改旧断言或扩大许可；需新完整sync验证。未加载版本8，生产仍PID1804956/version7。
+
 ## 2026-11-04 — 穿门已获BDS确认；带顶棚单格跳跃轨迹预检（版本8待测）
 
 版本7的只读72实证door_crossing_new_independent_bds_confirmed/serverMovementVerified=true；不是本地路径结果。原10597…请求73明确rejected/bed_route_requires_door，未重发；实际穿门由原自主门流程完成。74当前地形显示门在身后、床约7.8格且高1格，近侧屋顶在脚下+3，向床一侧有完整方块台阶。
