@@ -1,3 +1,7 @@
+## 2026-11-04 — 版本9已加载，89为当前唯一新验收请求
+
+85通过Mint1011/1011、Mac337（3skip）；原批准87完成PID1818511→1826633，88读回版本9。86此前已独立确认一格跳跃终点，不是只发输入。89仅提交一次set_spawnpoint，commandId=3c219128a38e487c9ee94cf0352ab3b8，运行时结果待查；旧bcb…已failed，不重放。后续只查当前请求与逐格终点，当前床/个人重生点/睡眠仍未完整验收。检查点已重写，旧额度自动恢复与旧PID说明不再适用。
+
 ## 2026-11-04 — 实机复现床阶段丢失；按新鲜BDS原点重算阶段（版本9待测）
 
 76通过Mint1007/1007、Mac337（3 skip），原批准77加载PID1818511/version8。新79 set_spawnpoint commandId=bcb05070d9e74de69e778d94c6c09288在84明确failed/bed_door_route_no_longer_observed；不重发。84同时显示原自主流程已发出一格跳跃、pending独立终点（bed_jump_waiting_for_new_independent_endpoint），尚未确认跳跃成功，不能重载来冒充其成功。
