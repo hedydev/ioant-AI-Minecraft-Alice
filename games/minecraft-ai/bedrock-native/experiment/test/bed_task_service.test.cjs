@@ -82,6 +82,16 @@ test('missing independent proof never replans or starts a next bed cell',()=>{
  assert.equal(resumeBed(r).state,'waiting')
  assert.equal(r.pendingBedRequest.stage,'door');assert.equal(calls.length,0);cancelBed(r)
 })
+test('loaded distant bed can store intent without inventing a route before fresh BDS admission',()=>{
+ const {r,calls}=fixture(),target=vec(5,65,0)
+ r.observedBeds.nearby=()=>[target];r.bot.findBlocks=()=>[target]
+ r.bot.blockAt=p=>Math.floor(p.x)===5&&Math.floor(p.y)===65&&Math.floor(p.z)===0?
+  {name:'red_bed',position:target}:{name:'stone',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}
+ const out=requestBed(r,'set_spawnpoint','控制台')
+ assert.equal(out.status,'started');assert.equal(out.reason,'awaiting_bds_bed_approach')
+ assert.equal(r.pendingBedRequest.position.x,5);assert.equal(r.pendingBedRequest.stage,'approach')
+ assert.equal(calls.length,0);cancelBed(r)
+})
 test('bed response differentiates personal spawn and actual sleep',()=>{
  assert.equal(outcome('set_spawnpoint',{spawnConfirmed:true}).ok,true)
  assert.equal(outcome('sleep',{spawnConfirmed:true,sleepWindow:false}).ok,false)

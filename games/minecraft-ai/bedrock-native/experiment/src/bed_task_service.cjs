@@ -147,6 +147,15 @@ function requestBed(r,action,source,report=null){
    }
   }
  }
+ // A goal is not a movement permit. Before a fresh BDS origin exists, a
+ // loaded free bed may have no currently executable local route. Preserve
+ // just that bounded target; resumeBed replans after the ORIGINAL proof and
+ // independently guarded one-cell geometry checks. Never guess a route here.
+ if(!bedPosition&&choice.reason==='bed_needs_verified_approach'){
+  const target=positions.find(pos=>
+    selectAdjacentBed(r.bot,[pos],{radius:16}).reason==='bed_needs_verified_approach')
+  if(target){bedPosition=target;needsApproach=true;doorStage=false}
+ }
  if(!bedPosition){
   const reason=obstacleReason||choice.reason
   return reply('rejected',reason,message({reason}))
@@ -184,7 +193,7 @@ function requestBed(r,action,source,report=null){
  if(next.state==='completed')return reply('completed',next.reason,next.message)
  if(next.state==='rejected')return reply('rejected',next.reason,message({reason:next.reason}))
  return reply('started',needsApproach?'awaiting_bds_bed_approach':'awaiting_bds_bed_proof',
-   needsApproach?'已发现床和只读安全接近路线；等待BDS双样本开始单步行走':
+   needsApproach?'已保存观察到的床目标；等待新鲜BDS双样本重新规划，尚未批准移动':
      '找到可触及的床；等待新鲜 BDS 双坐标证明，不会擅自移动')
 }
 function resumeBed(r){

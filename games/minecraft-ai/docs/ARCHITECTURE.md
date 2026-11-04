@@ -1,3 +1,7 @@
+## 2026-11-04 — 已观察床目标与行动准入分离（版本10待验收）
+
+90确认版本9的89请求3c219128a38e487c9ee94cf0352ab3b8已rejected/bed_needs_verified_approach，未行动、不得重放。初始接近规划可能在新鲜BDS原点到达前没有可执行路线，过去因此连目标意图都不保存。版本10只允许为已加载、未占用、16格内床保存有界目标；没有路线不等于获准行动。resumeBed仍必须等待原4s/.75当前生命BDS双样本，再重算路线、逐格检查和独立终点；实体墙、未知形状、安全/STOP/FOLLOW仍拒绝。新增完整墙体场景验证只保存意图、0动作；没有创造路径或放开门禁。当前PID1826633仍版本9，完整测试和加载待回执。
+
 ## 2026-11-04 — 实机复现床阶段丢失；按新鲜BDS原点重算阶段（版本9待测）
 
 76通过Mint1007/1007、Mac337（3 skip），原批准77加载PID1818511/version8。新79 set_spawnpoint commandId=bcb05070d9e74de69e778d94c6c09288在84明确failed/bed_door_route_no_longer_observed；不重发。84同时显示原自主流程已发出一格跳跃、pending独立终点（bed_jump_waiting_for_new_independent_endpoint），尚未确认跳跃成功，不能重载来冒充其成功。
