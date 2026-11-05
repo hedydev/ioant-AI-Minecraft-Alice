@@ -125,7 +125,8 @@ async function performEdgeReturn(bot,candidate,{
   return denied('edge_input_unavailable')
  if(signal?.aborted||!approved(safe))return denied('edge_safety_preempted')
  // A genuine Vec3 carries offset/clone methods on its prototype.
- const start=original.clone?.()||original
+ if(typeof original?.clone!=='function')return denied('edge_start_vec3_unverified')
+ const start=original.clone()
  const dx=goal.x-start.x,dz=goal.z-start.z,length=Math.hypot(dx,dz)
  if(length<.3||length>1.55)return denied('edge_distance_unverified')
  const unit={x:dx/length,z:dz/length},geom=reader(bot,start)
@@ -137,7 +138,10 @@ async function performEdgeReturn(bot,candidate,{
     Math.abs(sx*unit.z-sz*unit.x)<=.22
  }
  const stillObserved=()=>{
-  const anchored={...bot,entity:{...bot.entity,position:start,onGround:true}}
+  // Mineflayer methods such as blockAt live on the prototype; spreading bot
+  // would silently remove them and abort every in-flight recheck.
+  const anchored={entity:{...bot.entity,position:start,onGround:true},
+   game:bot.game,entities:bot.entities,blockAt:p=>bot.blockAt(p)}
   const next=selectEdgeReturn(anchored,{toward:{
    x:goal.x,y:candidate.target.y,z:goal.z}})
   return next.ok&&sameTarget(next.target,candidate.target)

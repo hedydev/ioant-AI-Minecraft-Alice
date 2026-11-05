@@ -73,6 +73,22 @@ test('a bounded local motion can never impersonate a BDS-confirmed endpoint',asy
  assert(signals.filter(([k,v])=>k==='forward'&&v).length<=4)
  assert(Math.abs(bot.entity.position.x-.11)<=1)
 })
+test('prototype-owned blockAt survives each in-flight original-geometry recheck',async()=>{
+ const {bot,signals}=edge()
+ const original=bot.blockAt
+ delete bot.blockAt
+ Object.setPrototypeOf(bot,{blockAt:original})
+ const plan=selectEdgeReturn(bot)
+ assert.equal(plan.ok,true)
+ let moving=false
+ bot.setControlState=(k,v)=>{signals.push([k,v]);moving=v}
+ const answer=await performEdgeReturn(bot,plan,{safe:()=>true,maxPulses:4,
+  sleep:async()=>{if(moving){const p=bot.entity.position;bot.entity.position=V(p.x-.22,65,.60)}}})
+ assert.equal(answer.attempted,true)
+ assert.equal(answer.reason,'edge_input_sent_independent_endpoint_required')
+ assert.equal(answer.serverMovementVerified,false)
+ assert.deepEqual(signals.at(-1),['forward',false])
+})
 test('the returned plan is not reusable after any source geometry change',async()=>{
  const {bot,signals}=edge(),candidate=selectEdgeReturn(bot)
  bot.blockAt=()=>air
