@@ -101,6 +101,31 @@ test('edge fixture control with continuous full floor and low roof still admits 
  assert.equal(plan.serverMovementVerified,false)
 })
 
+test('explicit edge return is a candidate only; ordinary callers preserve old hold',()=>{
+ const {bot}=scene()
+ bot.entity.position=v(.11,65,.60)
+ bot.blockAt=p=>{
+  const x=Math.floor(p.x),y=Math.floor(p.y),z=Math.floor(p.z)
+  if(y===64&&x===-1&&z===0)
+   return {name:'stone',boundingBox:'block',shapes:[[0,0,0,1,1,1]]}
+  if(y===67)return {name:'cobblestone',boundingBox:'block',
+   shapes:[[0,0,0,1,1,1]]}
+  return {name:'air',boundingBox:'empty',shapes:[]}
+ }
+ const target={x:-5,y:65,z:-3}
+ const ordinary=chooseAdjacentMovement(bot,{
+  toward:target,allowDirectional:true,allowJump:true})
+ assert.equal(ordinary.ok,false)
+ assert.equal(ordinary.reason,'jump_origin_support_or_headroom_unverified')
+ const candidate=chooseAdjacentMovement(bot,{
+  toward:target,allowDirectional:true,allowJump:true,allowEdgeReturn:true})
+ assert.equal(candidate.ok,true)
+ assert.equal(candidate.action,'EDGE_RETURN')
+ assert.deepEqual(candidate.target,{x:-1,y:65,z:0})
+ assert.equal(candidate.permitted,false)
+ assert.equal(candidate.serverMovementVerified,false)
+ assert.equal(candidate.edge.bdsOriginVerified,false)
+})
 test('only a read-only proven flat route may choose a planned waypoint',()=>{
  const f=scene({roofAt:67})
  const route={status:'observed_route_candidate',routeComplete:true,

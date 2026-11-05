@@ -3,6 +3,7 @@
 // Observation is NEVER a movement permit, a BDS witness, or a completed path.
 const {selectDirectionalBedStep}=require('./bed_directional_step.cjs')
 const {candidateOneBlockJump}=require('./one_block_jump.cjs')
+const {selectEdgeReturn}=require('./edge_return.cjs')
 const finite=p=>!!p&&[p.x,p.y,p.z].every(Number.isSafeInteger)
 const no=reason=>({ok:false,reason,permitted:false,serverMovementVerified:false})
 function flatSurveyRoute(bot,route){
@@ -23,11 +24,11 @@ function flatSurveyRoute(bot,route){
  return {x:first[0],y:first[1],z:first[2]}
 }
 function chooseAdjacentMovement(bot,{
- toward,route=null,allowDirectional=false,allowJump=false}={}){
+ toward,route=null,allowDirectional=false,allowJump=false,allowEdgeReturn=false}={}){
  const flat=flatSurveyRoute(bot,route)
  if(flat)return {ok:true,action:'WALK',source:'observed_flat_route',
    target:flat,permitted:false,serverMovementVerified:false}
- if((allowDirectional||allowJump)&&!finite(toward))
+ if((allowDirectional||allowJump||allowEdgeReturn)&&!finite(toward))
    return no('movement_target_unverified')
  // Natural movement first: an observed 2-block-high flat passage requires
  // only WALK, even when the ceiling is too low for a jumping arc.
@@ -44,6 +45,14 @@ function chooseAdjacentMovement(bot,{
    toward:{x:toward.x+.5,y:toward.y,z:toward.z+.5}}):null
  if(jump?.ok)return {ok:true,action:'JUMP_UP',source:'observed_full_block_rise',
    target:jump.target,jump,permitted:false,serverMovementVerified:false}
+ // Only an explicit bed caller may request an edge-to-full-floor retreat.
+ // Pure geometry is not movement permission; BDS + life/STOP/FOLLOW/combat
+ // gates remain exclusively in the owner-controlled bed step executor.
+ const edge=allowEdgeReturn?selectEdgeReturn(bot,{toward:{
+  x:toward.x+.5,y:toward.y,z:toward.z+.5}}):null
+ if(edge?.ok)return {ok:true,action:'EDGE_RETURN',
+   source:'observed_single_edge_return_candidate',
+   target:edge.target,edge,permitted:false,serverMovementVerified:false}
  return no(jump?.reason||directional?.reason||'verified_bed_corridor_unavailable')
 }
 module.exports={chooseAdjacentMovement}

@@ -22,6 +22,7 @@ const {planRaisedDoorThreshold,performRaisedDoorThreshold,verifyRaisedDoorThresh
 const {selectDirectionalBedStep}=require('./bed_directional_step.cjs')
 const {chooseAdjacentMovement}=require('./adjacent_motion_decision.cjs')
 const {candidateOneBlockJump,performOneBlockJump}=require('./one_block_jump.cjs')
+const {selectEdgeReturn,performEdgeReturn}=require('./edge_return.cjs')
 const {requestBed,resumeBed,cancelBed}=require('./bed_task_service.cjs')
 const {HomeBaseMemory,homeAgenda}=require('./home_base.cjs')
 const {planNightReposition,nightConditions}=require('./night_survival.cjs')
@@ -110,7 +111,7 @@ function parseTask(cmd) {
 }
 const {createBedRuntimeMethods}=require('./features/bed/runtime_methods.cjs')
 const {createDoorRuntimeMethods}=require('./features/door/runtime_methods.cjs')
-const bedRuntimeMethods=createBedRuntimeMethods({requestBed,resumeBed,scoutStartProof,selectAdjacentBed,surveyEscape,useBedForSpawn,verifyBedStep,chooseAdjacentMovement,HOSTILES,candidateOneBlockJump,selectDirectionalBedStep,performOneBlockJump})
+const bedRuntimeMethods=createBedRuntimeMethods({requestBed,resumeBed,scoutStartProof,selectAdjacentBed,surveyEscape,useBedForSpawn,verifyBedStep,chooseAdjacentMovement,HOSTILES,candidateOneBlockJump,selectDirectionalBedStep,performOneBlockJump,selectEdgeReturn,performEdgeReturn})
 const doorRuntimeMethods=createDoorRuntimeMethods({verifyScoutStep,scoutStartProof,surveyEscape,validateCrossing,planRaisedDoorThreshold,performRaisedDoorThreshold,crossDoor,verifyRaisedDoorThreshold,verifyRaisedDoorLanding,verifyDoorCrossing,chooseAdjacentMovement,performOneBlockJump,THREAT_CLEAR_MS})
 
 const {createSafetyRuntimeMethods}=require('./features/safety/runtime_methods.cjs')

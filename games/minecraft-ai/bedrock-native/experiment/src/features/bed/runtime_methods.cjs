@@ -2,7 +2,7 @@
 const {sleepOpportunity}=require('./sleep_opportunity.cjs')
 // Extracted, behavior-preserving Alice runtime feature methods.
 // Explicit dependency injection retains original owner and BDS safety gates.
-function createBedRuntimeMethods({requestBed,resumeBed,scoutStartProof,selectAdjacentBed,surveyEscape,useBedForSpawn,verifyBedStep,chooseAdjacentMovement,HOSTILES,candidateOneBlockJump,selectDirectionalBedStep,performOneBlockJump}){
+function createBedRuntimeMethods({requestBed,resumeBed,scoutStartProof,selectAdjacentBed,surveyEscape,useBedForSpawn,verifyBedStep,chooseAdjacentMovement,HOSTILES,candidateOneBlockJump,selectDirectionalBedStep,performOneBlockJump,selectEdgeReturn,performEdgeReturn}){
   return {
   sleepTick(options={}){return sleepOpportunity(this,options)},
   requestBedTask(action,source,report=null){return requestBed(this,action,source,report)},
@@ -143,9 +143,11 @@ function createBedRuntimeMethods({requestBed,resumeBed,scoutStartProof,selectAdj
     // verified flat cell is available and the whole jump arc is clear.
     const decision=chooseAdjacentMovement(this.bot,{
       toward:explicitBed?bedPosition:home?.bed,route:path,
-      allowDirectional:!!explicitBed,allowJump:!!explicitBed})
+      allowDirectional:!!explicitBed,allowJump:!!explicitBed,
+      allowEdgeReturn:!!explicitBed})
     if(!decision.ok)return fail(decision.reason)
     const jump=decision.action==='JUMP_UP'?decision.jump:null
+    const edge=decision.action==='EDGE_RETURN'?decision.edge:null
     const directional=decision.source==='observed_flat_neighbor'?
       decision.directional:null
     const a=[decision.target.x,decision.target.y,decision.target.z]
@@ -162,7 +164,7 @@ function createBedRuntimeMethods({requestBed,resumeBed,scoutStartProof,selectAdj
     if(![first.x,first.y,first.z].every(Number.isSafeInteger)||
        first.y!==at.y+(jump?.ok?1:0)||
        Math.abs(first.x-at.x)+Math.abs(first.z-at.z)!==1||
-       (jump?.ok?typeof this.bot.setControlState!=='function'||
+       ((jump?.ok||edge?.ok)?typeof this.bot.setControlState!=='function'||
          typeof this.bot.lookAt!=='function':
          !this.bot.pathfinder?.goto||!this.bot.pathfinder?.setMovements||
          !this.api?.GoalNear||!this.api?.Movements))
@@ -173,7 +175,7 @@ function createBedRuntimeMethods({requestBed,resumeBed,scoutStartProof,selectAdj
     const initialAt=initial?.independentAt
     const initialCount=initial?.independentSamples
     const oneStep={createdAt:now,startedAt:null,epoch:this.epoch+1,
-      action:jump?.ok?'JUMP_UP':'WALK',
+      action:decision.action,
       independentAt:initialAt,independentSamples:initialCount,
       loginAt:initial?.loginAt??null,lifeEpochAt:initial?.lifeEpochAt??null,
       from:initialFeet&&{x:initialFeet.x,y:initialFeet.y,z:initialFeet.z},
@@ -196,10 +198,16 @@ function createBedRuntimeMethods({requestBed,resumeBed,scoutStartProof,selectAdj
         const fresh=surveyEscape(this.bot,{radius:7,maxNodes:100,bedPositions:selected})
         const refreshedJump=jump?.ok?candidateOneBlockJump(this.bot,
           {toward:{x:bedPosition.x+.5,y:bedPosition.y,z:bedPosition.z+.5}}):null
+        const refreshedEdge=edge?.ok?selectEdgeReturn(this.bot,{toward:{
+          x:bedPosition.x+.5,y:bedPosition.y,z:bedPosition.z+.5}}):null
         const stillSafe=jump?.ok?
           refreshedJump?.ok&&[
             refreshedJump.target.x,refreshedJump.target.y,
             refreshedJump.target.z].join(',')===a.join(','):
+          edge?.ok?
+            refreshedEdge?.ok&&[
+              refreshedEdge.target.x,refreshedEdge.target.y,
+              refreshedEdge.target.z].join(',')===a.join(','):
           directional?.ok?
             selectDirectionalBedStep(this.bot,bedPosition).first?.join(',')===a.join(','):
             fresh.bedApproach?.waypoints?.[0]?.join(',')===a.join(',')
@@ -229,6 +237,29 @@ function createBedRuntimeMethods({requestBed,resumeBed,scoutStartProof,selectAdj
             serverMovementVerified:false,
             reason:physical.attempted?
               'bed_jump_waiting_for_new_independent_endpoint':physical.reason}
+          if(!physical.attempted&&this.pendingBedStep===oneStep)
+            this.pendingBedStep=null
+          return result
+        }
+        if(edge?.ok){
+          // A grounded partial-foothold is NOT a normal WALK origin.
+          // Only the original fresh independent BDS pair and ALL existing
+          // safety gates may allow one bounded pulse sequence. The local
+          // outcome is never endpoint proof; a NEW BDS pair is mandatory.
+          oneStep.startedAt=this.clock()
+          this.pendingBedStep=oneStep
+          const physical=await performEdgeReturn(this.bot,edge,{
+            signal,
+            safe:()=>this.job?.signal===signal&&
+              scoutStartProof(this.bot,this.movementEvidence,this.clock).ok&&
+              !this.threat()&&!this.core.hasFollowIntent()&&
+              !this.goalPlanner.stoppedByHuman&&
+              !this.safetyBusy&&this.bot.health>=16
+          })
+          result={ok:false,attempted:physical.attempted===true,
+            serverMovementVerified:false,
+            reason:physical.attempted?
+              'bed_edge_return_waiting_for_new_independent_endpoint':physical.reason}
           if(!physical.attempted&&this.pendingBedStep===oneStep)
             this.pendingBedStep=null
           return result
@@ -271,7 +302,8 @@ function createBedRuntimeMethods({requestBed,resumeBed,scoutStartProof,selectAdj
           serverMovementVerified:result.serverMovementVerified===true,
           at:this.clock()}
       }
-    },{label:jump?.ok?'接近床：一次完整方块跳跃':'接近床：一格安全步行',
+    },{label:jump?.ok?'接近床：一次完整方块跳跃':
+      edge?.ok?'接近床：单格安全退回地板':'接近床：一格安全步行',
       announce:false})
     // startJob intentionally returns void on success. Read the actual
     // guarded owner and source, not its undefined return value.
