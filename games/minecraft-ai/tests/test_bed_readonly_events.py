@@ -23,6 +23,34 @@ class BedReadonlyEventsTest(unittest.TestCase):
         rows=m.summarize_bed_log(prefix+'not-json\n'+prefix+'[]\n'+prefix+json.dumps({
             'reason':'raw private text','ok':'true','steps':True,'secret':'do_not_copy'}))
         self.assertEqual(rows,[{'kind':'job_result','reason':None}])
+    def test_bed_endpoint_reports_only_whitelisted_action_not_position(self):
+        prefix='[Alice home] independent bed-step endpoint: '
+        rows=m.summarize_bed_log(prefix+json.dumps({
+            'reason':'bed_step_new_independent_endpoint_confirmed',
+            'action':'EDGE_RETURN','attempted':True,'serverMovementVerified':True,
+            'from':[101,2,303],'target':[100,2,303],'player':'private_name'}))
+        self.assertEqual(rows,[{'kind':'bed_endpoint',
+            'reason':'bed_step_new_independent_endpoint_confirmed',
+            'attempted':True,'serverMovementVerified':True,'action':'EDGE_RETURN'}])
+        self.assertNotIn('private_name',str(rows));self.assertNotIn('101',str(rows))
+        bad=m.summarize_bed_log(prefix+json.dumps({
+            'reason':'bed_step_new_independent_endpoint_confirmed',
+            'action':'../../secret','serverMovementVerified':False}))
+        self.assertEqual(bad,[{'kind':'bed_endpoint',
+            'reason':'bed_step_new_independent_endpoint_confirmed',
+            'serverMovementVerified':False}])
+        unrelated=m.summarize_bed_log(
+            '[Alice Bedrock] verified job result: '+json.dumps({'reason':'scout_step',
+                'action':'EDGE_RETURN'}))
+        self.assertEqual(unrelated,[{'kind':'job_result','reason':'scout_step'}])
+        self.assertIsNotNone(m.validate({'state':'unverified','bedLogRead':True,
+            'bedEvents':rows,'interactionStatus':None,'bedLogicVersion':None,
+            'producerPid':None,'isSleeping':None,'personalBedStatus':'unknown',
+            'connected':False,'health':None,'phase':'unknown','canSleep':None,
+            'rememberedBeds':None,'sleepOpportunity':'unknown','lastBedFailure':'unknown',
+            'nightSurvival':'unknown','idleGate':'unknown','hasFollowTarget':False,
+            'jobActive':False}))
+
     def test_recent_history_has_a_strict_tail_bound(self):
         text='\n'.join('[Alice bed] explicit witnessed bed task: '+json.dumps({'reason':'stage_'+str(i)}) for i in range(30))
         out=m.summarize_bed_log(text)

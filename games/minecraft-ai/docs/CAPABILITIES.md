@@ -1,3 +1,7 @@
+## 2026-11-06 — 安全只读单格终点动作溯源（不更改游戏逻辑）
+
+已扩展现有 Mac read-only `alice-17879-bed-readonly.py`：仅在真正 `[Alice home] independent bed-step endpoint:` 日志含明确动作时输出固定枚举 `action=WALK|JUMP_UP|EDGE_RETURN`。拒绝非白名单和其他事件的action，绝不输出床/玩家/坐标/令牌或完整原始日志。新增Python测试验证真值、伪造、隐私过滤；新字段仅用于将BDS已验证的单格动作分类，不是新动作权限、BDS查询或目标验收。详见 [LIVE_EDGE_RETURN_ACCEPTANCE_20261106.md](LIVE_EDGE_RETURN_ACCEPTANCE_20261106.md)。
+
 ## 2026-11-04 — 本轮预算收尾：版本10全量通过，尚未加载
 
 92在源码0c7f4e17b11ac297db200a690171de5c65f9aaac通过Mint1012/1012、0skip，Mac337项（3skip，其余通过）；只做非重启sync。生产仍原批准87加载的PID1826633/version9（运行源码8c2e7ef），版本10未加载，typed新验收入口要求10，不得对版本9误发。90确认当前最后89命令3c219128a38e487c9ee94cf0352ab3b8已经rejected/bed_needs_verified_approach，不是进行中。没有新的床请求或在途MCP任务，下一新编号93。

@@ -18,3 +18,6 @@
 2. 在新 pendingBedStep/Scout/DoorCrossing/DoorApproachStep 任何一个在途时，禁止新显式床命令、客户端重启、重试旧失败ID。严格互斥的实机拒绝分支尚未单独触发验证。
 3. 完成室内床路、木门跨越、床实际到达、同生命个人重生点服务器确认和夜间真实睡眠，各自独立验收。白天 `canSleep=false` 时不能宣称睡眠成功。
 4. 保持独立的读状态与Git/Mint验收，不新开世界、不改BDS/原世界、不克隆/reset，不覆盖本地修改。旧网页监督与alice-2继续PAUSED。
+## 后续独立床单格见证（014–016）及增强只读审计
+
+014/016同一新PID3155549：日志出现 `[Alice home] independent bed-step endpoint`，`reason=bed_step_new_independent_endpoint_confirmed`、`serverMovementVerified=true`。这提供了此前没有的**具体床单格**服务器终点确认，但已经有下一次动作 `awaiting_bds_endpoint`；当前 `isSleeping=false`、白天不可睡。015 独立BDS timer：新登录累计服务器移动0.68格、4个样本、预算27/40，不得仅用累计值替代目标匹配。此时尚未从有限日志证明该已确认单格的action是什么，也不声称EDGE_RETURN到达。现有只读日志器仅提取reason/布尔，因此增加严格白名单 `action` 字段（只读Mac脚本），以区分WALK/JUMP_UP/EDGE_RETURN，不携带坐标或原始日志、不给新移动权限；须以独立新回执检验动作类型。

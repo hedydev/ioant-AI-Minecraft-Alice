@@ -1,3 +1,7 @@
+## 2026-11-06 — 新 PID 已出现独立 BDS bed-step endpoint 确认，后续另一格仍在等待
+
+固定只读014–016：原服PID3155549、IDLE、健康与会话正常；BDS本登录4个独立样本、累计服务器位移0.68格；床日志明确 `bed_step_new_independent_endpoint_confirmed/serverMovementVerified=true`，后续又发起一格并处于 `awaiting_bds_endpoint`。此事件证明至少一格床方向动作取得独立终点，不证明最初西侧 EDGE_RETURN 或整条床路线完成，白天 `canSleep=false`。增加只读动作类型白名单字段与回归，待新脚本现场复核具体action。不得重启/新增床命令，勿重置查询预算。详见 [LIVE_EDGE_RETURN_ACCEPTANCE_20261106.md](LIVE_EDGE_RETURN_ACCEPTANCE_20261106.md)。
+
 ## 2026-11-06 — Rev93 单次 Alice-only 重启成功；新生命床单格终点仍待独立BDS确认
 
 经OpenClaw固定只读核对旧PID2516229无床端点等待，SCOUT最近动作已有独立结算，重启安全窗口全PASS；原批准任务008完成PID2516229→3155549，owner/17879/原世界/会话/心跳均确认，BDS和世界未动，加载Mint已同步的pending endpoint互斥修复。新PID只读009–011显示白天不可睡、个人床位仍为`previous_server_confirmation`，并新产生自主床动作`awaiting_bds_endpoint`，新生命BDS累计位移0，尚未到达目标；停止新床命令/再次重启，保留现有定时预算。旧显式命令仍failed，不可重放。Mac三组互斥/端点测试012 PASS。详情见 [LIVE_EDGE_RETURN_ACCEPTANCE_20261106.md](LIVE_EDGE_RETURN_ACCEPTANCE_20261106.md)。
