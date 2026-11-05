@@ -1,3 +1,7 @@
+## 2026-11-06 — 只读动作溯源实机确认2次WALK单格终点，下一格仍等待
+
+新增严格枚举动作类型诊断后，固定任务018于原PID3155549真实日志读回两条 `bed_step_new_independent_endpoint_confirmed`，均 `action=WALK` 且 `serverMovementVerified=true`；随后新一格仍 `awaiting_bds_endpoint`。这确认**两个床方向WALK单格的独立BDS终点**，并不证明更早的EDGE_RETURN西侧候选到达，也不能认定抵达床、重生点或夜间睡眠。新增只读脚本/隐私测试提交7a2b97d，017 Mac回归Python338（skip3，其余全PASS），定向回归PASS、工作区干净；不修改游戏运行代码，不发送BDS查询或命令。详见 [LIVE_EDGE_RETURN_ACCEPTANCE_20261106.md](LIVE_EDGE_RETURN_ACCEPTANCE_20261106.md)。
+
 ## 2026-11-06 — 新 PID 已出现独立 BDS bed-step endpoint 确认，后续另一格仍在等待
 
 固定只读014–016：原服PID3155549、IDLE、健康与会话正常；BDS本登录4个独立样本、累计服务器位移0.68格；床日志明确 `bed_step_new_independent_endpoint_confirmed/serverMovementVerified=true`，后续又发起一格并处于 `awaiting_bds_endpoint`。此事件证明至少一格床方向动作取得独立终点，不证明最初西侧 EDGE_RETURN 或整条床路线完成，白天 `canSleep=false`。增加只读动作类型白名单字段与回归，待新脚本现场复核具体action。不得重启/新增床命令，勿重置查询预算。详见 [LIVE_EDGE_RETURN_ACCEPTANCE_20261106.md](LIVE_EDGE_RETURN_ACCEPTANCE_20261106.md)。

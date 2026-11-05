@@ -21,3 +21,9 @@
 ## 后续独立床单格见证（014–016）及增强只读审计
 
 014/016同一新PID3155549：日志出现 `[Alice home] independent bed-step endpoint`，`reason=bed_step_new_independent_endpoint_confirmed`、`serverMovementVerified=true`。这提供了此前没有的**具体床单格**服务器终点确认，但已经有下一次动作 `awaiting_bds_endpoint`；当前 `isSleeping=false`、白天不可睡。015 独立BDS timer：新登录累计服务器移动0.68格、4个样本、预算27/40，不得仅用累计值替代目标匹配。此时尚未从有限日志证明该已确认单格的action是什么，也不声称EDGE_RETURN到达。现有只读日志器仅提取reason/布尔，因此增加严格白名单 `action` 字段（只读Mac脚本），以区分WALK/JUMP_UP/EDGE_RETURN，不携带坐标或原始日志、不给新移动权限；须以独立新回执检验动作类型。
+## 新只读动作溯源实机确认与回归（017–018）
+
+- GitHub新增只读单格端点 `action` 白名单（仅 `WALK` / `JUMP_UP` / `EDGE_RETURN`）及隐私回归，commit `7a2b97d9a88f0b8544b949d15748b597312ef613`。只读实现筛出当前PID安全本地日志中的固定reason、动作和布尔；拒绝非白名单、原始位置与身份信息，不需要重启或改变Mint运行源。
+- 固定017完成Mac精确同步、定向9项PASS、全量Python338项（跳过3项，其他全PASS），`worktreeClean=true`。该验收只证明代码输出/隐私安全。
+- 固定018原PID3155549在线、HP20、白天不可睡，当前进程日志明确两次 `bed_endpoint / bed_step_new_independent_endpoint_confirmed / action=WALK / serverMovementVerified=true`，每次都从真实独立BDS终点结算而非本地预估；二者之后还有一条新 `job_result / bed_step_waiting_for_new_independent_endpoint / serverMovementVerified=false`。因此此轮**两次WALK单格**已经确认，但下一格未确认，亦不得冒称旧EDGE_RETURN目标已到、接触床、设成当前生命重生点或睡过夜。自主行动继续由原安全门禁和BDS自然timer驱动，禁止趁pending重复命令或重启。
+

@@ -1,3 +1,7 @@
+## 2026-11-06 — 床单格只读动作溯源实机观察
+
+Mac只读脚本 `alice-17879-bed-readonly.py` 在当前同生命日志上通过固定018：两条 `bed_endpoint` 仅呈现动作枚举 `WALK`、`serverMovementVerified=true`、固定reason；不输出位置或原始私密日志。017 Mac Python338（3 skip）PASS。该诊断不对游戏发指令，不代表整条床路线或EDGE_RETURN已验证。当前原世界PID3155549又有后续床单格pending，所有原互斥和BDS预算不变。
+
 ## 2026-11-06 — 安全只读单格终点动作溯源（不更改游戏逻辑）
 
 已扩展现有 Mac read-only `alice-17879-bed-readonly.py`：仅在真正 `[Alice home] independent bed-step endpoint:` 日志含明确动作时输出固定枚举 `action=WALK|JUMP_UP|EDGE_RETURN`。拒绝非白名单和其他事件的action，绝不输出床/玩家/坐标/令牌或完整原始日志。新增Python测试验证真值、伪造、隐私过滤；新字段仅用于将BDS已验证的单格动作分类，不是新动作权限、BDS查询或目标验收。详见 [LIVE_EDGE_RETURN_ACCEPTANCE_20261106.md](LIVE_EDGE_RETURN_ACCEPTANCE_20261106.md)。
