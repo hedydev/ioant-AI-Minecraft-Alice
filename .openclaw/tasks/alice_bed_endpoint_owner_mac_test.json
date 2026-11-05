@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "title": "Offline Node regression for pending BDS endpoint ownership across explicit bed entry",
+  "steps": [
+    {
+      "name": "bed_command_owner_regression",
+      "runtime": "node",
+      "script": "games/minecraft-ai/bedrock-native/experiment/test/bed_task_service.test.cjs",
+      "args": [],
+      "timeoutSeconds": 65
+    },
+    {
+      "name": "bed_endpoint_witness_regression",
+      "runtime": "node",
+      "script": "games/minecraft-ai/bedrock-native/experiment/test/bed_step_witness.test.cjs",
+      "args": [],
+      "timeoutSeconds": 65
+    },
+    {
+      "name": "bed_witness_demand_regression",
+      "runtime": "node",
+      "script": "games/minecraft-ai/bedrock-native/experiment/test/bed_witness_demand.test.cjs",
+      "args": [],
+      "timeoutSeconds": 65
+    }
+  ],
+  "artifacts": []
+}
