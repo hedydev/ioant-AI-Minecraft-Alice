@@ -1,3 +1,7 @@
+## 2026-11-05 — EDGE_RETURN 实机触发；BDS非零移动已见证，床任务仍失败
+
+原世界 Alice 仅经原已批准的两次客户端替换（PID1971786→2503838→2516229，BDS和世界未动）。客户端确认着地但脚底3/9由西侧石头支撑；只读检测发现唯一西侧一格的0.6m扫掠候选。新EDGE_RETURN触发真实物理输入，BDS后续独立采样有1.2格非零位移，但特定目标格终点未获确认。一次性新床命令bfa5096eb8fe4194b4ce593fbee5de0e最终failed/bed_request_expired，重生点与睡眠仍未验证；绝不可重发。日志显示自主EDGE_RETURN与显式床命令/门动作可能交叠；新增fail-closed独立端点互斥，定向Node三组PASS、Mac Python337(跳过3)、Mint Node24 1026/1026 PASS；源码已非重启同步到Mint，但当前PID仍持有未验证端点，**故不重启加载最后修复**。详见 [LIVE_EDGE_RETURN_ACCEPTANCE_20261105.md](LIVE_EDGE_RETURN_ACCEPTANCE_20261105.md)。
+
 ## 2026-11-05 — Passive current-feet edge-return candidate only
 
 Approved original-world Alice client was restarted once after fixed Mint non-restart source sync and Node24 1016/1016; new PID2503838 reports client `onGround=true` while 9-probe support remains 3/9 and roof at +2 is solid. New read-only edge-return survey sweeps the actual **rounded** fractional feet toward each adjacent safe floor with nondecreasing 3+ support, 9/9 landing, 0.6 AABB and collision/hazard/door rejection. **Candidate only, not a BDS permit or physical executor**. Current witness 128 has no fresh pair (3/40 budget). See [ALICE_BED_FOOTPRINT_DIAG_20261104.md](ALICE_BED_FOOTPRINT_DIAG_20261104.md).
