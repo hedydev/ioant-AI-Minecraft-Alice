@@ -392,6 +392,11 @@ def selftest():
     assert summarize(view)['footprint']['state']=='client_feet_unavailable'
     # Edge means 3 of 9 footprint contacts, NEVER safe movement permission.
     # Low (+2) roof remains a two-block-high WALK passage, not jump space.
+    # Earlier blocked-door fixture made all four adjacent body cells solid;
+    # restore those synthetic body cells before testing an unobstructed ledge.
+    for cell in cells:
+        if (cell[0],cell[2]) in ((-1,0),(0,-1),(1,0),(0,1)) and cell[1] in (0,1):
+            cell[3:5]=[0,1]
     view['alice']={'local':[.11,0,.6],'onGround':True}
     for cell in cells:
         if cell[:3]==[0,-1,0]:cell[3:5]=[0,1]
