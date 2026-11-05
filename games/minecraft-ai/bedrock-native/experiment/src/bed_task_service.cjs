@@ -83,6 +83,14 @@ function requestBed(r,action,source,report=null){
  const reply=(status,reason,text)=>({status,reason,message:text})
  if(!TYPES.has(action))return reply('rejected','unsupported_bed_action','不支持此床任务')
  if(r.pendingBedRequest||r.job)return reply('rejected','job_in_progress','已有任务在进行')
+ // A prior physical one-cell action may have finished its short input job
+ // while waiting for the NEW independent BDS endpoint. This is still an
+ // active owner: do not increment epoch, cancel planning or accept another
+ // explicit bed command over that unverified movement. No automatic retry.
+ if(r.pendingBedStep||r.pendingScoutStep||r.pendingDoorCrossing||
+    r.pendingDoorApproachStep)
+   return reply('rejected','independent_movement_endpoint_pending',
+     '上一格移动仍等待服务器独立坐标确认，暂不能启动新床任务')
  if(r.closed||!r.ready())return reply('rejected','bed_runtime_not_ready','尚未同步可靠生命和背包')
  if(r.bot.isSleeping)return reply('completed','already_sleeping','Alice 已经在睡觉')
  if(r.core.hasFollowIntent()||r.safetyBusy||r.threat()||

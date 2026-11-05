@@ -207,6 +207,37 @@ test('another confirmed bed cannot silently fulfill setup of the adjacent bed',(
  cancelBed(r)
 })
 
+test('new typed bed commands cannot overlap an already issued one-cell BDS endpoint',()=>{
+ for(const property of ['pendingBedStep','pendingScoutStep',
+   'pendingDoorCrossing','pendingDoorApproachStep']){
+  const {r,calls}=fixture(),identity={epoch:r.epoch,startedAt:now-1000}
+  let cancels=0,aborts=0
+  r.goalPlanner.cancel=()=>cancels++
+  r.plannerAbort={abort:()=>aborts++}
+  r[property]=identity
+  const initialEpoch=r.epoch
+  const reply=requestBed(r,'set_spawnpoint','控制台')
+  assert.equal(reply.status,'rejected',property)
+  assert.equal(reply.reason,'independent_movement_endpoint_pending',property)
+  assert.equal(r[property],identity,property)
+  assert.equal(r.epoch,initialEpoch,property)
+  assert.equal(r.pendingBedRequest,null,property)
+  assert.equal(r.lastHumanAt,undefined,property)
+  assert.equal(cancels,0,property)
+  assert.equal(aborts,0,property)
+  assert.deepEqual(calls,[],property)
+ }
+})
+test('in-flight job still takes precedence over idle pending-endpoint guard',()=>{
+ const {r,calls}=fixture()
+ r.pendingBedStep={startedAt:now-1000}
+ r.job={type:'EXPLORE'}
+ const out=requestBed(r,'sleep','控制台')
+ assert.equal(out.status,'rejected')
+ assert.equal(out.reason,'job_in_progress')
+ assert.deepEqual(calls,[])
+})
+
 test('new explicit bed intent cancels stale async model planning without issuing movement',()=>{
  const {r,calls}=fixture()
  const oldEpoch=r.epoch,events=[]
