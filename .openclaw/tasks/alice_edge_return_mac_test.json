@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "title": "Pure and mock-input offline edge-to-full-floor safety tests, no real game operations",
+  "steps": [
+    {
+      "name": "edge_return_node_tests",
+      "runtime": "node",
+      "script": "games/minecraft-ai/bedrock-native/experiment/test/edge_return.test.cjs",
+      "args": [],
+      "timeoutSeconds": 65
+    },
+    {
+      "name": "existing_adjacent_decision_tests",
+      "runtime": "node",
+      "script": "games/minecraft-ai/bedrock-native/experiment/test/adjacent_motion_decision.test.cjs",
+      "args": [],
+      "timeoutSeconds": 65
+    }
+  ],
+  "artifacts": []
+}
