@@ -207,11 +207,82 @@ def summarize(view):
                     [x,z,y] for x,z,y in sorted(matchedCells)][:12],
                 'validMovementStart':False}
 
+    def edge_return_survey(foot):
+        # OBSERVATION ONLY. A fractional client position is not a BDS origin.
+        # Never send inputs or infer permission from this geometric sweep.
+        out={'state':'held','source':'rounded_client_cache_not_bds',
+             'reason':'client_ground_or_partial_support_unverified',
+             'movementPermitted':False,'serverMovementVerified':False,
+             'actualBdsOriginVerified':False,'candidates':[]}
+        if (foot.get('state')!='client_fraction_observed' or
+            foot.get('onGround')!='client_true' or
+            foot.get('unverifiedFootprintProbes')!=0 or
+            not 1<=foot.get('supportedFootprintProbes',0)<=8):
+            return out
+        fx,fy,fz=foot['feetFraction']
+        if not 0<=fy<=.015:return out
+        def contact_count(x,z):
+            count=0
+            for dx in (-.29,0,.29):
+                for dz in (-.29,0,.29):
+                    sx,sz=x+dx,z+dz
+                    bx,bz=int(sx//1),int(sz//1)
+                    sh=boxes_at(bx,-1,bz)
+                    if sh is None:return None
+                    if any(abs(-1+a[4])<=.015 and
+                           a[0]-.0001<=sx-bx<=a[3]+.0001 and
+                           a[2]-.0001<=sz-bz<=a[5]+.0001 for a in sh):
+                        count+=1
+            return count
+        def body_clear_at(x,z):
+            for ix in range(int((x-.3)//1),int((x+.3)//1)+1):
+                for iz in range(int((z-.3)//1),int((z+.3)//1)+1):
+                    for iy in (0,1):
+                        sh=boxes_at(ix,iy,iz)
+                        if sh is None:return False
+                        if any(ix+a[0]<x+.3-.001 and ix+a[3]>x-.3+.001 and
+                               iz+a[2]<z+.3-.001 and iz+a[5]>z-.3+.001 and
+                               iy+a[1]<1.8-.001 and iy+a[4]>.001 for a in sh):
+                            return False
+            return True
+        start=contact_count(fx,fz)
+        if start is None or start!=foot['supportedFootprintProbes'] or not body_clear_at(fx,fz):
+            return out
+        candidates=[]
+        for direction,dx,dz in (('west',-1,0),('north',0,-1),
+                                ('east',1,0),('south',0,1)):
+            tx,tz=dx+.5,dz+.5
+            countSteps=max(2,int(((((tx-fx)**2+(tz-fz)**2)**.5)/.07)+.9999))
+            if countSteps>32:continue
+            previous=start;minimum=start;eligible=True
+            for step in range(1,countSteps+1):
+                x=fx+(tx-fx)*step/countSteps
+                z=fz+(tz-fz)*step/countSteps
+                num=contact_count(x,z)
+                if num is None or num<3 or num<previous or not body_clear_at(x,z):
+                    eligible=False;break
+                minimum=min(minimum,num)
+                previous=num
+            if eligible and previous==9:
+                candidates.append({'direction':direction,
+                    'relativeTargetCell':[dx,dz],
+                    'observedStartContacts':start,
+                    'minContacts':minimum,'endContacts':previous,
+                    'sweptSamples':countSteps+1,
+                    'action':'read_only_one_cell_candidate',
+                    'movementPermitted':False,'serverMovementVerified':False})
+        return {**out,'state':'candidate_observed' if candidates else 'held',
+                'reason':'passive_monotone_support_sweep_only' if candidates else
+                         'no_conservative_edge_return_candidate',
+                'candidateCount':len(candidates),'candidates':candidates}
+
+    footprint=current_footprint()
     return {'state':'observed','source':'client_chunk_cache_not_bds',
        'bdsEndpointVerified':False,'movementPermitted':False,
        'collisionRadius':7,'records':len(cells),'unknown':0,
        'sweptDoorSurvey':door_walk_survey(doorpoints),
-       'footprint':current_footprint(),
+       'footprint':footprint,
+       'edgeReturnSurvey':edge_return_survey(footprint),
        'doorColumns':[{'dx':x,'dz':z,
                        'lower':block(x,0,z),'upper':block(x,1,z)}
                       for x,z in doorpoints[:2]],
@@ -319,6 +390,25 @@ def selftest():
     assert summarize(view)['footprint']['onGround']=='not_published'
     view['alice']={'local':[123,0,.5]}
     assert summarize(view)['footprint']['state']=='client_feet_unavailable'
+    # Edge means 3 of 9 footprint contacts, NEVER safe movement permission.
+    # Low (+2) roof remains a two-block-high WALK passage, not jump space.
+    view['alice']={'local':[.11,0,.6],'onGround':True}
+    for cell in cells:
+        if cell[:3]==[0,-1,0]:cell[3:5]=[0,1]
+    edge=summarize(view)
+    assert edge['footprint']['supportedFootprintProbes']==3
+    result=edge['edgeReturnSurvey']
+    assert result['state']=='candidate_observed'
+    assert any(q['direction']=='west' and q['endContacts']==9 for q in result['candidates'])
+    assert not result['movementPermitted']
+    assert not result['serverMovementVerified']
+    view['alice']['onGround']=False
+    assert summarize(view)['edgeReturnSurvey']['state']=='held'
+    view['alice']['onGround']=True
+    for cell in cells:
+        if cell[:3]==[-1,1,0]:cell[3:5]=[1,2]
+    blocked_edge=summarize(view)['edgeReturnSurvey']
+    assert not any(q['direction']=='west' for q in blocked_edge['candidates'])
     print('ALICE_COLLISION_SHAPE_READONLY_SELFTEST_PASS')
 def run(out):
     out=Path(out)
