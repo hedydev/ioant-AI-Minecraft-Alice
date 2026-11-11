@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "title": "One verified Alice client start after host reboot; original UDP 17879 world only",
+  "steps": [
+    {
+      "name": "start_contract",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-client-start-gated.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "original_world_preflight",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-client-start-gated.py",
+      "args": [
+        "--check",
+        "@output_dir",
+        "@operation_id"
+      ],
+      "timeoutSeconds": 100
+    },
+    {
+      "name": "one_shot_client_start",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-client-start-gated.py",
+      "args": [
+        "--start",
+        "@output_dir",
+        "@operation_id"
+      ],
+      "timeoutSeconds": 210
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "start_preflight",
+      "file": "alice_17879_start_preflight.json",
+      "format": "json"
+    },
+    {
+      "id": "alice_start",
+      "file": "alice_17879_client_start.json",
+      "format": "json"
+    }
+  ]
+}
