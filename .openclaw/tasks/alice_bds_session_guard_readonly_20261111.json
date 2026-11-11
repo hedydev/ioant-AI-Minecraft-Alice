@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Read-only production BDS session guard classification after host reboot",
+  "steps": [
+    {
+      "name": "diagnostic_contract",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-bds-session-guard-readonly.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "classify_bds_session_without_commands",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-bds-session-guard-readonly.py",
+      "args": [
+        "--inspect",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 85
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "session_guard",
+      "file": "alice_bds_session_readonly.json",
+      "format": "json"
+    }
+  ]
+}
