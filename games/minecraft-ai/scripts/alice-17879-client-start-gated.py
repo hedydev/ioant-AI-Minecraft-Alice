@@ -51,9 +51,18 @@ def read_status(app, pid):
 
 def preflight(app):
     verify_no_alice(app)
-    env = load_environment(app.root)
-    app.check(env)
-    app.wait_bds_release(env)
+    try:
+        env = load_environment(app.root)
+    except (ValueError, OSError, KeyError, TypeError):
+        raise ValueError("private_start_config_unavailable")
+    try:
+        app.check(env)
+    except (ValueError, OSError, subprocess.SubprocessError):
+        raise ValueError("production_gate_failed")
+    try:
+        app.wait_bds_release(env)
+    except (ValueError, OSError, subprocess.SubprocessError):
+        raise ValueError("bds_login_gate_failed")
     verify_no_alice(app)
     return env
 
@@ -128,8 +137,12 @@ def run(mode, operation):
             return result
         finally:
             os.close(fd)
-    except (ValueError, OSError, subprocess.SubprocessError):
-        result["failureReason"] = "production_preflight_failed"
+    except (ValueError, OSError, subprocess.SubprocessError) as exc:
+        reason = str(exc) if isinstance(exc, ValueError) else ""
+        allowed = {"alice_already_running", "unowned_alice_process",
+                   "private_start_config_unavailable", "production_gate_failed",
+                   "bds_login_gate_failed"}
+        result["failureReason"] = reason if reason in allowed else "production_preflight_failed"
         return result
 
 mode, operation = sys.argv[1:3]
