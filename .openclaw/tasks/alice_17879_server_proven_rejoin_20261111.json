@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "title": "One gated original-world Alice rejoin after independent BDS absence proof; no BDS/world lifecycle",
+  "steps": [
+    {
+      "name": "safe_rejoin_contract",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-server-proven-rejoin.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "one_verified_absence_then_alice_start",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-server-proven-rejoin.py",
+      "args": [
+        "--start",
+        "@output_dir",
+        "@operation_id"
+      ],
+      "timeoutSeconds": 205
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "rejoin",
+      "file": "alice_live_rejoin.json",
+      "format": "json"
+    }
+  ]
+}

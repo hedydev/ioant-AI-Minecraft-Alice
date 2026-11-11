@@ -58,3 +58,45 @@ test('parser ignores chat, other players, and identity metadata; reads bounded t
  assert.equal(sessionStatus(data.text,'hedygame7231').latest,'disconnected')
  assert.equal(sessionStatus(data.text,'AnotherPlayer').eventsSeen,0)
 }))
+
+test('fresh independent BDS no-match can recover only missing historic session',()=>withLog([
+ '[2026-11-11 09:00:00:000 INFO] Running server'
+],({root,env,log})=>{
+ const checked=()=>true
+ const status=assertBdsSessionReleased(env,{dir:root,now:()=>fs.statSync(log).mtimeMs+1000,
+   proofReader:checked})
+ assert.equal(status.status,'live_bds_absence_verified')
+ assert.equal(status.eventsSeen,0)
+}))
+test('live no-match proof cannot override BDS history showing Alice ONLINE',()=>withLog([
+ line('2026-11-11 09:00:10:000','connected')
+],({root,env,log})=>{
+ assert.throws(()=>assertBdsSessionReleased(env,{dir:root,now:()=>fs.statSync(log).mtimeMs+1000,
+   proofReader:()=>true}),/still records .* ONLINE/)
+}))
+test('absence proof file must be private, fresh, and original-port bound',()=>withLog([
+ '[2026-11-11 09:00:00:000 INFO] Running server'
+],({root,env,log})=>{
+ const {readAbsenceProof,PROOF_LIFETIME_MS}=require('../server_session_guard.cjs')
+ const proofHome=fs.mkdtempSync(path.join(os.tmpdir(),'alice-proof-test-'))
+ const secret=path.join(proofHome,'.alice-bedrock-control')
+ fs.mkdirSync(secret,{mode:0o700})
+ const proof=path.join(secret,'bds-session-rejoin-absence.json')
+ const stat=fs.statSync(log),now=Date.now()
+ const d={version:1,source:'bds_querytarget_no_matching_player',observedAt:now,
+   expiresAt:now+PROOF_LIFETIME_MS,instanceLogDev:stat.dev,
+   instanceLogIno:stat.ino,instanceId:UUID,port:17879,socketInode:'293940'}
+ try{
+   fs.writeFileSync(proof,JSON.stringify(d),{mode:0o600})
+   const verify=(at=now,udp='293940')=>readAbsenceProof(env,{home:proofHome,
+      now:()=>at,socketInode:()=>udp})
+   assert.equal(verify(),true)
+   assert.equal(verify(now+PROOF_LIFETIME_MS),false)
+   assert.equal(verify(now,'1234'),false)
+   fs.chmodSync(proof,0o644)
+   assert.equal(verify(),false)
+   fs.chmodSync(proof,0o600)
+   fs.writeFileSync(proof,JSON.stringify({...d,port:17880}))
+   assert.equal(verify(),false)
+ }finally{fs.rmSync(proofHome,{recursive:true,force:true})}
+}))

@@ -5,6 +5,57 @@
 // Unknown or stale evidence fails CLOSED when this guard is configured.
 const fs=require('node:fs')
 const path=require('node:path')
+
+const os=require('node:os')
+const PROOF_LIFETIME_MS=45*1000
+const PROOF_BASENAME='bds-session-rejoin-absence.json'
+// Original BDS port identity is kept stable during one verified login.
+function originalUdpSocketInode({read=fs.readFileSync}={}){
+  const candidates=[]
+  for(const file of ['/proc/net/udp','/proc/net/udp6']){
+    let table
+    try{table=read(file,'utf8')}catch{return null}
+    for(const line of table.split(/\r?\n/).slice(1)){
+      const cols=line.trim().split(/\s+/)
+      if(cols.length<10)continue
+      const port=cols[1]?.split(':').at(-1)
+      if(port?.toUpperCase()!=='45D7')continue // decimal 17879
+      if(!/^[0-9]+$/.test(cols[9])||cols[9]==='0')return null
+      candidates.push(cols[9])
+    }
+  }
+  return candidates.length===1?candidates[0]:null
+}
+function readAbsenceProof(env,{now=Date.now,fsImpl=fs,
+    home=os.homedir(),socketInode=originalUdpSocketInode}={}){
+  try{
+    const root=path.join(home,'.alice-bedrock-control')
+    const file=path.join(root,PROOF_BASENAME)
+    const directory=fsImpl.lstatSync(root),item=fsImpl.lstatSync(file)
+    if(!directory.isDirectory()||directory.isSymbolicLink()||
+       !item.isFile()||item.isSymbolicLink()||
+       directory.uid!==process.getuid()||item.uid!==process.getuid()||
+       (directory.mode&0o077)!==0||(item.mode&0o077)!==0||
+       item.size===0||item.size>768)return false
+    const d=JSON.parse(fsImpl.readFileSync(file,'utf8'))
+    const keys=['version','source','observedAt','expiresAt','instanceLogDev',
+      'instanceLogIno','instanceId','port','socketInode']
+    if(Object.keys(d).sort().join(',')!==keys.sort().join(','))return false
+    const time=now()
+    if(d.version!==1||d.source!=='bds_querytarget_no_matching_player'||
+       d.port!==17879||!Number.isSafeInteger(d.observedAt)||
+       d.expiresAt!==d.observedAt+PROOF_LIFETIME_MS||
+       time<d.observedAt||time>=d.expiresAt||!Number.isSafeInteger(time)||
+       d.instanceId!==path.basename(env.ALICE_BEDROCK_BDS_SESSION_LOG,'.log')||
+       !Number.isSafeInteger(d.instanceLogDev)||
+       !Number.isSafeInteger(d.instanceLogIno)||typeof d.socketInode!=='string')return false
+    const stat=fsImpl.statSync(env.ALICE_BEDROCK_BDS_SESSION_LOG)
+    if(!stat.isFile()||stat.dev!==d.instanceLogDev||stat.ino!==d.instanceLogIno)
+      return false
+    return socketInode()===d.socketInode
+  }catch{return false}
+}
+
 const DEFAULT_DIR='/opt/mcsmanager/daemon/data/InstanceLog'
 const MAX_TAIL=1024*1024
 const MAX_AGE_MS=30*60*1000
@@ -36,7 +87,7 @@ function sessionStatus(log,gamertag){
   const latest=entries.at(-1)||null
   return {latest,eventsSeen:entries.length}
 }
-function assertBdsSessionReleased(env=process.env,{now=Date.now,dir=DEFAULT_DIR,reader=readTail}={}){
+function assertBdsSessionReleased(env=process.env,{now=Date.now,dir=DEFAULT_DIR,reader=readTail,proofReader=readAbsenceProof}={}){
   const file=env.ALICE_BEDROCK_BDS_SESSION_LOG
   const name=env.ALICE_BEDROCK_BDS_GAMERTAG
   if(!file&&!name)return {status:'unconfigured'}
@@ -58,8 +109,14 @@ function assertBdsSessionReleased(env=process.env,{now=Date.now,dir=DEFAULT_DIR,
   const s=sessionStatus(data.text,name)
   if(s.latest==='connected'||s.latest==='spawned')
     throw Error('BDS still records configured Alice Gamertag ONLINE; refusing another Xbox login')
-  if(s.latest!=='disconnected')
+  if(s.latest!=='disconnected'){
+    // Only a *missing* historic session event may use a fresh server-side
+    // no-match proof, never a known ONLINE player. Bound to the exact original
+    // MCSManager log inode and UDP socket so BDS restarts invalidate the proof.
+    if(s.latest===null&&proofReader(env,{now}))
+      return {status:'live_bds_absence_verified',eventsSeen:s.eventsSeen,logAgeMs:Math.round(age)}
     throw Error('BDS session history has no verified prior Alice disconnect; refusing unverified login')
+  }
   return {status:'last_bds_event_disconnected',eventsSeen:s.eventsSeen,logAgeMs:Math.round(age)}
 }
-module.exports={assertBdsSessionReleased,sessionStatus,readTail,MAX_AGE_MS,MAX_TAIL}
+module.exports={assertBdsSessionReleased,sessionStatus,readTail,readAbsenceProof,originalUdpSocketInode,PROOF_LIFETIME_MS,MAX_AGE_MS,MAX_TAIL}
