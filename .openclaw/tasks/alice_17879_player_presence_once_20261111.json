@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "One budgeted BDS querytarget for Alice presence; no world or lifecycle changes",
+  "steps": [
+    {
+      "name": "presence_contract",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-player-presence-once.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 12
+    },
+    {
+      "name": "query_exact_alice_once",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-17879-player-presence-once.py",
+      "args": [
+        "--probe",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 80
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "presence",
+      "file": "alice_17879_presence.json",
+      "format": "json"
+    }
+  ]
+}
