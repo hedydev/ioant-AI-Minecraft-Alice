@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Read-only MCSManager 23333/Tailscale checks on registered Mac and Mint; no state changes",
+  "steps": [
+    {
+      "name": "self_test",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mcsm-tailscale-readonly.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 15
+    },
+    {
+      "name": "inspect_23333",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mcsm-tailscale-readonly.py",
+      "args": [
+        "--inspect",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 90
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "network",
+      "file": "mcsmanager_23333_tailscale.json",
+      "format": "json"
+    }
+  ]
+}

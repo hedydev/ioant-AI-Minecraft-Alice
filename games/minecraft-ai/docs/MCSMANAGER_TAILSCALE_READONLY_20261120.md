@@ -1,0 +1,5 @@
+# MCSManager 23333 Tailscale read-only diagnosis
+
+Run the enrolled `.openclaw/tasks/alice_mcsm_tailscale_readonly_20261120.json` via pinned `repository_task` to observe Mac/Mint Tailscale backend state, sanitized peer IPs, TCP/HTTP reachability and Mint port bindings. No Tailscale credentials, Minecraft instances, Xbox accounts, player coordinates, raw MCSManager logs or daemon commands are read. No service restart, DNS/proxy modification, BDS operation or world write is performed. HTTP is a single unauthenticated GET `/` using a direct TCP socket, not the logged-in terminal UI.
+
+Interpretation: Mint `127.0.0.1:23333` serving HTTP but self Tailscale IP failing indicates an interface bind or Tailscale firewall/path issue; Mac-to-LAN connectivity succeeding while Mac-to-Tailnet fails indicates a Tailnet/proxy/routing issue. Missing `tailscale` CLI on macOS is not proof that the GUI client is disconnected. Recheck from the actual requesting Tailscale device before declaring external access restored.
