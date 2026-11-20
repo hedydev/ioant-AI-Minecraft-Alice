@@ -154,12 +154,42 @@ def detailed_system_proxy(ip):
         detail['services'][label]=row
     return detail
 
+
+def browser_proxy_transport():
+    rc,out,_=command(['/usr/sbin/scutil','--proxy'],5)
+    if rc!=0:return {'state':'unavailable'}
+    match=re.search(r'^\s*HTTPPort\s*:\s*(\d+)',out,re.M)
+    port=int(match.group(1)) if match else None
+    bind='unknown'
+    if port is not None and 0<port<=65535:
+        try:
+            with socket.create_connection(('127.0.0.1',port),timeout=2):pass
+            bind='accepting_connections'
+        except ConnectionRefusedError:bind='refused'
+        except socket.timeout:bind='timeout'
+        except OSError:bind='other_error'
+    rc2,rows,_=command(['/usr/sbin/lsof','-nP','-iTCP:'+str(port),'-sTCP:LISTEN'],5) if port else (None,'','')
+    listener='yes' if rc2==0 and len(rows.splitlines())>1 else 'no_or_unavailable'
+    try:
+        p=subprocess.run(['/bin/ps','-axww','-o','command='],capture_output=True,
+            text=True,timeout=5,check=False)
+        chrome=[line for line in p.stdout.splitlines()
+            if 'Google Chrome' in line and '/Google Chrome' in line]
+        overrides={f: any(f in line for line in chrome) for f in
+           ('--proxy-server=','--proxy-bypass-list=','--no-proxy-server',
+            '--proxy-pac-url=','--host-resolver-rules=')}
+    except (OSError,subprocess.SubprocessError):
+        overrides={}
+    return {'state':'observed','localPort':port,'localTransport':bind,
+            'listener':listener,'chromeProxyFlags':overrides}
+
 def run(output):
     dst=target()
     result={'audit':'MCSMANAGER_MAC_TO_TAILSCALE','schemaVersion':1,'readOnly':True,
             'targetFromMint':bool(dst),'macTailscale':mac_tailscale(),
             'macRoute':local_route(dst),'macProxy':mac_proxy(),
             'macProxyDetail':detailed_system_proxy(dst),
+            'browserProxyTransport':browser_proxy_transport(),
             'tcpDirect':http(dst),'macLanDirect':http('192.168.0.104'),
             'curlProxy':path_get(dst,False) if dst else None,
             'curlBypass':path_get(dst,True) if dst else None,
