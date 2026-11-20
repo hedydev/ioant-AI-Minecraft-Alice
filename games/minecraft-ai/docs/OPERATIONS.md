@@ -1177,3 +1177,11 @@ authorization may a separate normal start run once using the original private
 configuration and BDS release gate. Do not turn offline into another restart.
 Schema3's exitVerified is positive evidence, unlike schema2 default false flags;
 known exited replacements become failed/client_exited_before_login with no retry.
+# 2026-11-20 stable witness activation preflight
+
+The owner authorized the specified read-only stable position pack and one coordinated
+original-17879 BDS restart, conditional on compatibility, backup and original-instance
+checks. `alice_stable_activation_preflight_20261120.json` only reads those facts;
+it does not install, restart or send commands. Credentials remain Mint-local.
+Read the `activation_preflight` artifact before preparing the separate activation.
+
