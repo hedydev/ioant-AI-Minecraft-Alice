@@ -14,5 +14,6 @@ class DevicePromptTests(unittest.TestCase):
         ns={'re':re};exec(compile(ast.Module(body=[function],type_ignores=[]),'<challenge>','exec'),ns)
         for wording in ('enter','use'):
             self.assertEqual(ns['challenge']('https://www.microsoft.com/link\nand '+wording+' the code ABCD1234 to authenticate'),'ABCD1234')
+        self.assertEqual(ns['challenge']('[Alice] Xbox authorization requested. Open https://www.microsoft.com/link\n[Alice] Device code (private terminal only): ABCD1234'),'ABCD1234')
         self.assertIsNone(ns['challenge']('https://other.example/link and use the code ABCD1234'))
         self.assertIsNone(ns['challenge']('unrelated log'))

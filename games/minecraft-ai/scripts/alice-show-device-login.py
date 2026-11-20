@@ -18,7 +18,10 @@ sys.path.insert(0,str(Path.home()/'minecraft-ai/scripts'))
 from alice_operator.process import AliceProcess
 from alice_operator.diagnostics import current_log
 def challenge(text):
- matches=set(re.findall(r'https://(?:www\.)?microsoft\.com/link[\s\S]{0,400}?(?:enter|use) the code\s+([A-Z0-9]{6,12})\b',text,re.I))
+ if not re.search(r'https://(?:www\.)?microsoft\.com/link\b',text):return None
+ matches=set(re.findall(r'Device code \(private terminal only\):\s*([A-Z0-9]{6,12})\b',text,re.I))
+ if not matches:
+  matches=set(re.findall(r'https://(?:www\.)?microsoft\.com/link[\s\S]{0,400}?(?:enter|use) the code\s+([A-Z0-9]{6,12})\b',text,re.I))
  return next(iter(matches)).upper() if len(matches)==1 else None
 app=AliceProcess();owner=app.owner()
 if not owner:raise SystemExit(2)
