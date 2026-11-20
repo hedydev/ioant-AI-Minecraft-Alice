@@ -117,6 +117,55 @@ class Activation:
 
     def detail(self):return instance_detail(self.cfg,self.key)
 
+    def recovery_status(self):
+        from alice_operator.config import private_json
+        claim=self.app.root/(OPERATION+'.json');saved=private_json(claim)
+        d=self.detail();self.binding(d)
+        pid=(d.get('processInfo') or {}).get('pid')
+        children=descendants_of(pid) if type(pid) is int else []
+        running=False
+        if d.get('status')==3 and len(children)==1:
+            try:running=pong()=='1.26.52'
+            except (OSError,ValueError):pass
+        return {'receipt':safe_report(saved),'bdsRunningVerified':running,
+            'currentBdsPid':children[0] if len(children)==1 else None,
+            'aliceOwnerPresent':self.app.owner() is not None},saved
+
+    def resume_client_only(self):
+        """Finish the existing failed transaction's client recovery, no BDS request."""
+        from alice_operator.config import load_environment
+        self.claim=self.app.root/(OPERATION+'.json')
+        lock=self.app.root/'stable-witness-activation.lock'
+        if lock.is_symlink():raise ValueError('unsafe_operation_lock')
+        fd=os.open(lock,os.O_WRONLY|getattr(os,'O_NOFOLLOW',0))
+        with os.fdopen(fd,'w') as f:
+            fcntl.flock(f,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            status,saved=self.recovery_status();self.receipt=saved
+            if (not status['bdsRunningVerified'] or status['currentBdsPid']==saved.get('oldBdsPid')
+                or status['aliceOwnerPresent'] or saved.get('clientStartSent')
+                or saved.get('packInstalled') or saved.get('worldRegistrationWritten')
+                or not saved.get('aliceStopped') or not saved.get('bdsOpenSent')):
+                raise ValueError('client_recovery_not_admissible')
+            current=self.control.config(self.app.root)
+            original=saved.get('originalSettings')
+            if (not isinstance(original,dict) or current['settings']!={**original['settings'],'autonomyEnabled':False}):
+                raise ValueError('operator_settings_changed')
+            env=load_environment(self.app.root);self.app.check(env)
+            self.receipt['clientStartSent']=True;self.save('recovery_client_start_intent')
+            new=self.app.launch(env)
+            self.receipt.update(clientStarted=True,newAlicePid=new['newPid']);self.save('recovery_client_started')
+            def connected():
+                try:
+                    owner,_,_,_,raw=self.gated.read_live(self.app,self.mint.status)
+                    return owner['pid']==new['newPid'] and raw.get('health',0)>0
+                except (OSError,ValueError):return False
+            self.wait(connected,50,'client_login_not_verified')
+            if self.control.config(self.app.root)!=current:raise ValueError('operator_settings_changed')
+            self.control.patch_settings({'autonomyEnabled':original['settings']['autonomyEnabled']},self.app.root)
+            self.receipt.update(autonomyRestored=True,recovery='original_service_and_alice_restored_pack_not_installed')
+            self.save('original_service_recovered_activation_incomplete')
+            return safe_report(self.receipt)
+
     def binding(self,d):
         c=d.get('config') or {}
         if (c.get('processType')!='general' or c.get('stopCommand')!='stop'

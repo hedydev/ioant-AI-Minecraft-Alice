@@ -13,16 +13,18 @@ def load():
     m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
 
 def run(mode,out,operation):
-    if mode not in ('--plan','--activate'):raise ValueError('invalid_mode')
+    if mode not in ('--plan','--activate','--status','--resume-client'):raise ValueError('invalid_mode')
     if mode=='--activate' and operation!='alice_movement_20261120_stable_activate_013':raise ValueError('operation_not_authorized')
     # Execute this committed source; imports are the maintained Mint helpers.
     code=(HERE/'alice_stable_witness_activation.py').read_text()
-    call=('a=Activation();facts,_=a.inspect();print(json.dumps({"state":"ready","facts":facts}))' if mode=='--plan'
-        else 'a=Activation();r=a.apply();print(json.dumps(safe_report(r)))')
+    call={'--plan':'a=Activation();facts,_=a.inspect();print(json.dumps({"state":"ready","facts":facts}))',
+        '--activate':'a=Activation();r=a.apply();print(json.dumps(safe_report(r)))',
+        '--status':'a=Activation();r,_=a.recovery_status();print(json.dumps(r))',
+        '--resume-client':'a=Activation();print(json.dumps(a.resume_client_only()))'}[mode]
     remote="import sys;from pathlib import Path;sys.path.insert(0,str(Path.home()/'minecraft-ai/scripts'))\n"+code+'\ntry:\n '+call+'\nexcept Exception as e:\n print(json.dumps({"state":"blocked","failureType":type(e).__name__,"reason":str(e) if type(e) is ValueError and re.fullmatch("[a-z_]{3,80}",str(e)) else "preflight_error"}))\n'
     p=subprocess.run(['/usr/bin/ssh','-T','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes',
         '-o','ConnectTimeout=8',load().target(),'/usr/bin/python3 -c '+shlex.quote(remote)],capture_output=True,text=True,
-        timeout=260 if mode=='--activate' else 30,check=False)
+        timeout=260 if mode=='--activate' else 120 if mode=='--resume-client' else 30,check=False)
     # Only sanitized JSON is accepted. Backup helpers print private paths; the
     # final single JSON line is the sole exported artifact, never stdout/stderr.
     result={'state':'unverified','reason':'transport_or_preflight_failed','exitCode':p.returncode}

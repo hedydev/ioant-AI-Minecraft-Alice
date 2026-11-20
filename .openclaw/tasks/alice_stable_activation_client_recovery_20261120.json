@@ -1,0 +1,3 @@
+{"schemaVersion":1,"title":"Finish existing transaction client recovery only after verified original BDS restart; no BDS lifecycle or world writes","steps":[
+ {"name":"recover_client_only","runtime":"python","script":"games/minecraft-ai/scripts/alice-stable-activation-task.py","args":["--resume-client","@output_dir","@operation_id","--owner-authorized-stable-only"],"timeoutSeconds":140}],
+ "artifacts":[{"id":"stable_activation","file":"stable_activation.json","format":"json"}]}

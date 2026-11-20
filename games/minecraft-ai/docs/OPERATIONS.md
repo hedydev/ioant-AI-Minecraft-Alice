@@ -1207,3 +1207,14 @@ Task success is activation only; server-confirmed gameplay endpoints still need
 separate current-session acceptance. Official lifecycle API reference:
 https://docs.mcsmanager.com/apis/api_instance.html
 
+Activation 013 stopped before backup or installation because the installed MCSM
+lifecycle acknowledgment differs from the documented narrow shape. Stop/open
+intents are already recorded; DO NOT rerun activation or request another BDS
+restart. `alice_stable_activation_status_20261120.json` reads the same private
+receipt and actual original-server status. The client-recovery task only finishes
+the existing transaction's unattempted Alice launch after proving the original
+server is running under a different PID and neither pack nor registration was
+written. It restores the original autonomy setting after current-owner login,
+and never calls the BDS lifecycle API. A further BDS restart requires new scoped
+authorization; installed acknowledgments must first be diagnosed read-only.
+
