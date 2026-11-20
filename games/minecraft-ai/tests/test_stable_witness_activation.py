@@ -13,6 +13,18 @@ spec=importlib.util.spec_from_file_location('stable_activation',SCRIPTS/'alice_s
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 
 class ActivationTests(unittest.TestCase):
+    def test_finish_private_login_restores_only_the_unchanged_preference(self):
+        a=object.__new__(m.Activation);a.app=Mock();a.app.root=Path('/private-test')
+        a.gated=Mock();a.mint=Mock();a.save=Mock();a.request=Mock()
+        a.gated.read_live.return_value=({'pid':7},'birth',{}, {},{'job':None})
+        a.control=Mock();a.control.config.return_value={'revision':6,'settings':{'autonomyEnabled':False}}
+        saved={'newAlicePid':7,'originalSettings':{'revision':5,'settings':{'autonomyEnabled':True}}}
+        with patch('alice_operator.config.private_json',return_value=saved):
+            result=a.finish_recovery_settings()
+        self.assertTrue(result['autonomyRestored'])
+        a.control.patch_settings.assert_called_once_with({'autonomyEnabled':True},a.app.root)
+        a.app.launch.assert_not_called();a.app.stop.assert_not_called();a.request.assert_not_called()
+
     def test_two_live_samples_require_paused_real_status_settings(self):
         raw={'settings':{'autonomyEnabled':False},'job':None,'movementEvidence':{
             'independentSource':'bds_stable_actionbar','independentSamples':2,'independentAt':10000,'independentPreviousAt':8000}}

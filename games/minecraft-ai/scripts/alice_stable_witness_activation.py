@@ -14,6 +14,7 @@ import re
 import shutil
 import socket
 import struct
+import subprocess
 import tempfile
 import time
 import urllib.parse
@@ -152,7 +153,31 @@ class Activation:
                 result['exceptionTypes']=sorted(set(re.findall(r'\b([A-Za-z]+Error):',text)))[:10]
                 result['sourceFrames']=sorted(set(re.findall(r'(?:src/[a-z_/]+\.cjs:[0-9]+:[0-9]+)',text)))[:12]
                 result['lifecycle']=recent_lifecycle([{'path':str(p)}],max_events=6)
+        # Inspect only public decoder metadata in the installed Node24 package.
+        js="const d=require('minecraft-data')('bedrock_1.26.50');const t=d.protocol.types;console.log(JSON.stringify(Object.fromEntries(Object.entries(t).filter(([k])=>k.includes('set_title')))))"
+        p=subprocess.run([str(self.app.node),'-e',js],cwd=self.app.project,capture_output=True,text=True,timeout=10)
+        if p.returncode==0 and len(p.stdout)<12000:
+            result['setTitleSchema']=json.loads(p.stdout)
         return result,saved
+
+    def finish_recovery_settings(self):
+        """After private owner authentication, restore only the saved preference."""
+        from alice_operator.config import private_json
+        self.claim=self.app.root/(OPERATION+'.json');self.receipt=private_json(self.claim)
+        owner,_,_,_,raw=self.gated.read_live(self.app,self.mint.status)
+        if (owner['pid']!=self.receipt.get('newAlicePid') or self.receipt.get('autonomyRestored')
+            or self.receipt.get('packInstalled') or raw.get('job') is not None):
+            raise ValueError('recovery_settings_not_admissible')
+        current=self.control.config(self.app.root);original=self.receipt.get('originalSettings')
+        if not isinstance(original,dict) or current['settings']!={**original['settings'],'autonomyEnabled':False}:
+            raise ValueError('operator_settings_changed')
+        if current['revision']!=original['revision']+int(original['settings']['autonomyEnabled']):
+            raise ValueError('operator_revision_changed')
+        self.save('recovery_settings_restore_intent')
+        self.control.patch_settings({'autonomyEnabled':original['settings']['autonomyEnabled']},self.app.root)
+        self.receipt.update(autonomyRestored=True,recovery='original_service_and_alice_restored_pack_not_installed')
+        self.save('original_service_recovered_activation_incomplete')
+        return safe_report(self.receipt)
 
     def resume_client_only(self):
         """Finish the existing failed transaction's client recovery, no BDS request."""
@@ -208,6 +233,17 @@ class Activation:
         if d.get('status')!=3 or type(pid) is not int or pid<=1:raise ValueError('instance_not_running')
         children=descendants_of(pid)
         if len(children)!=1:raise ValueError('bds_process_ancestry_unverified')
+        # The existing backup helper is deliberately fail-closed on ANY unreadable
+        # game process. Prove before stopping that no unrelated root-owned Java/
+        # BDS process would make the offline backup impossible.
+        for p in Path('/proc').iterdir():
+            if not p.name.isdigit() or int(p.name) in children:continue
+            try:
+                if (p/'comm').read_text().strip() not in ('java','bedrock_server'):continue
+                (p/'cwd').resolve(strict=True)
+            except FileNotFoundError:
+                if p.exists():raise ValueError('other_game_process_backup_unverified')
+            except OSError:raise ValueError('other_game_process_backup_unverified')
         version=pong()
         o,token,env,_,raw=self.gated.read_live(self.app,self.mint.status)
         self.gated.verify_safe_state(raw)

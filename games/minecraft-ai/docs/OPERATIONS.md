@@ -1231,4 +1231,9 @@ current-owner game login is verified. The separately prepared
 `alice_stable_activation_second_requires_approval_20261120.json` is NOT authorized
 by the first one-restart approval. It may only run after new explicit owner
 approval for one additional restart, and after the original client has recovered.
+Use `alice_finish_recovery_settings_20261120.json` after successful owner login;
+it verifies the exact replacement PID, actual game session, idle job state and
+unchanged settings revision before restoring only the original autonomy setting.
+It cannot start/stop clients or BDS. The read-only status includes public installed
+SetTitle decoder metadata so the staged reader can be checked before activation.
 
