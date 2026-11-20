@@ -119,11 +119,47 @@ def path_get(ip,bypass):
     rc,out,_=command(args,10)
     return {'state':'ok' if rc==0 else 'failed',
             'httpStatus':int(out) if out.isdigit() and len(out)==3 else None}
+
+def detailed_system_proxy(ip):
+    rc,out,_=command(['/usr/sbin/scutil','--proxy'],7)
+    if rc!=0:return {'state':'unavailable'}
+    rc2,exceptions,_=command(['/usr/sbin/networksetup',
+        '-getproxybypassdomains','Wi-Fi'],7)
+    exception_lines=[x.strip().lower() for x in exceptions.splitlines()]
+    detail={'state':'ok','bypassExactIp':bool(ip and ip.lower() in exception_lines),
+            'bypassHasTailnetCidr':('100.64.0.0/10' in exception_lines),
+            'bypassCount':len(exception_lines) if rc2==0 else None,
+            'services':{}}
+    for label,hostkey,portkey,enablekey in (
+            ('http','HTTPProxy','HTTPPort','HTTPEnable'),
+            ('https','HTTPSProxy','HTTPSPort','HTTPSEnable'),
+            ('socks','SOCKSProxy','SOCKSPort','SOCKSEnable')):
+        en=re.search(r'^\s*'+enablekey+r'\s*:\s*(\d+)',out,re.M)
+        host=re.search(r'^\s*'+hostkey+r'\s*:\s*(\S+)',out,re.M)
+        port=re.search(r'^\s*'+portkey+r'\s*:\s*(\d+)',out,re.M)
+        enabled=bool(en and en.group(1)=='1')
+        h=host.group(1) if host else ''
+        pn=int(port.group(1)) if port else 0
+        local=h in ('127.0.0.1','localhost','::1')
+        row={'enabled':enabled,'hostLocal':local,'port':pn if 0<pn<65536 else None}
+        if enabled and local and 0<pn<65536 and ip:
+            scheme='socks5h://' if label=='socks' else 'http://'
+            curl=shutil.which('curl') or '/usr/bin/curl'
+            rc3,answer,_=command([curl,'--silent','--show-error','-o','/dev/null',
+                '-w','%{http_code}','--connect-timeout','4','--max-time','8',
+                '--noproxy','', '--proxy',scheme+h+':'+str(pn),
+                'http://'+ip+':'+str(PORT)+'/'],12)
+            row['explicitProxyResult']='success' if rc3==0 else 'failed'
+            row['httpStatus']=int(answer) if answer.isdigit() and len(answer)==3 else None
+        detail['services'][label]=row
+    return detail
+
 def run(output):
     dst=target()
     result={'audit':'MCSMANAGER_MAC_TO_TAILSCALE','schemaVersion':1,'readOnly':True,
             'targetFromMint':bool(dst),'macTailscale':mac_tailscale(),
             'macRoute':local_route(dst),'macProxy':mac_proxy(),
+            'macProxyDetail':detailed_system_proxy(dst),
             'tcpDirect':http(dst),'macLanDirect':http('192.168.0.104'),
             'curlProxy':path_get(dst,False) if dst else None,
             'curlBypass':path_get(dst,True) if dst else None,
