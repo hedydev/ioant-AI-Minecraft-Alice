@@ -24,7 +24,8 @@ r={'readOnly':True,'originalInstance':False,'bdsProcessCount':None,
    'privateConfigValid':False,'worldWritable':False,'packParentsWritable':False,
    'freeBytes':None,'worldBytes':None,'backupCount':0,'pendingActions':None,
    'moduleVersionHints':[],'udpVersion':None,'udpProtocol':None,'bdsCommandKinds':[],
-   'logBytes':None,'usesDynamicLoader':False}
+   'logBytes':None,'usesDynamicLoader':False,'candidateCwds':[],
+   'mcsmPid':None,'mcsmStatus':None,'mcsmType':None,'currentProcessUidMatches':[]}
 try:
  root=h/'minecraft-bedrock';world=root/'worlds/Bedrock level'
  cfg,key=validated_config();r['privateConfigValid']=True
@@ -40,6 +41,7 @@ try:
   and not root.is_symlink() and not world.is_symlink())
  r['cheats']=props.get('allow-cheats')=='true'
  r['stopCommandVerified']=c.get('stopCommand')=='stop'
+ r['mcsmType']=c.get('processType') if c.get('processType') in ('general','docker','pty') else 'other'
  pids=[];unknown=False
  for p in Path('/proc').iterdir():
   if not p.name.isdigit():continue
@@ -49,9 +51,14 @@ try:
    if not any(Path(os.fsdecode(a)).name=='bedrock_server' for a in args if a):continue
    r['bdsCommandKinds'].append(command if command in ('bedrock_server','ld-linux-x86-64','ld-linux-x86-6') else 'other')
    r['usesDynamicLoader']=r['usesDynamicLoader'] or command.startswith('ld-linux')
+   r['currentProcessUidMatches'].append(p.stat().st_uid==os.getuid())
    try:
-    if (p/'cwd').resolve(strict=True)==root.resolve():pids.append(p)
-   except OSError:unknown=True
+    actual=(p/'cwd').resolve(strict=True)
+    r['candidateCwds'].append('original' if actual==root.resolve() else
+      'original_descendant' if actual.is_relative_to(root.resolve()) else
+      'known_lab' if actual==h/'minecraft-bedrock-alice-lab' else 'other')
+    if actual==root.resolve():pids.append(p)
+   except OSError:r['candidateCwds'].append('unreadable');unknown=True
   except (OSError,ValueError):continue
  r['bdsProcessCount']=len(pids);r['bdsCwdVerified']=len(pids)==1 and not unknown
  if r['bdsCwdVerified']:
