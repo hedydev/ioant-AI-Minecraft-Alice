@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "title": "Read-only Mac direct Tailscale access to Mint MCSManager 23333",
+  "steps": [
+    {
+      "name": "selftest",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mac-tailnet-mcsm-diagnose.py",
+      "args": [
+        "--self-test"
+      ],
+      "timeoutSeconds": 10
+    },
+    {
+      "name": "inspect_mac_only",
+      "runtime": "python",
+      "script": "games/minecraft-ai/scripts/alice-mac-tailnet-mcsm-diagnose.py",
+      "args": [
+        "--inspect",
+        "@output_dir"
+      ],
+      "timeoutSeconds": 70
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "mac_tailnet",
+      "file": "mac_mcsm_tailnet.json",
+      "format": "json"
+    }
+  ]
+}
