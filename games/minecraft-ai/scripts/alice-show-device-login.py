@@ -17,6 +17,9 @@ from pathlib import Path
 sys.path.insert(0,str(Path.home()/'minecraft-ai/scripts'))
 from alice_operator.process import AliceProcess
 from alice_operator.diagnostics import current_log
+def challenge(text):
+ matches=set(re.findall(r'https://(?:www\.)?microsoft\.com/link[\s\S]{0,400}?(?:enter|use) the code\s+([A-Z0-9]{6,12})\b',text,re.I))
+ return next(iter(matches)).upper() if len(matches)==1 else None
 app=AliceProcess();owner=app.owner()
 if not owner:raise SystemExit(2)
 app.inspect(owner);p=Path(current_log(app,owner))
@@ -24,9 +27,8 @@ if not p.is_file() or p.is_symlink() or p.stat().st_mode&0o077:raise SystemExit(
 if not 0<=time.time()-p.stat().st_mtime<=900:raise SystemExit(2)
 with p.open('rb') as f:
  f.seek(max(0,p.stat().st_size-32768));text=f.read(32768).decode('utf-8','replace')
-matches=re.findall(r'https://(?:www\.)?microsoft\.com/link[^\n]{0,250}?enter the code\s+([A-Z0-9]{6,12})\b',text,re.I)
-if len(matches)!=1:raise SystemExit(2)
-code=matches[0].upper()
+code=challenge(text)
+if code is None:raise SystemExit(2)
 if not re.fullmatch('[A-Z0-9]{6,12}',code):raise SystemExit(2)
 print(json.dumps({'code':code}))
 '''
