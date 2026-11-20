@@ -1222,3 +1222,13 @@ source line frames, without raw authentication logs, player names or packets.
 Lifecycle requests now record acknowledgment kind and prove the actual selected
 instance state/PID effect; a different or lost acknowledgment never causes replay.
 
+The first client replacement is now waiting for Microsoft device authentication;
+no auth cache was deleted. `alice-show-device-login.py` presents only the current
+owner process's device prompt in a private Mac dialog and opens Microsoft's
+official link page. It does not print/save challenges or log in for the owner.
+After authentication, finish restoring the saved autonomy setting only after
+current-owner game login is verified. The separately prepared
+`alice_stable_activation_second_requires_approval_20261120.json` is NOT authorized
+by the first one-restart approval. It may only run after new explicit owner
+approval for one additional restart, and after the original client has recovered.
+

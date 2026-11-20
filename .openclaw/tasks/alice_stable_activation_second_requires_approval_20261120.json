@@ -1,0 +1,4 @@
+{"schemaVersion":1,"title":"REQUIRES NEW OWNER APPROVAL: one additional original BDS restart for stable witness after prior no-install recovery; do not run under first authorization","steps":[
+ {"name":"selftest","runtime":"python","script":"games/minecraft-ai/scripts/alice-stable-activation-task.py","args":["--self-test"],"timeoutSeconds":15},
+ {"name":"additional_authorized_activation","runtime":"python","script":"games/minecraft-ai/scripts/alice-stable-activation-task.py","args":["--activate-authorized-second","@output_dir","@operation_id","--owner-authorized-stable-only"],"timeoutSeconds":285}],
+ "artifacts":[{"id":"stable_activation","file":"stable_activation.json","format":"json"}]}
