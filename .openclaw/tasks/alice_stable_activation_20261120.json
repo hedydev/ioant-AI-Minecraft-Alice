@@ -1,0 +1,4 @@
+{"schemaVersion":1,"title":"Owner-authorized one original-17879 BDS stop/verified offline backup/stable position pack/start and paused Alice feedback verification","steps":[
+ {"name":"selftest","runtime":"python","script":"games/minecraft-ai/scripts/alice-stable-activation-task.py","args":["--self-test"],"timeoutSeconds":15},
+ {"name":"activate_once","runtime":"python","script":"games/minecraft-ai/scripts/alice-stable-activation-task.py","args":["--activate","@output_dir","@operation_id","--owner-authorized-stable-only"],"timeoutSeconds":285}],
+ "artifacts":[{"id":"stable_activation","file":"stable_activation.json","format":"json"}]}

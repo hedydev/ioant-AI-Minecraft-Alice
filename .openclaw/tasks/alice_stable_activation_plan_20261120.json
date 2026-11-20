@@ -1,0 +1,4 @@
+{"schemaVersion":1,"title":"Read-only authenticated original-instance stable witness activation plan","steps":[
+ {"name":"selftest","runtime":"python","script":"games/minecraft-ai/scripts/alice-stable-activation-task.py","args":["--self-test"],"timeoutSeconds":15},
+ {"name":"plan","runtime":"python","script":"games/minecraft-ai/scripts/alice-stable-activation-task.py","args":["--plan","@output_dir","@operation_id","--owner-authorized-stable-only"],"timeoutSeconds":45}],
+ "artifacts":[{"id":"stable_activation","file":"stable_activation.json","format":"json"}]}

@@ -1187,3 +1187,23 @@ Read the `activation_preflight` artifact before preparing the separate activatio
 The read-only version check uses one loopback RakNet unconnected ping, without
 login or console commands, and recognizes a BDS launched by the ELF dynamic loader.
 
+`alice_stable_activation_plan_20261120.json` adds authenticated MCSManager
+instance-detail/PID ancestry binding, safe Alice state, backup readability/space
+and stable-only manifest checks. Root-owned BDS process cwd is not inferred from
+permission denial. Only the exact 1.26.52 / protocol 2193 endpoint is admitted.
+After a ready plan, `alice_stable_activation_20261120.json` is restricted to
+`alice_movement_20261120_stable_activate_013`, the owner's approved one stop/open.
+The Mint private receipt is claimed before changes and updated before each
+lifecycle request; uncertain requests are never replayed. The task gracefully
+stops Alice and BDS, creates and restores/verifies a fresh offline archive,
+installs the unchanged stable pack with a private escaped target name, appends
+its world registration and creates the owner-only client opt-in. It never edits
+level.dat, server.properties, authentication or query budgets. New Alice starts
+with autonomy paused, and the original setting is restored only after two fresh
+server action-bar samples arrive. A failed backup cannot reach pack installation.
+Failures retain a receipt and hold autonomy; availability recovery uses at most
+the same single open and one client launch, without replaying uncertain delivery.
+Task success is activation only; server-confirmed gameplay endpoints still need
+separate current-session acceptance. Official lifecycle API reference:
+https://docs.mcsmanager.com/apis/api_instance.html
+
