@@ -27,6 +27,8 @@ def has_stable_pair(raw,now_ms):
     m=raw.get('movementEvidence') or {}
     return (m.get('independentSource')=='bds_stable_actionbar' and m.get('independentSamples',0)>=2
         and 0<=now_ms-m.get('independentAt',0)<=4000
+        and type(m.get('independentPreviousAt')) is int
+        and 0<m['independentAt']-m['independentPreviousAt']<=4000
         and (raw.get('settings') or {}).get('autonomyEnabled') is False and raw.get('job') is None)
 
 def module(name, path):
@@ -292,11 +294,16 @@ class Activation:
         # session absence/query budget bypass, auth cleanup or second login.
         self.receipt['clientStartSent']=True;self.save('alice_start_intent');new=self.app.launch(env)
         self.receipt.update(clientStarted=True,newAlicePid=new['newPid']);self.save('client_started_paused')
+        stable_stamps=set()
         def pair():
             owner=self.app.owner()
             if not owner or owner['pid']!=new['newPid']:return False
             _,_,_,_,raw=self.gated.read_live(self.app,self.mint.status)
-            return has_stable_pair(raw,int(time.time()*1000))
+            if not has_stable_pair(raw,int(time.time()*1000)):return False
+            stable_stamps.add(raw['movementEvidence']['independentAt'])
+            # Two distinct heartbeat observations each naming the stable source;
+            # a querytarget sample cannot stand in for either action-bar event.
+            return len(stable_stamps)>=2
         # Startup/login is asynchronous; read_live is fail-closed while awaiting it.
         def ready_pair():
             try:return pair()

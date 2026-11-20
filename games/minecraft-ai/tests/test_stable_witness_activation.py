@@ -15,7 +15,7 @@ m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 class ActivationTests(unittest.TestCase):
     def test_two_live_samples_require_paused_real_status_settings(self):
         raw={'settings':{'autonomyEnabled':False},'job':None,'movementEvidence':{
-            'independentSource':'bds_stable_actionbar','independentSamples':2,'independentAt':10000}}
+            'independentSource':'bds_stable_actionbar','independentSamples':2,'independentAt':10000,'independentPreviousAt':8000}}
         self.assertTrue(m.has_stable_pair(raw,11000))
         self.assertFalse(m.has_stable_pair(raw,15000))
         self.assertFalse(m.has_stable_pair({**raw,'settings':{'autonomyEnabled':True}},11000))
