@@ -13,21 +13,23 @@ def load():
     m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
 
 def run(mode,out,operation):
-    if mode not in ('--plan','--activate','--status','--resume-client','--finish-recovery','--activate-authorized-second'):raise ValueError('invalid_mode')
+    if mode not in ('--plan','--activate','--status','--resume-client','--finish-recovery','--activate-authorized-second','--refresh-expired-login'):raise ValueError('invalid_mode')
     if mode=='--activate' and operation!='alice_movement_20261120_stable_activate_013':raise ValueError('operation_not_authorized')
     if mode=='--activate-authorized-second' and operation!='alice_movement_20261120_stable_activate_second_018':raise ValueError('operation_not_authorized')
+    if mode=='--refresh-expired-login' and operation!='alice_movement_20261120_refresh_expired_login_020':raise ValueError('operation_not_authorized')
     # Execute this committed source; imports are the maintained Mint helpers.
     code=(HERE/'alice_stable_witness_activation.py').read_text()
     call={'--plan':'a=Activation();facts,_=a.inspect();print(json.dumps({"state":"ready","facts":facts}))',
         '--activate':'a=Activation();r=a.apply();print(json.dumps(safe_report(r)))',
         '--status':'a=Activation();r,_=a.recovery_status();print(json.dumps(r))',
         '--finish-recovery':'a=Activation();print(json.dumps(a.finish_recovery_settings()))',
+        '--refresh-expired-login':'a=Activation();print(json.dumps(a.refresh_expired_device_login()))',
         '--activate-authorized-second':"OPERATION='alice_movement_20261120_stable_activate_second_018';a=Activation();r=a.apply();print(json.dumps(safe_report(r)))",
         '--resume-client':'a=Activation();print(json.dumps(a.resume_client_only()))'}[mode]
     remote="import sys;from pathlib import Path;sys.path.insert(0,str(Path.home()/'minecraft-ai/scripts'))\n"+code+'\ntry:\n '+call+'\nexcept Exception as e:\n print(json.dumps({"state":"blocked","failureType":type(e).__name__,"reason":str(e) if type(e) is ValueError and re.fullmatch("[a-z_]{3,80}",str(e)) else "preflight_error"}))\n'
     p=subprocess.run(['/usr/bin/ssh','-T','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes',
         '-o','ConnectTimeout=8',load().target(),'/usr/bin/python3 -c '+shlex.quote(remote)],capture_output=True,text=True,
-        timeout=260 if mode in ('--activate','--activate-authorized-second') else 120 if mode=='--resume-client' else 30,check=False)
+        timeout=260 if mode in ('--activate','--activate-authorized-second') else 150 if mode in ('--resume-client','--refresh-expired-login') else 30,check=False)
     # Only sanitized JSON is accepted. Backup helpers print private paths; the
     # final single JSON line is the sole exported artifact, never stdout/stderr.
     result={'state':'unverified','reason':'transport_or_preflight_failed','exitCode':p.returncode}

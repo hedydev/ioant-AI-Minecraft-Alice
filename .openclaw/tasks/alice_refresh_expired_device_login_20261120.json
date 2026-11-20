@@ -1,0 +1,3 @@
+{"schemaVersion":1,"title":"User-reported expired Microsoft device code: replace only never-connected paused Alice authentication waiter; preserve all auth caches and BDS","steps":[
+ {"name":"fresh_device_request","runtime":"python","script":"games/minecraft-ai/scripts/alice-stable-activation-task.py","args":["--refresh-expired-login","@output_dir","@operation_id","--owner-authorized-stable-only"],"timeoutSeconds":170}],
+ "artifacts":[{"id":"stable_activation","file":"stable_activation.json","format":"json"}]}

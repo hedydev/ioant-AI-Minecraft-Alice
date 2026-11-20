@@ -13,6 +13,17 @@ spec=importlib.util.spec_from_file_location('stable_activation',SCRIPTS/'alice_s
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 
 class ActivationTests(unittest.TestCase):
+    def test_device_refresh_cannot_admit_a_gameplay_client(self):
+        raw={'producerPid':7,'producerStartToken':'birth','updatedAt':10000,
+            'connected':False,'sessionEstablished':False,'health':None,'world':'Bedrock level',
+            'serverPort':17879,'state':'IDLE','job':None,'settings':{'autonomyEnabled':False},
+            'movementEvidence':{'loginAt':None,'independentSamples':0}}
+        self.assertTrue(m.pending_login_only(raw,{'pid':7},'birth',11000))
+        for patch_data in ({'connected':True},{'sessionEstablished':True},{'health':20},{'job':'scout'},
+            {'producerPid':8},{'movementEvidence':{'loginAt':9999,'independentSamples':0}},
+            {'movementEvidence':{'loginAt':None,'independentSamples':1}}):
+            self.assertFalse(m.pending_login_only({**raw,**patch_data},{'pid':7},'birth',11000))
+
     def test_finish_private_login_restores_only_the_unchanged_preference(self):
         a=object.__new__(m.Activation);a.app=Mock();a.app.root=Path('/private-test')
         a.gated=Mock();a.mint=Mock();a.save=Mock();a.request=Mock()

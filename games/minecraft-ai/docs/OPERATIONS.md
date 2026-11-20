@@ -1236,4 +1236,11 @@ it verifies the exact replacement PID, actual game session, idle job state and
 unchanged settings revision before restoring only the original autonomy setting.
 It cannot start/stop clients or BDS. The read-only status includes public installed
 SetTitle decoder metadata so the staged reader can be checked before activation.
+If the owner reports the Microsoft code expired, the one-shot
+`alice_refresh_expired_device_login_20261120.json` can replace only the exact
+paused, never-connected authentication waiter recorded in recovery. It refuses
+any login/spawn evidence, health, active game session/job, changed owner or stale
+heartbeat, including a final guarded pre-stop check. It preserves auth caches,
+uses the original production/logout checks and never requests BDS lifecycle.
+Present the fresh challenge privately immediately after its receipt is ready.
 

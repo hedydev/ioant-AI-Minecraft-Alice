@@ -32,6 +32,16 @@ def has_stable_pair(raw,now_ms):
         and 0<m['independentAt']-m['independentPreviousAt']<=4000
         and (raw.get('settings') or {}).get('autonomyEnabled') is False and raw.get('job') is None)
 
+def pending_login_only(raw,owner,token,now_ms):
+    m=raw.get('movementEvidence') or {}
+    return (raw.get('producerPid')==owner['pid'] and raw.get('producerStartToken')==token
+        and 0<=now_ms-raw.get('updatedAt',0)<=10000 and raw.get('connected') is False
+        and raw.get('sessionEstablished') is False and raw.get('health') is None
+        and raw.get('world')=='Bedrock level' and raw.get('serverPort')==17879
+        and raw.get('state')=='IDLE' and raw.get('job') is None
+        and (raw.get('settings') or {}).get('autonomyEnabled') is False
+        and m.get('loginAt') is None and m.get('independentSamples',0)==0)
+
 def module(name, path):
     spec=importlib.util.spec_from_file_location(name,path)
     obj=importlib.util.module_from_spec(spec);spec.loader.exec_module(obj)
@@ -117,6 +127,60 @@ class Activation:
             'betaChanged':False,'cheatsChanged':False,'queryBudgetChanged':False}
 
     def detail(self):return instance_detail(self.cfg,self.key)
+
+    def refresh_expired_device_login(self):
+        """User reported an expired code; replace only an unconnected auth waiter.
+
+        This is NOT a gameplay-client reload: every ever-connected/spawned or
+        active-game state is refused. Existing cache and BDS remain untouched.
+        """
+        from alice_operator.config import private_json
+        from alice_operator.diagnostics import current_log
+        primary=self.app.root/(OPERATION+'.json')
+        claim=self.app.root/'alice_movement_20261120_refresh_expired_login_020.json'
+        if claim.exists():return safe_report(private_json(claim))
+        lock=self.app.root/'stable-witness-activation.lock'
+        if lock.is_symlink():raise ValueError('unsafe_operation_lock')
+        fd=os.open(lock,os.O_WRONLY|getattr(os,'O_NOFOLLOW',0))
+        with os.fdopen(fd,'w') as f:
+            fcntl.flock(f,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            old=private_json(primary)
+            owner=self.app.owner()
+            if not owner or owner['pid']!=old.get('newAlicePid'):raise ValueError('pending_auth_owner_changed')
+            _,token,env=self.app.inspect(owner)
+            def check():
+                if self.app.owner()!=owner or self.app.inspect(owner)[1]!=token:raise ValueError('pending_auth_owner_changed')
+                raw=private_json(self.app.root/'status.json',limit=8192)
+                if not pending_login_only(raw,owner,token,int(time.time()*1000)):raise ValueError('not_an_unconnected_auth_waiter')
+            check();d=self.detail();self.binding(d)
+            if d.get('status')!=3:raise ValueError('original_server_not_running')
+            pong();self.app.check(env);check()
+            self.claim=claim;self.receipt={'operationId':'alice_movement_20261120_refresh_expired_login_020',
+                'state':'claimed','oldAlicePid':owner['pid'],'bdsStopSent':False,'bdsOpenSent':False}
+            descriptor=os.open(claim,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600);os.close(descriptor)
+            self.save('pending_auth_replacement_intent')
+            stop=self.app.stop
+            def guarded_stop(candidate,birth):
+                check()
+                if candidate!=owner or birth!=token:raise ValueError('pending_auth_owner_changed')
+                stop(candidate,birth)
+            self.app.stop=guarded_stop
+            new=self.app.launch(env,owner)
+            self.receipt.update(newAlicePid=new['newPid'],state='client_started');self.save('awaiting_new_device_challenge')
+            # Keep the original recovery receipt bound to the one new owner.
+            old['newAlicePid']=new['newPid'];old['phase']='recovery_fresh_device_login_requested';atomic(primary,old)
+            def challenge_ready():
+                current=self.app.owner()
+                if not current or current['pid']!=new['newPid']:return False
+                log=current_log(self.app,current)
+                if not log:return False
+                p=Path(log)
+                with p.open('rb') as stream:
+                    stream.seek(max(0,p.stat().st_size-16384));text=stream.read(16384)
+                return b'Device code (private terminal only):' in text
+            self.wait(challenge_ready,30,'new_challenge_not_observed')
+            self.receipt['state']='fresh_device_challenge_ready';self.save('owner_login_required')
+            return safe_report(self.receipt)
 
     def recovery_status(self):
         from alice_operator.config import private_json
