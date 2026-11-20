@@ -23,6 +23,12 @@ PACK='37ac86b0-11b0-4505-b15d-989d7ff5b10b'
 VERSION=[0,1,0]
 OPERATION='alice_movement_20261120_stable_activate_013'
 
+def has_stable_pair(raw,now_ms):
+    m=raw.get('movementEvidence') or {}
+    return (m.get('independentSource')=='bds_stable_actionbar' and m.get('independentSamples',0)>=2
+        and 0<=now_ms-m.get('independentAt',0)<=4000
+        and (raw.get('settings') or {}).get('autonomyEnabled') is False and raw.get('job') is None)
+
 def module(name, path):
     spec=importlib.util.spec_from_file_location(name,path)
     obj=importlib.util.module_from_spec(spec);spec.loader.exec_module(obj)
@@ -290,10 +296,7 @@ class Activation:
             owner=self.app.owner()
             if not owner or owner['pid']!=new['newPid']:return False
             _,_,_,_,raw=self.gated.read_live(self.app,self.mint.status)
-            m=raw.get('movementEvidence') or {}
-            return (m.get('independentSource')=='bds_stable_actionbar' and m.get('independentSamples',0)>=2
-                and 0<=int(time.time()*1000)-m.get('independentAt',0)<=4000
-                and raw.get('autonomyEnabled') is False and raw.get('job') is None)
+            return has_stable_pair(raw,int(time.time()*1000))
         # Startup/login is asynchronous; read_live is fail-closed while awaiting it.
         def ready_pair():
             try:return pair()

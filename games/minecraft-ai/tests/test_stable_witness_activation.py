@@ -13,6 +13,15 @@ spec=importlib.util.spec_from_file_location('stable_activation',SCRIPTS/'alice_s
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 
 class ActivationTests(unittest.TestCase):
+    def test_two_live_samples_require_paused_real_status_settings(self):
+        raw={'settings':{'autonomyEnabled':False},'job':None,'movementEvidence':{
+            'independentSource':'bds_stable_actionbar','independentSamples':2,'independentAt':10000}}
+        self.assertTrue(m.has_stable_pair(raw,11000))
+        self.assertFalse(m.has_stable_pair(raw,15000))
+        self.assertFalse(m.has_stable_pair({**raw,'settings':{'autonomyEnabled':True}},11000))
+        self.assertFalse(m.has_stable_pair({**raw,'movementEvidence':{
+            **raw['movementEvidence'],'independentSource':'bds_querytarget'}},11000))
+
     def test_refuses_lifecycle_replay_before_api_call(self):
         a=object.__new__(m.Activation)
         a.receipt={'bdsStopSent':True};a.save=Mock()
