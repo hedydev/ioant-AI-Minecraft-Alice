@@ -34,10 +34,33 @@ class ActivationTests(unittest.TestCase):
         a.cfg={'instanceId':'abcdefgh'};a.key='private';phases=[]
         a.save=lambda phase:phases.append(phase)
         with patch('bds_position_witness.api',side_effect=TimeoutError) as api:
-            with self.assertRaises(TimeoutError):a.request('open')
-            self.assertTrue(a.receipt['bdsOpenSent']);self.assertEqual(phases,['open_intent'])
+            a.request('open')
+            self.assertTrue(a.receipt['bdsOpenSent']);self.assertEqual(phases,['open_intent','open_awaiting_observed_effect'])
+            self.assertFalse(a.receipt['openAckKnown'])
             with self.assertRaises(ValueError):a.request('open')
             self.assertEqual(api.call_count,1)
+
+    def test_unknown_ack_is_not_success_and_requires_observed_effect(self):
+        a=object.__new__(m.Activation);a.receipt={'bdsStopSent':False}
+        a.cfg={'instanceId':'abcdefgh'};a.key='private';a.save=Mock()
+        with patch('bds_position_witness.api',return_value={'unexpected':'format'}) as api:
+            a.request('stop');api.assert_called_once()
+        self.assertFalse(a.receipt['stopAckKnown'])
+        a.save.assert_called_with('stop_awaiting_observed_effect')
+
+    def test_backup_waits_for_observed_shutdown_despite_ack(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            a=object.__new__(m.Activation);a.home=Path(tmp);a.root=a.home/'server';a.world=a.root/'worlds/world'
+            a.receipt={};a.save=Mock();owner={'pid':56};env={};raw={'job':None}
+            a.inspect=Mock(return_value=({'bdsPid':12,'bdsBirth':'34','version':'1.26.52'},(owner,'birth',env,[],'')))
+            a.app=Mock();a.app.root=a.home;a.mint=Mock()
+            a.gated=Mock();a.gated.read_live.return_value=(owner,'birth',env,{},raw)
+            a.control=Mock();a.detail=Mock(return_value={'status':3,'processInfo':{'pid':11}});a.binding=Mock()
+            a.request=Mock();a.wait=Mock(side_effect=ValueError('bds_shutdown_not_verified'))
+            a.backup=Mock()
+            with patch.object(m,'descendants_of',return_value=[12]):
+                with self.assertRaisesRegex(ValueError,'bds_shutdown_not_verified'):a.perform()
+            a.backup.write_backup.assert_not_called()
 
     def test_failed_backup_cannot_install_pack_or_open_inside_perform(self):
         with tempfile.TemporaryDirectory() as tmp:

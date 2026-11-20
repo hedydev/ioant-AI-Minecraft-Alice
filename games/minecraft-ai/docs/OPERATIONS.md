@@ -1217,4 +1217,8 @@ server is running under a different PID and neither pack nor registration was
 written. It restores the original autonomy setting after current-owner login,
 and never calls the BDS lifecycle API. A further BDS restart requires new scoped
 authorization; installed acknowledgments must first be diagnosed read-only.
+The status reader also returns fixed current-client connection/error labels and
+source line frames, without raw authentication logs, player names or packets.
+Lifecycle requests now record acknowledgment kind and prove the actual selected
+instance state/PID effect; a different or lost acknowledgment never causes replay.
 

@@ -127,9 +127,32 @@ class Activation:
         if d.get('status')==3 and len(children)==1:
             try:running=pong()=='1.26.52'
             except (OSError,ValueError):pass
-        return {'receipt':safe_report(saved),'bdsRunningVerified':running,
+        result={'receipt':safe_report(saved),'bdsRunningVerified':running,
             'currentBdsPid':children[0] if len(children)==1 else None,
-            'aliceOwnerPresent':self.app.owner() is not None},saved
+            'aliceOwnerPresent':self.app.owner() is not None}
+        owner=self.app.owner()
+        if owner:
+            from alice_operator.diagnostics import current_log,recent_lifecycle
+            raw=json.loads((self.app.root/'status.json').read_text())
+            st=(self.app.root/'status.json').stat()
+            result['client']={'pid':owner['pid'],'heartbeatAgeSeconds':round(time.time()-st.st_mtime,1),
+                'connected':raw.get('connected') is True,'sessionEstablished':raw.get('sessionEstablished') is True,
+                'state':raw.get('state') if raw.get('state') in ('IDLE','FOLLOW','WORK','FIGHT') else 'other',
+                'autonomyEnabled':(raw.get('settings') or {}).get('autonomyEnabled'),
+                'health':raw.get('health'),'sessionExitKind':(raw.get('sessionExit') or {}).get('kind')}
+            log=current_log(self.app,owner)
+            if log:
+                p=Path(log)
+                with p.open('rb') as f:f.seek(max(0,p.stat().st_size-65536));text=f.read(65536).decode('utf-8','replace')
+                patterns=('spawn confirmed','server_disconnect','session_closed','connection ended:',
+                    'TypeError:','ReferenceError:','ECONNREFUSED','ETIMEDOUT','AuthenticationError',
+                    'device code','microsoft.com/link','RequestNetworkSettings','start_game','play_status',
+                    'login_success','logged in','resource_pack','network_settings','handshake')
+                result['clientLogFacts']={k:text.lower().count(k.lower()) for k in patterns}
+                result['exceptionTypes']=sorted(set(re.findall(r'\b([A-Za-z]+Error):',text)))[:10]
+                result['sourceFrames']=sorted(set(re.findall(r'(?:src/[a-z_/]+\.cjs:[0-9]+:[0-9]+)',text)))[:12]
+                result['lifecycle']=recent_lifecycle([{'path':str(p)}],max_events=6)
+        return result,saved
 
     def resume_client_only(self):
         """Finish the existing failed transaction's client recovery, no BDS request."""
@@ -221,14 +244,22 @@ class Activation:
         atomic(self.claim,self.receipt)
 
     def request(self,action):
-        from bds_position_witness import api,is_confirmed_command_ack
+        from bds_position_witness import api,is_confirmed_command_ack,ack_kind
         field={'stop':'bdsStopSent','open':'bdsOpenSent'}[action]
         if self.receipt[field]:raise ValueError('lifecycle_already_sent')
         self.receipt[field]=True;self.save(action+'_intent')
-        # No retry even on transport timeout: delivery might have occurred.
-        if not is_confirmed_command_ack(api(self.cfg,self.key,action),self.cfg['instanceId']):
-            raise ValueError(action+'_delivery_unverified')
-        self.save(action+'_acknowledged')
+        # A documentation-shaped acknowledgment is not the lifecycle effect.
+        # Even an unknown 200 response or a lost acknowledgment may have acted.
+        # Never repeat; the caller MUST prove the target PID/state independently
+        # before backup/installation or client login can follow.
+        try:
+            value=api(self.cfg,self.key,action)
+            self.receipt[action+'AckKind']=ack_kind(value)
+            self.receipt[action+'AckKnown']=is_confirmed_command_ack(value,self.cfg['instanceId'])
+        except Exception:
+            self.receipt[action+'AckKind']='transport_unverified'
+            self.receipt[action+'AckKnown']=False
+        self.save(action+'_awaiting_observed_effect')
 
     def wait(self,predicate,seconds,reason):
         until=time.monotonic()+seconds
