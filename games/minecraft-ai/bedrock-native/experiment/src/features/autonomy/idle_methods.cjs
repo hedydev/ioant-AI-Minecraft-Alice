@@ -4,10 +4,12 @@
 const {createIdleAdmission}=require('./idle_admission.cjs')
 const {createResourceStrategy}=require('./resource_strategy.cjs')
 const {createDoorStrategy}=require('./door_strategy.cjs')
+const {createObservedWalkStrategy}=require('./observed_walk_strategy.cjs')
 function createIdleRuntimeMethods({WOOD_LOGS,evaluateShelter,placeShelterBlock,homeAgenda,observedNaturalTree,selectResourceStep,scoutStartProof,startupTerrainObserved,surveyVoxelActions,selectSafeWalkingCandidate,pickVerticalStep,assessEarthwork,serverPositionProof,planDoorOpen,attemptDoorOpen,validateApproach,approachDoor,selectDrive,environment,candidateScout,decideAutonomousResponse,siteKey,simpleReason,HOSTILES,THREAT_CLEAR_MS,recognize}){
   const reviewIdleAdmission=createIdleAdmission({WOOD_LOGS,homeAgenda,scoutStartProof,startupTerrainObserved,serverPositionProof,evaluateShelter,environment,THREAT_CLEAR_MS})
   const reviewResourceStrategy=createResourceStrategy({observedNaturalTree,selectResourceStep,siteKey})
   const {reviewDoorStrategy,runDoorWaitStrategy}=createDoorStrategy({validateApproach,planDoorOpen,selectDrive,approachDoor,attemptDoorOpen})
+  const tryObservedWalk=createObservedWalkStrategy({environment,selectSafeWalkingCandidate,scoutStartProof,HOSTILES})
   return {
   async idleTick(){
     // Spawn readiness and the periodic controller share one decision flight.
@@ -181,6 +183,10 @@ function createIdleRuntimeMethods({WOOD_LOGS,evaluateShelter,placeShelterBlock,h
         this.log.log('[Alice exploration] enclosed-door priority:',
           JSON.stringify({reason:'observed_indoor_exit_before_resource_scout',
             steps:proposedRoute.length,serverMovementVerified:false}))
+      }else if(tryObservedWalk.call(this,{initialSafeWalk:initialSafeWalk||shouldProbe,candidate,decision,voxel})){
+        // Consume the existing fresh proof before any slow model await.
+        // Vertical/terrain-changing skills retain their separate policies.
+        return
       }else if(this.planner?.url){
         const actionEpoch=this.epoch
         const modelOutcome=await this.runAutonomousModelStep({wood,woodFailure,movementFailure,candidate,drive,terrainWork})
@@ -208,39 +214,8 @@ function createIdleRuntimeMethods({WOOD_LOGS,evaluateShelter,placeShelterBlock,h
            this.goalPlanner.stoppedByHuman||!this.ready()||
            this.safetyBusy||this.threat()||this.bot.health<16||
            this.verticalWatch.active())return
-        const observedSafeWalk=initialSafeWalk&&candidate?.ok===true&&
-          ['observed_voxel_walking_only','observed_one_cell_vertical'].includes(candidate.kind)&&
-          environment(this.bot).safeToExplore===true
-        if(observedSafeWalk&&['WORK','OBSERVE'].includes(decision.action)){
-          // Revalidate threats after asynchronous Ollama planning. A fresh
-          // mob may have entered the corridor during the model roundtrip.
-          const freshGate=candidate.kind==='observed_one_cell_vertical'?
-            {candidate:this.verifyVerticalTransition(candidate)?candidate:null}:
-            selectSafeWalkingCandidate(voxel,{
-            hostiles:Object.values(this.bot.entities||{})
-              .filter(e=>HOSTILES.has(e?.name)&&e.position).map(e=>e.position),
-            blocked:new Set([...this.failureMemory.activeRoutes(),
-              ...this.explorationProgress.excluded()]),visited:this.scoutVisited,
-            origin:this.bot.entity?.position})
-          if(!freshGate.candidate||freshGate.candidate.key!==candidate.key){
-            this.log.log('[Alice exploration] flat route selection:',
-              JSON.stringify({reason:'flat_route_changed_during_model_planning',
-                checkedRoutes:freshGate.checkedRoutes,
-                threatRoutes:freshGate.threatRoutes}))
-            return
-          }
-          this.log.log('[Alice autonomy] verified local skill after model observation:',
-            JSON.stringify({goal:'DISCOVER_RESOURCES',action:'SCOUT',
-              reason:'daylight_verified_safe_walk_or_vertical_transition'}))
-          this.startJob('EXPLORE','自主探索',
-            signal=>this.boundedScout(candidate,signal),{
-              label:'观察新区域寻找材料',announce:false,scoutCandidate:candidate})
-          if(this.job?.type!=='EXPLORE'&&
-             scoutStartProof(this.bot,this.movementEvidence,this.clock).reason===
-               'scout_bds_position_unavailable')
-            this.prepareDeferredScout(candidate,'自主探索')
-          return
-        }
+        if(tryObservedWalk.call(this,{initialSafeWalk,candidate,decision,voxel,
+          allowVertical:true,reason:'post_model_observation'}))return
         if(this.maybeStartEarthwork(terrainWork,candidate,movementFailure))return
         const localSkillPermitted=!movementFailure&&(
           !!doorDriven&&decision.action==='SCOUT'&&decision.candidate?.ok===true||
@@ -269,32 +244,8 @@ function createIdleRuntimeMethods({WOOD_LOGS,evaluateShelter,placeShelterBlock,h
             reason:'model_observe_does_not_disable_bounded_navigation'}))
       }else{
         this.goalPlanner.goalSource='fixed-safety' // Explicit model-disabled behavior.
-        // Model-disabled autonomous Alice can use the same strictly observed
-        // 2–8 cell all-WALK path, without adding new movement primitives.
-        if(initialSafeWalk&&candidate?.ok===true&&
-           ['observed_voxel_walking_only','observed_one_cell_vertical'].includes(candidate.kind)&&
-           ['WORK','OBSERVE'].includes(decision.action)){
-          const freshGate=candidate.kind==='observed_one_cell_vertical'?
-            {candidate:this.verifyVerticalTransition(candidate)?candidate:null}:
-            selectSafeWalkingCandidate(voxel,{
-            hostiles:Object.values(this.bot.entities||{})
-              .filter(e=>HOSTILES.has(e?.name)&&e.position).map(e=>e.position),
-            blocked:new Set([...this.failureMemory.activeRoutes(),
-              ...this.explorationProgress.excluded()]),visited:this.scoutVisited,
-            origin:this.bot.entity?.position})
-          if(freshGate.candidate?.key===candidate.key&&
-             this.liveBehavior.settings.agentMode==='autonomous'&&
-             !this.goalPlanner.stoppedByHuman&&!this.threat()){
-            this.startJob('EXPLORE','自主探索',
-              signal=>this.boundedScout(candidate,signal),{
-                label:'独立探索已验证的短平路',announce:false,scoutCandidate:candidate})
-            if(this.job?.type!=='EXPLORE'&&
-               scoutStartProof(this.bot,this.movementEvidence,this.clock).reason===
-                 'scout_bds_position_unavailable')
-              this.prepareDeferredScout(candidate,'自主探索')
-            return
-          }
-        }
+        if(tryObservedWalk.call(this,{initialSafeWalk,candidate,decision,voxel,
+          allowVertical:true,reason:'model_disabled_observed_skill'}))return
       }
       if(!indoorDoorPriority&&this.maybeStartEarthwork(terrainWork,candidate,movementFailure))return
       if(decision.action==='SCOUT'){

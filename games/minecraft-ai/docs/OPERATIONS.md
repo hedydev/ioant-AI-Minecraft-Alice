@@ -1,3 +1,9 @@
+## 2026-11-20 — 连续动作修复的部署边界
+
+当前修复见 [MOVEMENT_PROGRESS_20261120.md](MOVEMENT_PROGRESS_20261120.md)。仅客户端调度变化可通过原有 `alice-mac.sh sync`（备份同步＋Mint Node24，不重启）与已批准 `alice_17879_client_restart.json` 的精确HEAD、健康IDLE／无在途任务门禁部署。不得在pending端点或不明生命周期中重复启动。
+
+原世界尚无稳定Actionbar见证包。其供源部署会修改原世界行为包清单并需要协调BDS，必须先有用户明确授权和具体备份／兼容验证；现有Alice-only重启批准不涵盖BDS重启。保留查询预算，不用清空停滞冷却或扩大新鲜度来绕过供源缺失。
+
 ## 2026-11-04 — 本轮预算收尾：版本10全量通过，尚未加载
 
 92在源码0c7f4e17b11ac297db200a690171de5c65f9aaac通过Mint1012/1012、0skip，Mac337项（3skip，其余通过）；只做非重启sync。生产仍原批准87加载的PID1826633/version9（运行源码8c2e7ef），版本10未加载，typed新验收入口要求10，不得对版本9误发。90确认当前最后89命令3c219128a38e487c9ee94cf0352ab3b8已经rejected/bed_needs_verified_approach，不是进行中。没有新的床请求或在途MCP任务，下一新编号93。

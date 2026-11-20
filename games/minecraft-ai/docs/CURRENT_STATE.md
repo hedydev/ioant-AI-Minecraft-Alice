@@ -1,3 +1,11 @@
+## 2026-11-20 — 连续动作闭环：已复现模型阻塞机械动作；客户端修复待 Mint／实机验收
+
+当前基线 ca12ef4。新只读回执确认原17879 Alice在线、HP20、IDLE；737个历史独立样本但最近样本已过期，按需见证处于停滞冷却。当前生命摘要56次见证唤醒无scout终点；有界日志模型37次建议、29次仅观察。个人床位已为当前会话服务器确认，夜间睡眠因附近敌人不可用，不能沿用旧“床位未确认”的描述。
+
+真实runtime回归复现：合法WALK与新鲜独立双样本仍先await模型，动作无法及时进入原执行器。新增 feature-local observed_walk_strategy，让严格校验的平路先执行，模型保持高层规划；不改变4秒门禁、独立终点、STOP/FOLLOW、危险地形、预算或原世界。174项定向Node通过，Mac Python338（3 skip）通过；本机全量Node的两项依赖真实Vec3插件测试因本机无vec3而不可执行，Mint Node24全量仍待验证。没有部署／重启／发新游戏命令。
+
+原世界没有安装或绑定稳定位置见证包。现有180秒双查询不能提供连续反馈；仓库现有只读Actionbar包是待明确授权的候选，未经授权不改世界行为包或BDS。具体范围、证据与下一步见 [MOVEMENT_PROGRESS_20261120.md](MOVEMENT_PROGRESS_20261120.md)。旧自动监督仍暂停，旧失败／不明操作不重发。
+
 ## 2026-11-06 — 只读动作溯源实机确认2次WALK单格终点，下一格仍等待
 
 新增严格枚举动作类型诊断后，固定任务018于原PID3155549真实日志读回两条 `bed_step_new_independent_endpoint_confirmed`，均 `action=WALK` 且 `serverMovementVerified=true`；随后新一格仍 `awaiting_bds_endpoint`。这确认**两个床方向WALK单格的独立BDS终点**，并不证明更早的EDGE_RETURN西侧候选到达，也不能认定抵达床、重生点或夜间睡眠。新增只读脚本/隐私测试提交7a2b97d，017 Mac回归Python338（skip3，其余全PASS），定向回归PASS、工作区干净；不修改游戏运行代码，不发送BDS查询或命令。详见 [LIVE_EDGE_RETURN_ACCEPTANCE_20261106.md](LIVE_EDGE_RETURN_ACCEPTANCE_20261106.md)。

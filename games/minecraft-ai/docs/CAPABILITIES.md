@@ -1,3 +1,9 @@
+## 2026-11-20 — 已观察机械动作先于模型（源码修复，未宣称实机移动成功）
+
+新增独立的 observed_walk_strategy：在现有自主模式、地形、安全和startJob独立位置准入下，当前可执行平路先执行，不再消耗4秒证据等待模型。模型仍负责未确定的高层提议；真实玩家STOP/FOLLOW能抢占该动作。新增真实runtime慢模型回归及抢占测试，174项定向Node、Mac Python338（3 skip）通过；Mint全量和实机仍待验收。
+
+每3分钟受控BDS查询与停滞冷却仍保留。原世界稳定连续位置供源尚未安装，不能把模型去等待修复称作连续行走完成。详见 [当前修复检查点](MOVEMENT_PROGRESS_20261120.md)。
+
 ## 2026-11-06 — 床单格只读动作溯源实机观察
 
 Mac只读脚本 `alice-17879-bed-readonly.py` 在当前同生命日志上通过固定018：两条 `bed_endpoint` 仅呈现动作枚举 `WALK`、`serverMovementVerified=true`、固定reason；不输出位置或原始私密日志。017 Mac Python338（3 skip）PASS。该诊断不对游戏发指令，不代表整条床路线或EDGE_RETURN已验证。当前原世界PID3155549又有后续床单格pending，所有原互斥和BDS预算不变。

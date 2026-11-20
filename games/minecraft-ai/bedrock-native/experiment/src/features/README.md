@@ -38,3 +38,5 @@ Maintenance and terrain method bodies continue executing with the original Alice
 - block_interaction_compat.cjs (root adapter): wooden-door/bed activateBlock references use the installed hash only after exact online registry inverse validation; world-local state IDs stay unchanged.
 
 - jump_clearance_preview.cjs (root geometry): capped-ceiling jumps require an isolated, read-bounded pinned Physics landing preview; no live state/controls or server evidence.
+
+- autonomy/observed_walk_strategy.cjs: synchronous, independently admitted flat navigation before model inference; reuses existing runtime startJob, boundedScout, terrain selection and STOP/FOLLOW ownership. No additional authority, timer or witness query. Vertical/post-model and model-disabled consumers share the same bounded strategy.

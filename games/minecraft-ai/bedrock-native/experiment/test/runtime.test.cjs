@@ -1673,10 +1673,10 @@ test('daytime autonomous OBSERVE can try verified flat voxel route before failed
   e.lastHumanAt=0;e.nextIdleAt=0
   assert.equal(e.failureMemory.blocked('wood',f.bot.entity.position),null)
   await e.idleTick()
-  assert.equal(requests,1)
+  assert.equal(requests,0,'observed mechanical movement must not await a model')
   assert.equal(e.lastIdleDecision.action,'WORK','resource goal remains semantic; local travel is exploratory')
   assert.equal(f.core.state,'EXPLORE','verified nondestructive flat corridor starts bounded move')
-  assert(f.calls.some(x=>x[1]==='[Alice autonomy] verified local skill after model observation:'))
+  assert(f.calls.some(x=>x[1]==='[Alice autonomy] deterministic observed skill:'))
   for(let i=0;i<8;i++)await new Promise(setImmediate)
   assert(f.calls.some(x=>x[0]==='goto'),'safe scout reaches the real pathfinder')
   assert.equal(e.lastScoutProgress?.confirmed,false,'no authoritative server progress must never count as success')
@@ -1704,9 +1704,12 @@ test('model reply cannot start old scout after a newly arrived player FOLLOW ord
  f.bot.blockAt=p=>({name:Math.floor(p.y)===63?'stone_bricks':'air',
    boundingBox:Math.floor(p.y)===63?'block':'empty',
    shapes:Math.floor(p.y)===63?[[0,0,0,1,1,1]]:[]})
+ // Keep this fixture in the genuinely model-planned branch; an observed flat
+ // corridor now executes deterministically before inference.
+ f.bot.blockAt=()=>null
  const planner={url:'http://127.0.0.1:11435',suggestGoal:async()=>{
    f.core.setFollowIntent('Steve',3)
-   return {tool:'observe',reason:'unsafe stale decision'}
+   return {tool:'scout_safe',reason:'unsafe stale decision'}
  }}
  const e=new AliceBedrockRuntime({...f,policies:await policies(),planner})
  e.started=true;e.seenSpawn=true;e.hasHealth=true;e.hasInventorySync=true

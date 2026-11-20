@@ -1,7 +1,7 @@
 {
   "version": "Bedrock native 1.26.51 / control-center 0.4",
-  "asOf": "2026-11-04",
-  "notice": "2026-11-01 phase5：Mint Node24 718/718 Mac Python269，原17879客户端only安全重连PASS，新证据生命周期拒绝死亡前/旧登录样本。真实BDS见证状态 prior_login_witness，independentSamples0 movingQueued0；正式世界无Script API行为包、Beta实验、专属网络权限；源码/接收器就绪≠服务端独立坐标供源。未动BDS/世界；床5步仍只是只读路线。",
+  "asOf": "2026-11-20",
+  "notice": "2026-11-20：已复现并修复合法短平路先await模型导致4秒位置证据过期的调度缺口。174项定向Node、Mac Python338（3skip）通过；Mint全量与新代码实机加载待验收。真实只读确认当前Alice在线IDLE、证据过期／停滞冷却。原世界没有稳定连续位置见证包，未改BDS／世界，不宣称连续行走已完成。",
   "statusNames": {
     "observed": "已有实机证据",
     "staged": "代码已接入·待验收",
@@ -9,6 +9,13 @@
     "pending": "尚未实现"
   },
   "capabilities": [
+    {
+      "name": "已校验平路动作不等待模型",
+      "icon": "🚶",
+      "group": "移动与导航",
+      "status": "staged",
+      "detail": "feature-local同步策略复用原地形／独立BDS准入，先执行已验证机械WALK；模型保留高层规划。STOP/FOLLOW、未知地形、夜间与过期证据仍拦截。174项定向Node通过；Mint全量、加载和真实连续终点待验收。连续位置供源尚未部署。"
+    },
     {
       "name": "床前自身占位与新鲜见证睡眠调度修复",
       "icon": "🛏️",
