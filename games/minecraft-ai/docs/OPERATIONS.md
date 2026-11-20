@@ -1184,4 +1184,6 @@ original-17879 BDS restart, conditional on compatibility, backup and original-in
 checks. `alice_stable_activation_preflight_20261120.json` only reads those facts;
 it does not install, restart or send commands. Credentials remain Mint-local.
 Read the `activation_preflight` artifact before preparing the separate activation.
+The read-only version check uses one loopback RakNet unconnected ping, without
+login or console commands, and recognizes a BDS launched by the ELF dynamic loader.
 

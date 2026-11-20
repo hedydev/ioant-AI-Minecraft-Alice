@@ -12,7 +12,7 @@ import subprocess
 import sys
 
 REMOTE = r'''
-import json,os,re,shutil,sys
+import json,os,re,shutil,socket,struct,sys,time
 from pathlib import Path
 h=Path.home(); scripts=h/'minecraft-ai/scripts';sys.path.insert(0,str(scripts))
 from bds_position_witness import validated_config,DAEMON_LOG_DIR
@@ -23,7 +23,8 @@ r={'readOnly':True,'originalInstance':False,'bdsProcessCount':None,
    'betaExperiment':'unverified','cheats':None,'stopCommandVerified':False,
    'privateConfigValid':False,'worldWritable':False,'packParentsWritable':False,
    'freeBytes':None,'worldBytes':None,'backupCount':0,'pendingActions':None,
-   'moduleVersionHints':[]}
+   'moduleVersionHints':[],'udpVersion':None,'udpProtocol':None,'bdsCommandKinds':[],
+   'logBytes':None,'usesDynamicLoader':False}
 try:
  root=h/'minecraft-bedrock';world=root/'worlds/Bedrock level'
  cfg,key=validated_config();r['privateConfigValid']=True
@@ -43,7 +44,11 @@ try:
  for p in Path('/proc').iterdir():
   if not p.name.isdigit():continue
   try:
-   if (p/'comm').read_text().strip()!='bedrock_server':continue
+   command=(p/'comm').read_text().strip()
+   args=(p/'cmdline').read_bytes().split(b'\0')
+   if not any(Path(os.fsdecode(a)).name=='bedrock_server' for a in args if a):continue
+   r['bdsCommandKinds'].append(command if command in ('bedrock_server','ld-linux-x86-64','ld-linux-x86-6') else 'other')
+   r['usesDynamicLoader']=r['usesDynamicLoader'] or command.startswith('ld-linux')
    try:
     if (p/'cwd').resolve(strict=True)==root.resolve():pids.append(p)
    except OSError:unknown=True
@@ -53,10 +58,21 @@ try:
   a=(pids[0]/'exe').stat();b=(root/'bedrock_server').stat()
   r['binaryMatchesRunning']=(a.st_dev,a.st_ino)==(b.st_dev,b.st_ino)
  log=DAEMON_LOG_DIR/(cfg['instanceId']+'.log')
+ r['logBytes']=log.stat().st_size
  with log.open('rb') as f:
   prefix=f.read(262144);f.seek(max(0,log.stat().st_size-1048576));tail=f.read(1048576)
  r['versions']=sorted(set(re.findall(r'\bVersion:\s*([0-9]+(?:\.[0-9]+){2,3})',
   (prefix+tail).decode('utf-8','replace'))))[-8:]
+ # RakNet unconnected ping: no player login, game command or querytarget budget.
+ magic=bytes.fromhex('00ffff00fefefefefdfdfdfd12345678')
+ with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as s:
+  s.settimeout(3);s.connect(('127.0.0.1',17879))
+  s.send(b'\x01'+struct.pack('>q',int(time.time()*1000))+magic+struct.pack('>q',1))
+  pong=s.recv(2048)
+ if len(pong)>=35 and pong[0]==0x1c and pong[17:33]==magic:
+  n=struct.unpack('>H',pong[33:35])[0];fields=pong[35:35+n].decode().split(';')
+  if fields[0]=='MCPE' and re.fullmatch(r'[0-9]{2,5}',fields[2]) and re.fullmatch(r'[0-9]+(?:\.[0-9]+){2,3}',fields[3]):
+   r['udpProtocol']=int(fields[2]);r['udpVersion']=fields[3]
  r['betaExperiment']=beta_api_experiment(world/'level.dat')
  r['worldWritable']=os.access(world,os.W_OK) and os.access(world/'level.dat',os.R_OK)
  r['packParentsWritable']=os.access(root/'behavior_packs',os.W_OK)
